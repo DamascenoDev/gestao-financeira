@@ -1,5 +1,10 @@
 import { describe, it, expect } from 'vitest'
-import { parseBRLToCents, formatCents } from './money'
+import {
+  parseBRLToCents,
+  formatCents,
+  centsToBigInt,
+  centsToEditableBRL,
+} from './money'
 
 // SEC-02 — money exactness. Centavos are the only money representation;
 // never use float. parse once at ingest, format only at the UI edge.
@@ -88,6 +93,38 @@ describe('formatCents', () => {
 
   it('throws on an unsafe-integer number rather than silently losing precision', () => {
     expect(() => formatCents(Number.MAX_SAFE_INTEGER + 1)).toThrow()
+  })
+})
+
+describe('centsToBigInt (MD-04)', () => {
+  it('coerces number / string / bigint to bigint without float drift', () => {
+    expect(centsToBigInt(123456)).toBe(123456n)
+    expect(centsToBigInt('90000000000000')).toBe(90000000000000n)
+    expect(centsToBigInt(123456n)).toBe(123456n)
+  })
+
+  it('treats null/undefined as 0n', () => {
+    expect(centsToBigInt(null)).toBe(0n)
+    expect(centsToBigInt(undefined)).toBe(0n)
+  })
+
+  it('preserves a string sum beyond Number.MAX_SAFE_INTEGER exactly', () => {
+    // The exact value would lose precision via Number(); bigint keeps it.
+    expect(centsToBigInt('9007199254740999')).toBe(9007199254740999n)
+  })
+})
+
+describe('centsToEditableBRL (WR-02)', () => {
+  it('formats centavos as the raw pt-BR prefill via integer math (no float)', () => {
+    expect(centsToEditableBRL(123456)).toBe('1.234,56')
+    expect(centsToEditableBRL(5)).toBe('0,05')
+    expect(centsToEditableBRL(100000000n)).toBe('1.000.000,00')
+  })
+
+  it('round-trips through parseBRLToCents with zero drift', () => {
+    for (const cents of [1, 5, 99, 123456, 100000000]) {
+      expect(parseBRLToCents(centsToEditableBRL(cents))).toBe(cents)
+    }
   })
 })
 

@@ -41,7 +41,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { formatCents } from '@/lib/money'
+import { centsToEditableBRL, formatCents } from '@/lib/money'
 import { bulkReclassify, updateTransaction } from '@/actions/transactions'
 import { cn } from '@/lib/utils'
 
@@ -49,7 +49,7 @@ export type ExtratoRow = {
   id: string
   occurred_on: string // yyyy-MM-dd
   description: string
-  amount_cents: number
+  amount_cents: bigint // MD-04: integer-cents, never a lossy number
   category_id: string | null
 }
 
@@ -59,21 +59,13 @@ export type CategoryTotal = {
   categoryId: string | null
   name: string
   color: string | null
-  totalCents: number
+  totalCents: bigint // MD-04: integer-cents, never a lossy number
 }
 
 /** "dd/MM" from a yyyy-MM-dd date string (no tz ambiguity — it's a civil date). */
 function ddMM(occurredOn: string): string {
   const [, m, d] = occurredOn.split('-')
   return `${d}/${m}`
-}
-
-/** Raw pt-BR string MoneyInput / the edit dialog expects (e.g. "1.234,56"). */
-function centsToRawBRL(cents: number): string {
-  return (cents / 100).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
 }
 
 /**
@@ -95,7 +87,7 @@ function InlineCategoryCell({
     if (!next || next === row.category_id) return
     const fd = new FormData()
     fd.set('description', row.description)
-    fd.set('amount', centsToRawBRL(row.amount_cents))
+    fd.set('amount', centsToEditableBRL(row.amount_cents))
     fd.set('categoryId', next)
     fd.set('occurredOn', row.occurred_on)
     startTransition(async () => {
@@ -149,7 +141,7 @@ export function ExtratoTable({
   rows: ExtratoRow[]
   categories: ExtratoCategory[]
   categoryTotals: CategoryTotal[]
-  grandTotalCents: number
+  grandTotalCents: bigint
 }) {
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
   const [sorting, setSorting] = React.useState<SortingState>([

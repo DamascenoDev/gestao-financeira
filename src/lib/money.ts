@@ -37,6 +37,38 @@ export function parseBRLToCents(input: string): number {
   return cents
 }
 
+/**
+ * Coerce a money column straight to `bigint` centavos WITHOUT going through a JS
+ * float (MD-04). supabase-js surfaces a Postgres `bigint` as `string`, `number`,
+ * or `bigint` depending on magnitude/driver; the generated types say `number`,
+ * but a `Number(...)` cast is exactly the lossy step the bigint-safe `formatCents`
+ * exists to avoid above Number.MAX_SAFE_INTEGER. Use this for any value that feeds
+ * `formatCents` or is summed as money.
+ */
+export function centsToBigInt(value: number | bigint | string | null | undefined): bigint {
+  if (value === null || value === undefined) return 0n
+  if (typeof value === 'bigint') return value
+  // BigInt() throws on a non-integer float; money columns are always integers,
+  // so a string ("90000000000000") or an integer number both convert exactly.
+  return BigInt(value)
+}
+
+/**
+ * Format integer centavos as the RAW pt-BR string the MoneyInput / edit dialogs
+ * prefill (e.g. 123456 -> "1.234,56", no "R$"). Done entirely on the bigint via
+ * integer division so it NEVER round-trips money through a float (WR-02): the
+ * value can be sent back through parseBRLToCents on save with zero rounding drift.
+ */
+export function centsToEditableBRL(value: number | bigint | string | null | undefined): string {
+  const c = centsToBigInt(value)
+  const negative = c < 0n
+  const abs = negative ? -c : c
+  const reais = abs / 100n
+  const cents = abs % 100n
+  const sign = negative ? '-' : ''
+  return `${sign}${groupReais(reais)},${cents.toString().padStart(2, '0')}`
+}
+
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })
 
 // Groups an integer-reais bigint with pt-BR thousands dots (e.g. 90000000000000n

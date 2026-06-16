@@ -12,6 +12,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
+import { centsToBigInt } from '@/lib/money'
 import { monthBounds, monthLabel, toMonthKeyOrCurrent } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
@@ -79,7 +80,8 @@ export default async function ExtratoPage({
     id: t.id,
     occurred_on: t.occurred_on,
     description: t.description,
-    amount_cents: Number(t.amount_cents),
+    // MD-04: carry centavos as bigint, never via a lossy Number() cast.
+    amount_cents: centsToBigInt(t.amount_cents),
     category_id: t.category_id,
   }))
 
@@ -98,12 +100,13 @@ export default async function ExtratoPage({
         categoryId: t.category_id,
         name: cat?.name ?? 'Sem categoria',
         color: cat?.color ?? null,
-        totalCents: Number(t.total_cents ?? 0),
+        // MD-04: bigint sum — no Number() truncation above MAX_SAFE_INTEGER.
+        totalCents: centsToBigInt(t.total_cents),
       }
     })
-    .sort((a, b) => b.totalCents - a.totalCents)
+    .sort((a, b) => (b.totalCents > a.totalCents ? 1 : b.totalCents < a.totalCents ? -1 : 0))
 
-  const grandTotalCents = categoryTotals.reduce((s, t) => s + t.totalCents, 0)
+  const grandTotalCents = categoryTotals.reduce((s, t) => s + t.totalCents, 0n)
 
   const isFiltered = catFilter.length > 0
   const txForm = (

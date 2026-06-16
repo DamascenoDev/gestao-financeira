@@ -19,21 +19,13 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { formatCents } from '@/lib/money'
+import { centsToBigInt, centsToEditableBRL, formatCents } from '@/lib/money'
 import { monthLabel, toMonthKeyOrCurrent } from '@/lib/month'
 import { ensureMonthOccurrences } from '@/actions/incomes'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
 
 type OccurrenceRow = Database['public']['Tables']['income_occurrences']['Row']
-
-/** Raw centavos → the pt-BR string MoneyInput expects to prefill (e.g. "1.234,56"). */
-function centsToRawBRL(cents: number): string {
-  return (cents / 100).toLocaleString('pt-BR', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
-}
 
 export default async function ReceitasPage({
   searchParams,
@@ -67,7 +59,9 @@ export default async function ReceitasPage({
     OccurrenceRow,
     'id' | 'template_id' | 'source' | 'amount_cents' | 'month_key' | 'occurred_on'
   >[] = occurrences ?? []
-  const totalCents = Number(liquida?.total_cents ?? 0)
+  // MD-04: keep the aggregate as bigint — never round-trip a money sum through a
+  // JS number before formatCents (the bigint-safe path would otherwise be dead).
+  const totalCents = centsToBigInt(liquida?.total_cents)
 
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
@@ -125,14 +119,17 @@ export default async function ReceitasPage({
                     </Badge>
                   </TableCell>
                   <TableCell className="text-right">
-                    <AmountCell cents={row.amount_cents} kind="income" />
+                    <AmountCell
+                      cents={centsToBigInt(row.amount_cents)}
+                      kind="income"
+                    />
                   </TableCell>
                   <TableCell className="text-right">
                     <EditOccurrenceDialog
                       occurrenceId={row.id}
                       templateId={row.template_id}
                       monthKey={mes}
-                      currentAmount={centsToRawBRL(row.amount_cents)}
+                      currentAmount={centsToEditableBRL(row.amount_cents)}
                       templateSource={row.source}
                       trigger={
                         <Button type="button" size="sm" variant="ghost">
