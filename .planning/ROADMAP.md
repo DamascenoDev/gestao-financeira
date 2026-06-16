@@ -50,7 +50,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   - [x] 02-01-PLAN.md — Foundation slice: migrations (incomes/transactions/color/views/RPC) applied to local stack + typed client, civil-month + Zod schemas, app shell (sidebar + global MonthSelector), Wave-0 tests (suite 72/72 GREEN, view-leak leak-free, build+tsc clean)
   - [x] 02-02-PLAN.md — Receitas slice: income actions (template/occurrence/avulsa, materialize-on-read) + Receitas page with receita-líquida hero (INC-01/02/03/04); 12 action tests + Wave-0 income tests GREEN, suite 84/84, build+tsc clean
   - [x] 02-03-PLAN.md — Categorias slice: category actions (CRUD + consumo/alocação + color + delete-block/archive/atomic reassign) + Categorias page (CAT-02/03); 19 action tests + Wave-0 category tests GREEN, suite 103/103, build+tsc clean
-  - [ ] 02-04-PLAN.md — Extrato slice: transaction actions (CRUD + bulkReclassify) + dense TanStack table with URL filters, per-category totals, SelectionActionBar (TXN-01/02/03/04)
+  - [x] 02-04-PLAN.md — Extrato slice: transaction actions (CRUD + bulkReclassify) + dense TanStack table (getRowId=tx.id, selection, sort, inline category edit), ?mes+?cat URL filters, per-category/grand totals from v_category_totals, self-contained SelectionActionBar (TXN-01/02/03/04); 14 action tests + Wave-0 transactions-rls/bulk-reclassify GREEN, suite 117/117, build+tsc clean
   - [ ] 02-05-PLAN.md — [autonomous:false] Human-verify walkthrough: INC-02 edit-choice, TXN-03 filter URL round-trip, TXN-04 bulk re-classify + design-contract sanity
 **UI hint**: yes
 
@@ -114,7 +114,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Fundação | 3/4 | In progress | - |
-| 2. Receitas, categorias e lançamentos | 2/5 | In progress | - |
+| 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
 | 3. Metas, aderência e reservas | 0/0 | Not started | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |

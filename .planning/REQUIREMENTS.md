@@ -29,10 +29,10 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Transações / Lançamentos
 
-- [ ] **TXN-01**: Usuário lança transação manual (data, valor, descrição, categoria)
-- [ ] **TXN-02**: Usuário edita e exclui transações próprias
-- [ ] **TXN-03**: Usuário vê extrato/lista de transações com filtro por mês e categoria
-- [ ] **TXN-04**: Usuário reclassifica a categoria de várias transações de uma vez (bulk re-classify)
+- [x] **TXN-01**: Usuário lança transação manual (data, valor, descrição, categoria)
+- [x] **TXN-02**: Usuário edita e exclui transações próprias
+- [x] **TXN-03**: Usuário vê extrato/lista de transações com filtro por mês e categoria
+- [x] **TXN-04**: Usuário reclassifica a categoria de várias transações de uma vez (bulk re-classify)
 
 ### Importação de Faturas
 
@@ -130,10 +130,10 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | INC-04 | Phase 2 | Complete |
 | CAT-02 | Phase 2 | Complete |
 | CAT-03 | Phase 2 | Complete |
-| TXN-01 | Phase 2 | Pending |
-| TXN-02 | Phase 2 | Pending |
-| TXN-03 | Phase 2 | Pending |
-| TXN-04 | Phase 2 | Pending |
+| TXN-01 | Phase 2 | Complete |
+| TXN-02 | Phase 2 | Complete |
+| TXN-03 | Phase 2 | Complete |
+| TXN-04 | Phase 2 | Complete |
 | BUD-01 | Phase 3 | Pending |
 | BUD-02 | Phase 3 | Pending |
 | BUD-03 | Phase 3 | Pending |
