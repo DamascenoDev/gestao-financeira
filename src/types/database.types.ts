@@ -34,12 +34,51 @@ export type Database = {
   }
   public: {
     Tables: {
+      budget_targets: {
+        Row: {
+          category_id: string
+          created_at: string
+          direction: string
+          id: string
+          percent_bp: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          direction: string
+          id?: string
+          percent_bp: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          percent_bp?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_targets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       categories: {
         Row: {
           color: string | null
           created_at: string
           id: string
           is_archived: boolean
+          is_reserva: boolean
           kind: string
           name: string
           sort: number
@@ -50,6 +89,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
+          is_reserva?: boolean
           kind: string
           name: string
           sort?: number
@@ -60,6 +100,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_archived?: boolean
+          is_reserva?: boolean
           kind?: string
           name?: string
           sort?: number
@@ -159,6 +200,91 @@ export type Database = {
         }
         Relationships: []
       }
+      reserva_ledger: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          kind: string
+          note: string
+          occurred_on: string
+          reserva_id: string
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          kind: string
+          note?: string
+          occurred_on: string
+          reserva_id: string
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          kind?: string
+          note?: string
+          occurred_on?: string
+          reserva_id?: string
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reserva_ledger_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reserva_ledger_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "v_reserva_balance"
+            referencedColumns: ["reserva_id"]
+          },
+          {
+            foreignKeyName: "reserva_ledger_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reservas: {
+        Row: {
+          alvo_cents: number | null
+          created_at: string
+          id: string
+          is_archived: boolean
+          nome: string
+          user_id: string
+        }
+        Insert: {
+          alvo_cents?: number | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          nome: string
+          user_id: string
+        }
+        Update: {
+          alvo_cents?: number | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          nome?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount_cents: number
@@ -202,6 +328,54 @@ export type Database = {
       }
     }
     Views: {
+      v_adherence_month: {
+        Row: {
+          adherence_bp: number | null
+          category_id: string | null
+          category_name: string | null
+          direction: string | null
+          income_cents: number | null
+          kind: string | null
+          meta_cents: number | null
+          month_key: string | null
+          percent_bp: number | null
+          realized_cents: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_targets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_adherence_ytd: {
+        Row: {
+          adherence_bp: number | null
+          category_id: string | null
+          category_name: string | null
+          direction: string | null
+          income_cents: number | null
+          kind: string | null
+          meta_cents: number | null
+          percent_bp: number | null
+          realized_cents: number | null
+          user_id: string | null
+          year: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "budget_targets_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       v_category_totals: {
         Row: {
           category_id: string | null
@@ -228,11 +402,30 @@ export type Database = {
         }
         Relationships: []
       }
+      v_reserva_balance: {
+        Row: {
+          alvo_cents: number | null
+          nome: string | null
+          reserva_id: string | null
+          saldo_cents: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       reassign_and_delete_category: {
         Args: { dst: string; src: string }
         Returns: undefined
+      }
+      register_reserva_saida: {
+        Args: {
+          p_amount_cents: number
+          p_note?: string
+          p_occurred_on: string
+          p_reserva_id: string
+        }
+        Returns: string
       }
     }
     Enums: {
