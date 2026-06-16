@@ -29,7 +29,11 @@ This roadmap follows the research-converged build order: **foundation → manual
   3. Todo valor monetário é gravado em centavos inteiros (`bigint`), nunca float — `R$ 0,10 + R$ 0,20` soma exatamente `R$ 0,30`
   4. O conjunto padrão BR de categorias é semeado para o usuário ao criar a conta
   5. A chave service-role existe só no servidor (`import 'server-only'`, nunca `NEXT_PUBLIC_`) e não aparece no bundle do cliente
-**Plans**: TBD
+**Plans**: 4 plans
+  - [ ] 01-01-PLAN.md — Scaffold (Next 16 / TS strict) + tooling + Wave-0 Nyquist tests (money/RLS/seed/bundle) + money.ts centavos helper
+  - [ ] 01-02-PLAN.md — SQL migrations (profiles, categories+seed trigger, private storage bucket) + RLS + apply to local stack + typed schema
+  - [ ] 01-03-PLAN.md — @supabase/ssr auth wiring + middleware + Zod-validated actions + login/signup/logout UI + dashboard reading isolated categories
+  - [ ] 01-04-PLAN.md — [autonomous:false] wire personal Supabase creds + email-confirm off + remote db push + Vercel deploy + live auth-flow verify
 
 ### Phase 2: Receitas, categorias e lançamentos manuais
 **Goal**: Usuário registra de onde vem o dinheiro e para onde vai, à mão — receitas (recorrentes + avulsas), categorias editáveis e transações com extrato — provando o loop de dados antes de qualquer upload.
@@ -104,7 +108,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação | 0/0 | Not started | - |
+| 1. Fundação | 0/4 | Planned | - |
 | 2. Receitas, categorias e lançamentos | 0/0 | Not started | - |
 | 3. Metas, aderência e reservas | 0/0 | Not started | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
