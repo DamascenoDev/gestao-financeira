@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache'
 
 import { parseBRLToCents } from '@/lib/money'
-import { currentMonthKey, monthBounds } from '@/lib/month'
+import { monthBounds, monthKeyOf, toMonthKeyOrCurrent } from '@/lib/month'
 import {
   incomeAdhocSchema,
   incomeOccurrenceSchema,
@@ -39,9 +39,12 @@ function occurredOnFor(monthKey: string, dayOfMonth: number): string {
   return `${first.slice(0, 7)}-${String(day).padStart(2, '0')}`
 }
 
-/** Month key 'YYYY-MM' for an avulsa, derived from its picked date (INC-03). */
+/**
+ * Month key 'YYYY-MM' for an avulsa, derived from its picked date (INC-03).
+ * Routes through lib/month so there is ONE owner of month-key derivation (WR-01).
+ */
 function monthKeyFromDate(occurredOn: string): string {
-  return occurredOn.slice(0, 7)
+  return monthKeyOf(occurredOn)
 }
 
 function firstIssue(message: string | undefined): string {
@@ -102,8 +105,9 @@ export async function createIncomeTemplate(
     return { error: 'Valor monetário inválido.' }
   }
 
-  const monthKey =
-    (formData.get('monthKey') as string | null) ?? currentMonthKey()
+  // WR-03 / MD-02: never trust an unchecked cast — validate the month key and
+  // fall back to the current month so no malformed value reaches date-fns/the DB.
+  const monthKey = toMonthKeyOrCurrent(formData.get('monthKey'))
 
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
@@ -168,6 +172,15 @@ export async function createAdhocIncome(
     return { error: 'Valor monetário inválido.' }
   }
 
+  // The schema regex allows a well-shaped but out-of-range date (e.g. 2026-13-45);
+  // monthKeyOf rejects an impossible month so it never reaches the DB (WR-01/MD-02).
+  let monthKey: string
+  try {
+    monthKey = monthKeyFromDate(parsed.data.occurredOn)
+  } catch {
+    return { error: 'Data inválida' }
+  }
+
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   const userId = claims?.claims.sub
@@ -178,7 +191,7 @@ export async function createAdhocIncome(
     template_id: null,
     source: parsed.data.source,
     amount_cents: amountCents,
-    month_key: monthKeyFromDate(parsed.data.occurredOn),
+    month_key: monthKey,
     occurred_on: parsed.data.occurredOn,
   })
   if (error) return { error: 'Não foi possível salvar a receita avulsa.' }

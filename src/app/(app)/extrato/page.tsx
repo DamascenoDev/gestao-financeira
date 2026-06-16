@@ -12,7 +12,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { currentMonthKey, monthBounds, monthLabel } from '@/lib/month'
+import { monthBounds, monthLabel, toMonthKeyOrCurrent } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
 
@@ -39,7 +39,8 @@ export default async function ExtratoPage({
   searchParams: Promise<{ mes?: string; cat?: string }>
 }) {
   const params = await searchParams
-  const mes = params.mes ?? currentMonthKey()
+  // MD-02: validate ?mes before it reaches monthBounds → date-fns / the DB query.
+  const mes = toMonthKeyOrCurrent(params.mes)
   const catFilter = parseCatFilter(params.cat)
 
   const supabase = await createClient()

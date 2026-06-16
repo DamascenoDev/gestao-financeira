@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { formatCents } from '@/lib/money'
-import { currentMonthKey, monthLabel } from '@/lib/month'
+import { monthLabel, toMonthKeyOrCurrent } from '@/lib/month'
 import { ensureMonthOccurrences } from '@/actions/incomes'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
@@ -41,7 +41,8 @@ export default async function ReceitasPage({
   searchParams: Promise<{ mes?: string }>
 }) {
   const params = await searchParams
-  const mes = params.mes ?? currentMonthKey()
+  // MD-02: validate ?mes before it reaches ensureMonthOccurrences → date-fns/DB.
+  const mes = toMonthKeyOrCurrent(params.mes)
 
   // Materialize-on-read: idempotently upsert this month's recurring occurrences
   // before reading (INC-01). Re-opening the month never clobbers an INC-02 edit.

@@ -1,6 +1,14 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
 
-import { currentMonthKey, monthBounds, monthLabel, shiftMonthKey } from './month'
+import {
+  currentMonthKey,
+  isMonthKey,
+  monthBounds,
+  monthKeyOf,
+  monthLabel,
+  shiftMonthKey,
+  toMonthKeyOrCurrent,
+} from './month'
 
 describe('lib/month — civil-month helpers (America/Sao_Paulo)', () => {
   afterEach(() => {
@@ -55,6 +63,48 @@ describe('lib/month — civil-month helpers (America/Sao_Paulo)', () => {
 
     it('returns Feb 29 for a leap year', () => {
       expect(monthBounds('2028-02')).toEqual({ first: '2028-02-01', last: '2028-02-29' })
+    })
+  })
+
+  describe('isMonthKey (MD-02)', () => {
+    it.each(['2026-01', '2026-12', '1999-06'])('accepts %s', (v) => {
+      expect(isMonthKey(v)).toBe(true)
+    })
+
+    it.each(['2026-00', '2026-13', '2026-99', '2026-6', 'garbage', '2026-06-01', ''])(
+      'rejects %s',
+      (v) => {
+        expect(isMonthKey(v)).toBe(false)
+      },
+    )
+
+    it('rejects non-string input', () => {
+      expect(isMonthKey(42)).toBe(false)
+      expect(isMonthKey(null)).toBe(false)
+      expect(isMonthKey(undefined)).toBe(false)
+    })
+  })
+
+  describe('toMonthKeyOrCurrent (MD-02 / WR-03)', () => {
+    it('passes through a valid month key', () => {
+      expect(toMonthKeyOrCurrent('2026-03')).toBe('2026-03')
+    })
+
+    it('falls back to the current month for malformed / missing input', () => {
+      const current = currentMonthKey()
+      expect(toMonthKeyOrCurrent('2026-99')).toBe(current)
+      expect(toMonthKeyOrCurrent(undefined)).toBe(current)
+      expect(toMonthKeyOrCurrent(new File([], 'x'))).toBe(current)
+    })
+  })
+
+  describe('monthKeyOf (WR-01)', () => {
+    it('derives the month key from a civil date', () => {
+      expect(monthKeyOf('2026-06-15')).toBe('2026-06')
+    })
+
+    it('throws on an impossible month so a bad date never reaches the DB', () => {
+      expect(() => monthKeyOf('2026-13-45')).toThrow()
     })
   })
 })
