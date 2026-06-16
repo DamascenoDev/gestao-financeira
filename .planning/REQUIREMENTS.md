@@ -53,10 +53,10 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Metas & Aderência
 
-- [ ] **BUD-01**: Usuário define meta por categoria em % da receita líquida, com direção configurável: teto (consumo, não exceder) ou alvo (investimento/poupança, atingir)
-- [ ] **BUD-02**: Dashboard de aderência mensal: gasto/alocado X% vs meta Y% por categoria
-- [ ] **BUD-03**: Visão acumulada do ano vs metas anuais
-- [ ] **BUD-04**: Usuário recebe alerta ao se aproximar ou estourar a meta de uma categoria
+- [x] **BUD-01**: Usuário define meta por categoria em % da receita líquida, com direção configurável: teto (consumo, não exceder) ou alvo (investimento/poupança, atingir)
+- [x] **BUD-02**: Dashboard de aderência mensal: gasto/alocado X% vs meta Y% por categoria
+- [x] **BUD-03**: Visão acumulada do ano vs metas anuais
+- [x] **BUD-04**: Usuário recebe alerta ao se aproximar ou estourar a meta de uma categoria
 
 ### Reservas de Oportunidade
 
@@ -134,10 +134,10 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | TXN-02 | Phase 2 | Complete |
 | TXN-03 | Phase 2 | Complete |
 | TXN-04 | Phase 2 | Complete |
-| BUD-01 | Phase 3 | Wave-0 tested (impl 03-03) |
-| BUD-02 | Phase 3 | Wave-0 tested (impl 03-03) |
-| BUD-03 | Phase 3 | Wave-0 tested (impl 03-03) |
-| BUD-04 | Phase 3 | Wave-0 tested (impl 03-03) |
+| BUD-01 | Phase 3 | Complete (03-03) |
+| BUD-02 | Phase 3 | Complete (03-03) |
+| BUD-03 | Phase 3 | Complete (03-03) |
+| BUD-04 | Phase 3 | Complete (03-03) |
 | RSV-01 | Phase 3 | Wave-0 tested (impl 03-04) |
 | RSV-02 | Phase 3 | Wave-0 tested (impl 03-05) |
 | RSV-03 | Phase 3 | Wave-0 tested (impl 03-05) |
