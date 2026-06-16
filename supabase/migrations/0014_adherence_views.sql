@@ -16,6 +16,12 @@
 -- (civil month vs civil year) — this guarantees monthly↔YTD consistency (BUD-03).
 
 -- ── Monthly ─────────────────────────────────────────────────────────────────
+-- MD-01: the period set is driven OFF INCOME, not off spend. Each meta is joined to
+-- every (user, month_key) the user has income for, so a teto category with a meta but
+-- ZERO spend this month still materializes as a row (realized 0 → 0% / "No limite")
+-- instead of vanishing (the income mis-join previously left month_key NULL when there
+-- was no spend row to carry the period key, and the dashboard's .eq('month_key', …)
+-- then dropped the row entirely). Spend is left-joined ONTO that income period.
 create or replace view public.v_adherence_month
   with (security_invoker = true) as
   with income as (
@@ -36,44 +42,52 @@ create or replace view public.v_adherence_month
     from spend_cat
     where kind = 'alocacao'
     group by user_id, month_key
+  ),
+  -- One row per (meta, income-period). Income always exists per user/month, so this
+  -- guarantees a non-NULL month_key for every meta in every month the user has income.
+  base as (
+    select bt.user_id, bt.category_id, bt.percent_bp, bt.direction,
+           c.kind, c.name as category_name,
+           i.month_key, i.income_cents
+    from public.budget_targets bt
+    join public.categories c on c.id = bt.category_id
+    join income i on i.user_id = bt.user_id
   )
   select
-    bt.user_id,
-    coalesce(sc.month_key, at.month_key, i.month_key) as month_key,
-    bt.category_id,
-    c.kind,
-    c.name as category_name,
-    bt.percent_bp,
-    bt.direction,
-    coalesce(i.income_cents, 0)::bigint as income_cents,
+    b.user_id,
+    b.month_key,
+    b.category_id,
+    b.kind,
+    b.category_name,
+    b.percent_bp,
+    b.direction,
+    b.income_cents::bigint as income_cents,
     -- consumo (teto): per-category cents. alocação (alvo): the combined alocação total.
     case
-      when c.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
+      when b.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
       else coalesce(sc.cat_cents, 0)
     end::bigint as realized_cents,
     -- meta in cents = income × percent_bp / 10000, rounded HALF-UP once (Pitfall 1).
-    (coalesce(i.income_cents, 0) * bt.percent_bp + 5000) / 10000 as meta_cents,
-    -- adherence ratio in basis-points of the meta (realized ÷ meta), guarded /0.
+    (b.income_cents * b.percent_bp + 5000) / 10000 as meta_cents,
+    -- MD-02: ratio uses the SAME rounded meta_cents the user (and the dashboard
+    -- combined-alocação line) sees, so threshold badges (80/100%) stay consistent.
+    -- Guard meta_cents = 0 → null (matches the sem-receita semantics).
     case
-      when (coalesce(i.income_cents, 0) * bt.percent_bp) = 0 then null
+      when (b.income_cents * b.percent_bp + 5000) / 10000 = 0 then null
       else (
-        case when c.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
+        case when b.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
              else coalesce(sc.cat_cents, 0) end
-        * 10000 * 10000
-      ) / nullif(coalesce(i.income_cents, 0) * bt.percent_bp, 0)
+        * 10000
+      ) / ((b.income_cents * b.percent_bp + 5000) / 10000)
     end as adherence_bp
-  from public.budget_targets bt
-  join public.categories c on c.id = bt.category_id
-  -- consumo realized: this category's own per-month total.
+  from base b
+  -- consumo realized: this category's own total for THIS income month.
   left join spend_cat sc
-    on sc.user_id = bt.user_id and sc.category_id = bt.category_id and c.kind = 'consumo'
-  -- alocação realized: the user's combined alocação total per month.
+    on sc.user_id = b.user_id and sc.category_id = b.category_id
+   and sc.month_key = b.month_key and b.kind = 'consumo'
+  -- alocação realized: the user's combined alocação total for THIS income month.
   left join alloc_total at
-    on at.user_id = bt.user_id and c.kind = 'alocacao'
-  -- income for whichever month_key this meta's spend lands in.
-  left join income i
-    on i.user_id = bt.user_id
-   and i.month_key = coalesce(sc.month_key, at.month_key);
+    on at.user_id = b.user_id and at.month_key = b.month_key and b.kind = 'alocacao';
 
 grant select on public.v_adherence_month to authenticated;
 
@@ -105,37 +119,45 @@ create or replace view public.v_adherence_ytd
     from spend_cat
     where kind = 'alocacao'
     group by user_id, year
+  ),
+  -- MD-01 (YTD twin): drive the period off income so a zero-spend teto still
+  -- materializes per income-year instead of vanishing.
+  base as (
+    select bt.user_id, bt.category_id, bt.percent_bp, bt.direction,
+           c.kind, c.name as category_name,
+           yi.year, yi.income_cents
+    from public.budget_targets bt
+    join public.categories c on c.id = bt.category_id
+    join year_income yi on yi.user_id = bt.user_id
   )
   select
-    bt.user_id,
-    coalesce(sc.year, at.year, yi.year) as year,
-    bt.category_id,
-    c.kind,
-    c.name as category_name,
-    bt.percent_bp,
-    bt.direction,
-    coalesce(yi.income_cents, 0)::bigint as income_cents,
+    b.user_id,
+    b.year,
+    b.category_id,
+    b.kind,
+    b.category_name,
+    b.percent_bp,
+    b.direction,
+    b.income_cents::bigint as income_cents,
     case
-      when c.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
+      when b.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
       else coalesce(sc.cat_cents, 0)
     end::bigint as realized_cents,
-    (coalesce(yi.income_cents, 0) * bt.percent_bp + 5000) / 10000 as meta_cents,
+    (b.income_cents * b.percent_bp + 5000) / 10000 as meta_cents,
+    -- MD-02: ratio against the SAME rounded meta_cents (matches the monthly view).
     case
-      when (coalesce(yi.income_cents, 0) * bt.percent_bp) = 0 then null
+      when (b.income_cents * b.percent_bp + 5000) / 10000 = 0 then null
       else (
-        case when c.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
+        case when b.kind = 'alocacao' then coalesce(at.alloc_cents, 0)
              else coalesce(sc.cat_cents, 0) end
-        * 10000 * 10000
-      ) / nullif(coalesce(yi.income_cents, 0) * bt.percent_bp, 0)
+        * 10000
+      ) / ((b.income_cents * b.percent_bp + 5000) / 10000)
     end as adherence_bp
-  from public.budget_targets bt
-  join public.categories c on c.id = bt.category_id
+  from base b
   left join spend_cat sc
-    on sc.user_id = bt.user_id and sc.category_id = bt.category_id and c.kind = 'consumo'
+    on sc.user_id = b.user_id and sc.category_id = b.category_id
+   and sc.year = b.year and b.kind = 'consumo'
   left join alloc_total at
-    on at.user_id = bt.user_id and c.kind = 'alocacao'
-  left join year_income yi
-    on yi.user_id = bt.user_id
-   and yi.year = coalesce(sc.year, at.year);
+    on at.user_id = b.user_id and at.year = b.year and b.kind = 'alocacao';
 
 grant select on public.v_adherence_ytd to authenticated;

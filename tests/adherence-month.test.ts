@@ -112,8 +112,11 @@ describe('v_adherence_month math (BUD-02)', () => {
     expect(data!.adherence_bp).toBe(expectedBp) // 7500
   })
 
-  it('income 0 → adherence_bp null (no NaN/Infinity)', async () => {
-    // A fresh user with a target + spend but NO income → income_cents 0.
+  it('no income in the month → no adherence row (period is income-driven, MD-01)', async () => {
+    // MD-01: the view drives the period off income (income always exists per
+    // user/month a meta can be measured in). A user with a target + spend but NO
+    // income for that month has no computable meta, so the view yields NO row —
+    // never a NaN/Infinity adherence_bp, and never a phantom 0-income row.
     const u = await createUser('admth-zero')
     const ua = userClient(u.jwt, config)
     const { data: cat } = await ua
@@ -138,10 +141,7 @@ describe('v_adherence_month math (BUD-02)', () => {
       .from('v_adherence_month')
       .select('income_cents, meta_cents, adherence_bp')
       .eq('category_id', cat!.id)
-      .single()
-    expect(data!.income_cents).toBe(0)
-    expect(data!.meta_cents).toBe(0)
-    expect(data!.adherence_bp).toBeNull()
+    expect(data ?? []).toHaveLength(0)
     await admin.auth.admin.deleteUser(u.id).catch(() => {})
   })
 })
