@@ -11,7 +11,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 - [ ] **AUTH-01**: Usuário faz login com email/senha no Supabase pessoal (single-user no v1)
 - [ ] **AUTH-02**: Sessão persiste entre refreshes do browser (SSR + middleware)
-- [ ] **AUTH-03**: Todos os dados escopados por `user_id` com RLS em todas as tabelas e no Storage (multi-user-ready, sem migração futura)
+- [x] **AUTH-03**: Todos os dados escopados por `user_id` com RLS em todas as tabelas e no Storage (multi-user-ready, sem migração futura)
 - [ ] **AUTH-04**: Usuário faz logout de qualquer página
 
 ### Receitas
@@ -23,7 +23,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Categorias
 
-- [ ] **CAT-01**: Sistema já vem com conjunto padrão BR de categorias de gasto
+- [x] **CAT-01**: Sistema já vem com conjunto padrão BR de categorias de gasto
 - [ ] **CAT-02**: Usuário cria, renomeia e remove categorias
 - [ ] **CAT-03**: Categoria é marcada como consumo (gasto) ou alocação (investimento/poupança) — afeta como entra nas metas
 
@@ -120,9 +120,9 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 |-------------|-------|--------|
 | AUTH-01 | Phase 1 | Pending |
 | AUTH-02 | Phase 1 | Pending |
-| AUTH-03 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Complete |
 | AUTH-04 | Phase 1 | Pending |
-| CAT-01 | Phase 1 | Pending |
+| CAT-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Pending |
 | INC-01 | Phase 2 | Pending |
 | INC-02 | Phase 2 | Pending |

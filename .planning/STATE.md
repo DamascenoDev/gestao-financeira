@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-16T15:15:32Z"
+last_updated: "2026-06-16T15:28:14.522Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -26,12 +26,12 @@ progress:
 ## Current Position
 
 Phase: 1 (Fundação (auth, RLS, dinheiro, schema)) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
-- **Plan:** 01-01 complete (scaffold + Wave-0 tests + money.ts); next is 01-02 (SQL migrations + RLS + local apply)
+- **Plan:** 01-02 complete (SQL migrations + RLS + role grants + seed trigger + storage bucket, applied locally, types generated, RLS/seed tests GREEN); next is 01-03
 - **Status:** Executing Phase 1
-- **Progress:** Phase 0/6 complete (Phase 1: 1/4 plans)
+- **Progress:** Phase 0/6 complete (Phase 1: 2/4 plans)
 
 ```
 [··········] 0/6 phases
@@ -45,13 +45,14 @@ Plan: 2 of 4
 | Phases complete | 0 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 1 |
+| Plans complete | 2 |
 
 ### Plan Execution Log
 
 | Phase | Plan | Duration | Tasks | Files | Completed |
 |-------|------|----------|-------|-------|-----------|
 | 1 | 01 | ~11 min | 3 | 13 created | 2026-06-16 |
+| 1 | 02 | ~12 min | 2 | 4 created / 1 modified | 2026-06-16 |
 
 ## Accumulated Context
 
@@ -86,9 +87,9 @@ Plan: 2 of 4
 
 ## Session Continuity
 
-**Last session (2026-06-16):** Inicialização do projeto. PROJECT.md, REQUIREMENTS.md (47 reqs v1) e pesquisa (SUMMARY/ARCHITECTURE/PITFALLS) prontos. Roadmap de 6 fases criado com cobertura 47/47.
+**Last session (2026-06-16):** Completed 01-02-PLAN.md — três migrações SQL (profiles, categories+seed trigger, storage bucket) que SÃO a fronteira de segurança, aplicadas ao stack local Supabase (portas remapeadas para 553xx por conflito com outro projeto), tipos gerados (`database.types.ts`), e os testes RLS-isolation + seed-categories agora GREEN (suite completa 18/18, `tsc --noEmit` limpo). Stack local deixado rodando.
 
-**Next action:** `/gsd:plan-phase 1` — decompor a Fundação (auth SSR + RLS em todas as tabelas + dinheiro em centavos + seed de categorias BR + service-role server-only) em planos executáveis.
+**Next action:** Continue Phase 1 with plan 01-03 (auth SSR wiring: `@supabase/ssr` clients, middleware, server actions, login/signup/logout UI).
 
 ---
 *State initialized: 2026-06-16 after roadmap creation*

@@ -31,7 +31,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   5. A chave service-role existe só no servidor (`import 'server-only'`, nunca `NEXT_PUBLIC_`) e não aparece no bundle do cliente
 **Plans**: 4 plans
   - [x] 01-01-PLAN.md — Scaffold (Next 16 / TS strict) + tooling + Wave-0 Nyquist tests (money/RLS/seed/bundle) + money.ts centavos helper
-  - [ ] 01-02-PLAN.md — SQL migrations (profiles, categories+seed trigger, private storage bucket) + RLS + apply to local stack + typed schema
+  - [x] 01-02-PLAN.md — SQL migrations (profiles, categories+seed trigger, private storage bucket) + RLS + role grants + apply to local stack + typed schema (RLS/seed tests GREEN)
   - [ ] 01-03-PLAN.md — @supabase/ssr auth wiring + middleware + Zod-validated actions + login/signup/logout UI + dashboard reading isolated categories
   - [ ] 01-04-PLAN.md — [autonomous:false] wire personal Supabase creds + email-confirm off + remote db push + Vercel deploy + live auth-flow verify
 
@@ -108,7 +108,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
-| 1. Fundação | 1/4 | In progress | - |
+| 1. Fundação | 2/4 | In progress | - |
 | 2. Receitas, categorias e lançamentos | 0/0 | Not started | - |
 | 3. Metas, aderência e reservas | 0/0 | Not started | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
