@@ -61,8 +61,8 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 ### Reservas de Oportunidade
 
 - [x] **RSV-01**: Usuário cria reserva nomeada (ex: Apê, Carro) com valor-alvo opcional
-- [ ] **RSV-02**: Transação classificada como "Reserva" dispara a sub-pergunta "qual reserva?" e cria uma entrada no ledger daquela reserva
-- [ ] **RSV-03**: Aporte em reserva conta como alocação de investimento (entra na meta de Investimentos), não como gasto de consumo
+- [x] **RSV-02**: Transação classificada como "Reserva" dispara a sub-pergunta "qual reserva?" e cria uma entrada no ledger daquela reserva
+- [x] **RSV-03**: Aporte em reserva conta como alocação de investimento (entra na meta de Investimentos), não como gasto de consumo
 - [x] **RSV-04**: Usuário registra saída (retirada) de uma reserva, com histórico de entradas/saídas por reserva
 - [x] **RSV-05**: Saldo da reserva é sempre derivado (entradas − saídas) e mostra barra de progresso vs alvo quando houver
 - [ ] **RSV-06**: Sistema aprende o padrão merchant→reserva e auto-sugere a reserva nas próximas
@@ -139,8 +139,8 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | BUD-03 | Phase 3 | Complete (03-03) |
 | BUD-04 | Phase 3 | Complete (03-03) |
 | RSV-01 | Phase 3 | Complete (03-04) |
-| RSV-02 | Phase 3 | Wave-0 tested (impl 03-05) |
-| RSV-03 | Phase 3 | Wave-0 tested (impl 03-05) |
+| RSV-02 | Phase 3 | Complete (03-05) |
+| RSV-03 | Phase 3 | Complete (03-05) |
 | RSV-04 | Phase 3 | Complete (03-04) |
 | RSV-05 | Phase 3 | Complete (03-04) |
 | IMP-01 | Phase 4 | Pending |

@@ -70,7 +70,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   - [x] 03-02-PLAN.md — Wave-0 tests (9 integration + adherence unit) + extended view-leak/rls-isolation; pins aporte-grouping, derived balance, never-negative saída (concurrent TOCTOU caught + fixed via migration 0017), IDOR, monthly↔YTD consistency; suite 221 passed / 1 skipped, tsc clean ✓ 2026-06-16
   - [x] 03-03-PLAN.md — Metas + Dashboard slice: upsertBudgetTarget (IDOR-checked) + deleteBudgetTarget + MetaDialog (% + Teto/Alvo switch + live R$ preview) + AdherenceBar/Row/SummaryStrip + real /dashboard reading v_adherence_month/_ytd (Mensal/Anual tabs, combined alocação line, 80/100 alerts); budget-target-direction now GREEN; suite 235 passed / 0 skipped (BUD-01/02/03/04) ✓ 2026-06-16
   - [x] 03-04-PLAN.md — Reservas slice: reservas action (CRUD + registerSaida via atomic RPC + assertOwnedReserva IDOR) + ReservaCard/Progress/Form/SaidaForm/LedgerTable + /reservas list + /reservas/[id] ledger detail; saldo always v_reserva_balance-derived, progress only with alvo, saída ≤ saldo client+server; suite 260 passed / 0 skipped, build GREEN (RSV-01/04/05) ✓ 2026-06-16
-  - [ ] 03-05-PLAN.md — Aporte sub-flow: createTransactionWithReserva + syncReservaLedgerForTransaction + ReservaPicker conditional in transacao-form + Extrato inline re-tag (RSV-02/03)
+  - [x] 03-05-PLAN.md — Aporte sub-flow: createTransactionWithReserva + syncReservaLedgerForTransaction + isReservaCategory/assertOwnedReserva + aporte-undo in update/delete; ReservaPicker ("Qual reserva?" + "+ Nova reserva") conditional in transacao-form (progressive disclosure) + Extrato inline re-tag focused dialog; aporte = linked 'in' entry, alocação only (never consumo, keyed off is_reserva flag); suite 269 passed / 0 skipped, build GREEN (RSV-02/03) ✓ 2026-06-16
   - [ ] 03-06-PLAN.md — [autonomous:false] Human-verify walkthrough: direction-aware dashboard color, qual-reserva sub-flow, alvo-only progress bar
 **UI hint**: yes
 
@@ -121,7 +121,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 |-------|----------------|--------|-----------|
 | 1. Fundação | 3/4 | In progress | - |
 | 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
-| 3. Metas, aderência e reservas | 2/6 | In progress | - |
+| 3. Metas, aderência e reservas | 5/6 | In progress | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |
 | 6. Endurecimento | 0/0 | Not started | - |
