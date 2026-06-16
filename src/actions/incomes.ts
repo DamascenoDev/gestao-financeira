@@ -260,24 +260,28 @@ export async function updateOccurrence(
   return { ok: true }
 }
 
-/** Edit the template (affects future months' materialization), not past occurrences. */
+/**
+ * Edit the template (affects future months' materialization), not past occurrences.
+ *
+ * WR-04: the amount-only edit dialog must NOT silently overwrite the template's
+ * real source/day-of-month. When the FormData omits `source`/`dayOfMonth` (the
+ * amount-only path), we update ONLY `amount_cents` and leave the genuine
+ * source/day untouched — instead of writing client-held props that defaulted to
+ * the occurrence snapshot + day 5. A full edit (source + dayOfMonth present)
+ * still validates the whole schema and writes all three fields.
+ */
 export async function updateTemplate(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
-  const parsed = incomeTemplateSchema.safeParse({
-    source: formData.get('source'),
-    amount: formData.get('amount'),
-    dayOfMonth: formData.get('dayOfMonth'),
-    isActive: true,
-  })
-  if (!parsed.success) {
-    return { error: firstIssue(parsed.error.issues[0]?.message) }
-  }
+  const rawSource = formData.get('source')
+  const rawDay = formData.get('dayOfMonth')
+  // Amount-only intent: neither template structural field was sent.
+  const amountOnly = rawSource === null && rawDay === null
 
   let amountCents: number
   try {
-    amountCents = parseBRLToCents(parsed.data.amount)
+    amountCents = parseBRLToCents(formData.get('amount') as string)
   } catch {
     return { error: 'Valor monetário inválido.' }
   }
@@ -285,6 +289,32 @@ export async function updateTemplate(
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
+
+  // Amount-only: never touch source/day_of_month (WR-04 — no silent reset to 5).
+  if (amountOnly) {
+    const { error } = await supabase
+      .from('income_templates')
+      .update({ amount_cents: amountCents })
+      .eq('id', id)
+    if (error)
+      return {
+        error: moneyWriteError(error, 'Não foi possível atualizar o template.'),
+      }
+
+    revalidatePath(RECEITAS_PATH)
+    return { ok: true }
+  }
+
+  // Full edit: validate + write the whole template row.
+  const parsed = incomeTemplateSchema.safeParse({
+    source: rawSource,
+    amount: formData.get('amount'),
+    dayOfMonth: rawDay,
+    isActive: true,
+  })
+  if (!parsed.success) {
+    return { error: firstIssue(parsed.error.issues[0]?.message) }
+  }
 
   const { error } = await supabase
     .from('income_templates')

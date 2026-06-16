@@ -222,8 +222,6 @@ export function EditOccurrenceDialog({
   templateId,
   monthKey,
   currentAmount,
-  templateSource = '',
-  templateDayOfMonth = 5,
   trigger,
 }: {
   occurrenceId: string
@@ -232,10 +230,6 @@ export function EditOccurrenceDialog({
   monthKey: string
   /** Raw pt-BR string to prefill (already formatted upstream). */
   currentAmount: string
-  /** The template's current source — preserved when editing the template (INC-02). */
-  templateSource?: string
-  /** The template's current day-of-month — preserved on a template edit. */
-  templateDayOfMonth?: number
   trigger: React.ReactElement
 }) {
   const [open, setOpen] = React.useState(false)
@@ -256,10 +250,10 @@ export function EditOccurrenceDialog({
       if (scope === 'occurrence' || !templateId) {
         result = await updateOccurrence(occurrenceId, fd)
       } else {
-        // Edit the template's value only; preserve its source + day-of-month so
-        // the Zod template schema validates (INC-02 keeps occurrences untouched).
-        fd.set('source', templateSource)
-        fd.set('dayOfMonth', String(templateDayOfMonth))
+        // WR-04: amount-only template edit — send ONLY the amount. updateTemplate
+        // preserves the template's real source + day-of-month server-side rather
+        // than overwriting them with client-held props that defaulted to the
+        // occurrence snapshot + day 5 (a silent data regression).
         result = await updateTemplate(templateId, fd)
       }
       if ('error' in result) {

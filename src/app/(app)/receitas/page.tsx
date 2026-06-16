@@ -130,7 +130,6 @@ export default async function ReceitasPage({
                       templateId={row.template_id}
                       monthKey={mes}
                       currentAmount={centsToEditableBRL(row.amount_cents)}
-                      templateSource={row.source}
                       trigger={
                         <Button type="button" size="sm" variant="ghost">
                           Editar

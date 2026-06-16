@@ -285,6 +285,19 @@ describe('updateTemplate', () => {
     })
     expect(update!.filters).toContainEqual(['id', 't1'])
   })
+
+  // WR-04: an amount-only edit (no source/dayOfMonth sent) must NOT overwrite the
+  // template's real source/day_of_month — the payload carries ONLY amount_cents.
+  it('amount-only edit writes only amount_cents (never resets source/day)', async () => {
+    const r = await updateTemplate('t1', fd({ amount: 'R$ 7.000,00' }))
+    expect(r).toEqual({ ok: true })
+    const update = calls.find((c) => c.op === 'update')
+    expect(update!.from).toBe('income_templates')
+    expect(update!.payload).toEqual({ amount_cents: 700000 })
+    expect(update!.payload).not.toHaveProperty('source')
+    expect(update!.payload).not.toHaveProperty('day_of_month')
+    expect(update!.filters).toContainEqual(['id', 't1'])
+  })
 })
 
 // --- deleteOccurrence -------------------------------------------------------
