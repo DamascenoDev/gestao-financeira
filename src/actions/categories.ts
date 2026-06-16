@@ -209,6 +209,18 @@ export async function reassignAndDelete(
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
 
+  // HG-02: re-derive ownership of BOTH src and dst server-side before invoking
+  // the RPC. The RPC itself is now hardened too (security-invoker EXISTS checks),
+  // but this gives a friendly field error instead of a raw DB-exception toast for
+  // a forged/foreign dst (FKs are not RLS-aware).
+  const { data: owned } = await supabase
+    .from('categories')
+    .select('id')
+    .in('id', [src, dst])
+  if (!owned || owned.length !== 2) {
+    return { error: 'Selecione uma categoria de destino diferente.' }
+  }
+
   const { error } = await supabase.rpc('reassign_and_delete_category', {
     src,
     dst,
