@@ -31,6 +31,12 @@ let claimsSub: string | null = 'user-1'
 // When set, the HG-01 ownership check sees exactly these category ids as owned;
 // null = echo back whatever was queried (the default "all owned" happy path).
 let ownedCategoryIds: string[] | null = null
+// Drives isReservaCategory: the is_reserva flag the categories(is_reserva) read
+// returns for the queried category id. Default false (non-Reserva happy path).
+let categoryIsReserva = false
+// Drives assertOwnedReserva: the reserva ids the reservas(id) read sees as owned.
+// null = echo back the queried id (the default "owned" happy path).
+let ownedReservaIds: string[] | null = null
 
 function makeBuilder(from: string) {
   const record: (typeof calls)[number] = { from, op: '', filters: [] }
@@ -71,12 +77,34 @@ function makeBuilder(from: string) {
     if (record.op === 'insert') return Promise.resolve(insertResult)
     return Promise.resolve(resolveResult)
   })
+  builder.maybeSingle = vi.fn(() => {
+    // isReservaCategory: `from('categories').select('is_reserva').eq('id', id).maybeSingle()`.
+    if (from === 'categories' && record.op === 'select') {
+      return Promise.resolve({
+        data: { is_reserva: categoryIsReserva },
+        error: null,
+      } as QueryResult)
+    }
+    return Promise.resolve(resolveResult)
+  })
   builder.then = (onF: (v: QueryResult) => unknown) => {
     // HG-01 ownership check: `from('categories').select('id').in('id', ids)`.
     // Echo back a row per queried id so assertOwnedCategories sees them as owned
     // (the integration test tests/category-idor.test.ts proves the real RLS path).
     if (from === 'categories' && record.op === 'select') {
       const owned: unknown[] = ownedCategoryIds ?? record.inFilter?.vals ?? []
+      return Promise.resolve({
+        data: owned.map((id) => ({ id })),
+        error: null,
+      } as QueryResult).then(onF)
+    }
+    // IDOR ownership check: `from('reservas').select('id').eq('id', id)`. Echo back
+    // the queried id as owned unless ownedReservaIds restricts it (mirrors the
+    // categories path; the live tests/reserva-idor.test.ts proves the real RLS path).
+    if (from === 'reservas' && record.op === 'select') {
+      const queried = record.filters.find(([col]) => col === 'id')?.[1]
+      const owned =
+        ownedReservaIds ?? (queried !== undefined ? [queried] : [])
       return Promise.resolve({
         data: owned.map((id) => ({ id })),
         error: null,
@@ -104,6 +132,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import {
   createTransaction,
+  createTransactionWithReserva,
   updateTransaction,
   deleteTransaction,
   bulkReclassify,
@@ -112,6 +141,7 @@ import {
 const CATEGORY_ID = '11111111-1111-4111-8111-111111111111'
 const DEST_CATEGORY = '22222222-2222-4222-8222-222222222222'
 const TX_ID = '33333333-3333-4333-8333-333333333333'
+const RESERVA_ID = '77777777-7777-4777-8777-777777777777'
 // Real transaction UUIDs for the bulk path (WR-06 rejects non-UUID ids).
 const TX_IDS = [
   '44444444-4444-4444-8444-444444444444',
@@ -134,6 +164,8 @@ beforeEach(() => {
   deleteResult = { data: null, error: null }
   claimsSub = 'user-1'
   ownedCategoryIds = null
+  categoryIsReserva = false
+  ownedReservaIds = null
 })
 
 // --- createTransaction (TXN-01) --------------------------------------------
@@ -236,6 +268,94 @@ describe('createTransaction', () => {
   })
 })
 
+// --- createTransactionWithReserva (RSV-02/03) ------------------------------
+
+describe('createTransactionWithReserva', () => {
+  function aporteFd(extra: Record<string, string> = {}): FormData {
+    return fd({
+      description: 'Aporte mensal',
+      amount: 'R$ 500,00',
+      categoryId: CATEGORY_ID,
+      occurredOn: '2026-06-10',
+      reservaId: RESERVA_ID,
+      ...extra,
+    })
+  }
+
+  it('inserts the transaction AND a linked in ledger entry for a Reserva category (aporte → alocação)', async () => {
+    categoryIsReserva = true
+    const r = await createTransactionWithReserva(aporteFd())
+    expect(r).toEqual({ ok: true })
+
+    const insert = calls.find(
+      (c) => c.from === 'transactions' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    // The aporte is a normal transaction row (kind 'expense' is the txn's own
+    // kind; the alocação-vs-consumo accounting is the category's kind, applied in
+    // the adherence view — pinned by tests/reserva-aporte.test.ts).
+    expect(insert!.payload).toMatchObject({
+      category_id: CATEGORY_ID,
+      amount_cents: 50000,
+    })
+
+    const ledger = calls.find(
+      (c) => c.from === 'reserva_ledger' && c.op === 'insert',
+    )
+    expect(ledger).toBeDefined()
+    expect(ledger!.payload).toMatchObject({
+      user_id: 'user-1',
+      reserva_id: RESERVA_ID,
+      kind: 'in', // an aporte is an entrada — raises the saldo + alocação total
+      amount_cents: 50000,
+      transaction_id: 'new-id', // linked to the just-inserted transaction
+      occurred_on: '2026-06-10',
+    })
+    expect(revalidatePath).toHaveBeenCalledWith('/extrato')
+    expect(revalidatePath).toHaveBeenCalledWith('/reservas')
+    expect(revalidatePath).toHaveBeenCalledWith('/dashboard')
+  })
+
+  it('requires a reservaId when the category is Reserva', async () => {
+    categoryIsReserva = true
+    const r = await createTransactionWithReserva(
+      aporteFd({ reservaId: '' }),
+    )
+    expect(r).toEqual({ error: 'Selecione uma reserva.' })
+    // No ledger write happens without a chosen reserva.
+    expect(calls.some((c) => c.from === 'reserva_ledger')).toBe(false)
+  })
+
+  it('rejects a forged/foreign reservaId before the ledger write (IDOR)', async () => {
+    categoryIsReserva = true
+    ownedReservaIds = [] // ownership check returns 0 owned for the foreign id
+    const r = await createTransactionWithReserva(aporteFd())
+    expect(r).toEqual({ error: 'Reserva inválida.' })
+    expect(calls.some((c) => c.from === 'reserva_ledger' && c.op === 'insert')).toBe(
+      false,
+    )
+  })
+
+  it('takes the plain createTransaction path (no ledger entry) for a non-Reserva category', async () => {
+    categoryIsReserva = false
+    const r = await createTransactionWithReserva(
+      aporteFd({ reservaId: '' }), // reservaId irrelevant for a non-Reserva category
+    )
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'transactions' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    expect(calls.some((c) => c.from === 'reserva_ledger')).toBe(false)
+  })
+
+  it('gates on an absent session', async () => {
+    claimsSub = null
+    const r = await createTransactionWithReserva(aporteFd())
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+})
+
 // --- updateTransaction (TXN-02) --------------------------------------------
 
 describe('updateTransaction', () => {
@@ -276,6 +396,76 @@ describe('updateTransaction', () => {
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
 
+  it('deletes any linked ledger entry when re-classified AWAY from Reserva (undo)', async () => {
+    categoryIsReserva = false // the NEW category is not Reserva
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Agora um gasto',
+        amount: 'R$ 50,00',
+        categoryId: DEST_CATEGORY,
+        occurredOn: '2026-06-11',
+      }),
+    )
+    expect(r).toEqual({ ok: true })
+    // The sync helper deletes the ledger row for this txn (no orphan, balance
+    // re-derives) and inserts NO replacement because the new category isn't Reserva.
+    const del = calls.find(
+      (c) => c.from === 'reserva_ledger' && c.op === 'delete',
+    )
+    expect(del).toBeDefined()
+    expect(del!.filters).toContainEqual(['transaction_id', TX_ID])
+    expect(
+      calls.some((c) => c.from === 'reserva_ledger' && c.op === 'insert'),
+    ).toBe(false)
+    expect(revalidatePath).toHaveBeenCalledWith('/reservas')
+  })
+
+  it('re-links a fresh in ledger entry when re-classified INTO Reserva', async () => {
+    categoryIsReserva = true
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Vira aporte',
+        amount: 'R$ 80,00',
+        categoryId: CATEGORY_ID,
+        occurredOn: '2026-06-11',
+        reservaId: RESERVA_ID,
+      }),
+    )
+    expect(r).toEqual({ ok: true })
+    // Delete-old (idempotent re-link) then insert the fresh 'in' entry.
+    const del = calls.find(
+      (c) => c.from === 'reserva_ledger' && c.op === 'delete',
+    )
+    expect(del).toBeDefined()
+    expect(del!.filters).toContainEqual(['transaction_id', TX_ID])
+    const ins = calls.find(
+      (c) => c.from === 'reserva_ledger' && c.op === 'insert',
+    )
+    expect(ins).toBeDefined()
+    expect(ins!.payload).toMatchObject({
+      reserva_id: RESERVA_ID,
+      kind: 'in',
+      amount_cents: 8000,
+      transaction_id: TX_ID,
+    })
+  })
+
+  it('requires a reservaId when re-classified into Reserva', async () => {
+    categoryIsReserva = true
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Vira aporte sem reserva',
+        amount: 'R$ 80,00',
+        categoryId: CATEGORY_ID,
+        occurredOn: '2026-06-11',
+      }),
+    )
+    expect(r).toEqual({ error: 'Selecione uma reserva.' })
+  })
+
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await updateTransaction(
@@ -301,6 +491,17 @@ describe('deleteTransaction', () => {
     expect(del).toBeDefined()
     expect(del!.filters).toContainEqual(['id', TX_ID])
     expect(revalidatePath).toHaveBeenCalledWith('/extrato')
+  })
+
+  it('also deletes any linked ledger entry so the saldo drops immediately', async () => {
+    const r = await deleteTransaction(TX_ID)
+    expect(r).toEqual({ ok: true })
+    const ledgerDel = calls.find(
+      (c) => c.from === 'reserva_ledger' && c.op === 'delete',
+    )
+    expect(ledgerDel).toBeDefined()
+    expect(ledgerDel!.filters).toContainEqual(['transaction_id', TX_ID])
+    expect(revalidatePath).toHaveBeenCalledWith('/reservas')
   })
 
   it('gates on an absent session', async () => {
