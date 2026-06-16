@@ -4,14 +4,16 @@
 -- Idempotent: create ... if not exists + drop policy if exists before create policy.
 -- Security boundary (AUTH-03 / threats T-1-rls, T-1-check).
 
+-- user_id is UNIQUE: enforces the documented 1:1 invariant with auth.users so a
+-- later `.from('profiles').single()` can never throw PGRST116 on multiple rows
+-- (HG-02). The UNIQUE constraint creates its own backing index, so a separate
+-- `create index ... on (user_id)` would be redundant and is intentionally omitted.
 create table if not exists public.profiles (
   id           uuid primary key references auth.users(id) on delete cascade,
-  user_id      uuid not null references auth.users(id) on delete cascade,
+  user_id      uuid not null unique references auth.users(id) on delete cascade,
   display_name text,
   created_at   timestamptz not null default now()
 );
-
-create index if not exists profiles_user_id_idx on public.profiles (user_id);
 
 alter table public.profiles enable row level security;
 
