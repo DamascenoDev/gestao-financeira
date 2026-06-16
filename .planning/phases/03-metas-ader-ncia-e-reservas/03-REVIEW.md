@@ -42,7 +42,14 @@ findings:
   medium: 2
   low: 3
   total: 6
-status: findings
+status: fixed
+fixes:
+  HG-01: { status: fixed, commit: 779c65b }
+  MD-01: { status: fixed, commit: fabc0a4 }
+  MD-02: { status: fixed, commit: fabc0a4 }
+  LW-01: { status: fixed, commit: 9e5f2af }
+  LW-02: { status: fixed, commit: 12d687f }
+  LW-03: { status: fixed, commit: 4f860f3 }
 ---
 
 # Phase 3: Code Review Report — Metas, aderência e reservas
@@ -84,6 +91,12 @@ items round it out.
 ### HIGH
 
 #### HG-01: Bulk-reclassify bypasses reserva-ledger sync in BOTH directions — phantom and missing aportes
+
+> **FIXED (779c65b):** `bulkReclassify` now rejects an `is_reserva` target server-side
+> (with the picker also hiding it in `extrato-table.tsx`) and sync-deletes any linked
+> aportes when moving rows to a non-Reserva category, then revalidates `/reservas` +
+> `/dashboard`. New `tests/bulk-reclassify-reserva.test.ts` proves saldo == ledger for
+> bulk-into (blocked) and bulk-out (no phantom).
 
 **Files:** `src/actions/transactions.ts:439-472` (`bulkReclassify`),
 `src/components/extrato-table.tsx:254-257` (`selectCategories`),
@@ -148,6 +161,13 @@ revalidatePath(RESERVAS_PATH); revalidatePath(DASHBOARD_PATH)
 
 #### MD-01: Consumo meta with zero spend in the month vanishes from the dashboard (income mis-join)
 
+> **FIXED (fabc0a4):** both adherence views now drive the period off income (a `base`
+> CTE joins each meta to every income period), so a zero-spend teto materializes at 0%
+> with a non-NULL `month_key`/`year` instead of being dropped. Locked by
+> `tests/adherence-zero-spend.test.ts`. (A meta with no income in the period now
+> yields no row — there is no computable meta — per the income-driven contract;
+> `adherence-month.test.ts` updated to assert this.)
+
 **File:** `supabase/migrations/0014_adherence_views.sql:42, 68-76` (and the YTD twin
 `:111, 133-139`)
 
@@ -175,6 +195,11 @@ materializes for every period the user has income, with `realized_cents` coalesc
 left-join spend onto it, so `month_key` is never NULL for a meta in an income month.
 
 #### MD-02: Adherence ratio computed against the UN-rounded meta while `meta_cents` is rounded half-up — monthly↔YTD/preview can disagree by the rounding step
+
+> **FIXED (fabc0a4):** `adherence_bp` in both views is now `realized * 10000 /
+> meta_cents` against the SAME half-up rounded `meta_cents` the user and the dashboard
+> combined-alocação line use (guarded `meta_cents = 0 → null`). Locked by the second
+> case in `tests/adherence-zero-spend.test.ts`.
 
 **File:** `supabase/migrations/0014_adherence_views.sql:54-64` (and `:122-130`);
 cross-check `src/app/(app)/dashboard/page.tsx:92-98`
@@ -211,6 +236,10 @@ case when meta_cents = 0 then null
 
 #### LW-01: `createTransaction` does not sync the reserva ledger — dormant footgun
 
+> **FIXED (9e5f2af):** added the `isReservaCategory` guard so a Reserva category routed
+> through `createTransaction` is rejected before insert (steering to
+> `createTransactionWithReserva`). Unit test added in `transactions.test.ts`.
+
 **File:** `src/actions/transactions.ts:184-228`
 
 **Issue:** `createTransaction` (the non-`WithReserva` variant) inserts a transaction
@@ -226,6 +255,10 @@ regression.
 category routed through it is rejected rather than half-recorded.
 
 #### LW-02: `registerSaida` overdraw detection matches the raw error string `'saldo'`
+
+> **FIXED (12d687f):** migration `0018` raises the overdraw case with a dedicated
+> SQLSTATE `'P0002'`; `registerSaida` now branches on `error.code === 'P0002'` instead
+> of `error.message.includes('saldo')`. `reserva-saida.test.ts` asserts the code.
 
 **File:** `src/actions/reservas.ts:200-204`; also `saida-form.tsx:119`
 
@@ -243,6 +276,9 @@ mirroring the `moneyWriteError` `code === '23514'` pattern already used in
 `transactions.ts`.
 
 #### LW-03: `ReservaProgress` ratio divides through JS floats (display-only)
+
+> **FIXED (4f860f3):** the percentage is now derived with integer bigint math
+> (`(saldo * 10000n) / alvo` basis-points); only the bar's DOM width stays numeric.
 
 **File:** `src/components/reserva-progress.tsx:37-38`
 
