@@ -212,6 +212,16 @@ export async function createTransaction(
     return { error: 'Categoria inválida.' }
   }
 
+  // LW-01: this plain create path does NOT sync the reserva ledger (no reservaId to
+  // collect), so a Reserva-category transaction here would count as alocação spend
+  // with NO matching aporte — the same saldo/ledger divergence as HG-01. Reject it
+  // and steer the caller to createTransactionWithReserva, which owns the aporte flow.
+  if (await isReservaCategory(supabase, parsed.data.categoryId)) {
+    return {
+      error: 'Use o lançamento de aporte para classificar como Reserva.',
+    }
+  }
+
   const { error } = await supabase.from('transactions').insert({
     user_id: userId,
     category_id: parsed.data.categoryId,

@@ -266,6 +266,24 @@ describe('createTransaction', () => {
     )
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
+
+  it('rejects a Reserva category — no ledger sync on this path (LW-01)', async () => {
+    // This plain path cannot create the aporte ('in') entry, so a Reserva target is
+    // blocked rather than half-recorded (the saldo/ledger divergence of HG-01).
+    categoryIsReserva = true
+    const r = await createTransaction(
+      fd({
+        description: 'x',
+        amount: 'R$ 10,00',
+        categoryId: CATEGORY_ID,
+        occurredOn: '2026-06-10',
+      }),
+    )
+    expect(r).toEqual({
+      error: 'Use o lançamento de aporte para classificar como Reserva.',
+    })
+    expect(calls.some((c) => c.op === 'insert')).toBe(false)
+  })
 })
 
 // --- createTransactionWithReserva (RSV-02/03) ------------------------------
