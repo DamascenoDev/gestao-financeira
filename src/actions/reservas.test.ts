@@ -288,10 +288,11 @@ describe('registerSaida', () => {
     expect(rpcCalls).toHaveLength(0)
   })
 
-  it('maps the RPC overdraw raise (message includes "saldo") to the friendly copy', async () => {
+  it('maps the RPC overdraw raise (SQLSTATE P0002) to the friendly copy (LW-02)', async () => {
+    // LW-02: the action branches on the structured error.code, not the message text.
     rpcResult = {
       data: null,
-      error: { message: 'Saída maior que o saldo da reserva' },
+      error: { code: 'P0002', message: 'Saída maior que o saldo da reserva' },
     }
     const r = await registerSaida({
       reservaId: RESERVA_ID,
