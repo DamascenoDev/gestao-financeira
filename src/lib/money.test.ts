@@ -25,6 +25,25 @@ describe('parseBRLToCents', () => {
       expect(Number.isInteger(parseBRLToCents(input))).toBe(true)
     }
   })
+
+  it('parses a currency-prefixed string ("R$ 10,00") to centavos', () => {
+    expect(parseBRLToCents('R$ 10,00')).toBe(1000)
+    expect(parseBRLToCents('R$1.234,56')).toBe(123456)
+  })
+
+  it('parses a negative value to negative centavos', () => {
+    expect(parseBRLToCents('-10,00')).toBe(-1000)
+  })
+
+  it('rejects (throws on) blank / whitespace-only input instead of returning 0', () => {
+    expect(() => parseBRLToCents('')).toThrow()
+    expect(() => parseBRLToCents('   ')).toThrow()
+  })
+
+  it('rejects (throws on) non-money input instead of returning NaN', () => {
+    expect(() => parseBRLToCents('abc')).toThrow()
+    expect(() => parseBRLToCents('R$')).toThrow()
+  })
 })
 
 describe('formatCents', () => {
@@ -34,6 +53,22 @@ describe('formatCents', () => {
 
   it('formats 123456 centavos as R$ 1.234,56', () => {
     expect(normalizeSpace(formatCents(123456))).toBe('R$ 1.234,56')
+  })
+
+  it('accepts a bigint and keeps precision above Number.MAX_SAFE_INTEGER centavos', () => {
+    // 90.071.992.547.409 reais + 0,07 — strictly beyond Number.MAX_SAFE_INTEGER
+    // (9.007.199.254.740.991) centavos. The bigint path must not drift.
+    expect(normalizeSpace(formatCents(9_007_199_254_740_999n))).toBe(
+      'R$ 90.071.992.547.409,99'
+    )
+  })
+
+  it('formats a bigint within the safe range identically to the number path', () => {
+    expect(formatCents(123456n)).toBe(formatCents(123456))
+  })
+
+  it('throws on an unsafe-integer number rather than silently losing precision', () => {
+    expect(() => formatCents(Number.MAX_SAFE_INTEGER + 1)).toThrow()
   })
 })
 
