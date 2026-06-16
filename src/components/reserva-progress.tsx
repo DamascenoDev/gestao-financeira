@@ -33,17 +33,23 @@ export function ReservaProgress({
 }) {
   if (alvoCents === null || alvoCents <= 0) return null
 
-  // Ratio for display only — the saldo itself is always view-derived (never here).
-  const saldo = Number(centsToBigInt(saldoCents))
-  const ratio = saldo / alvoCents
-  const reached = ratio >= 1
-  const pctLabel = pctFmt.format(Math.max(ratio, 0))
+  // LW-03: the percentage is derived with INTEGER bigint math (basis-points of the
+  // alvo) for consistency with the rest of the money path — no JS float round-trip.
+  // The bar's value/max below are raw DOM widths (a CSS ratio), not money, so they
+  // stay numeric. The saldo itself is always view-derived (never computed here).
+  const saldo = centsToBigInt(saldoCents)
+  const alvo = BigInt(alvoCents)
+  const saldoNum = Number(saldo)
+  // ratioBp = saldo / alvo in basis-points (10000 = 100%), clamped at 0.
+  const ratioBp = saldo > 0n ? Number((saldo * 10000n) / alvo) : 0
+  const reached = saldo >= alvo
+  const pctLabel = pctFmt.format(ratioBp / 10000)
   const valueText = `${formatCents(saldoCents)} de ${formatCents(alvoCents)} (${pctLabel})`
 
   return (
     <div className={cn('flex flex-col gap-1.5', className)}>
       <Progress
-        value={Math.max(saldo, 0)}
+        value={Math.max(saldoNum, 0)}
         max={alvoCents}
         indicatorClassName={reached ? 'bg-income' : 'bg-primary'}
         aria-valuetext={valueText}
