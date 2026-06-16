@@ -65,7 +65,13 @@ This roadmap follows the research-converged build order: **foundation → manual
   3. Usuário recebe alerta ao se aproximar ou estourar a meta de uma categoria
   4. Usuário cria reserva nomeada (ex: Apê, Carro) com alvo opcional; uma transação classificada como "Reserva" dispara "qual reserva?" e cria uma entrada no ledger daquela reserva
   5. Aporte em reserva conta como alocação de investimento (entra na meta de Investimentos), nunca como gasto de consumo; o saldo é sempre derivado (entradas − saídas), a saída nunca deixa o saldo negativo, e a barra de progresso aparece quando há alvo
-**Plans**: TBD
+**Plans**: 6 plans
+  - [ ] 03-01-PLAN.md — Substrate: migrations 0011-0016 (budget_targets, reservas+ledger, adherence views, balance view, saída RPC, is_reserva flag) applied LOCAL + types regen + month/adherence helpers + Zod schemas + progress component + Reservas nav [BLOCKING]
+  - [ ] 03-02-PLAN.md — Wave-0 failing tests (9 integration + adherence unit) + extend view-leak/rls-isolation for the new views/tables (Nyquist; pins aporte-grouping, derived balance, never-negative saída, IDOR, monthly↔YTD consistency)
+  - [ ] 03-03-PLAN.md — Metas + Dashboard slice: upsertBudgetTarget (IDOR-checked) + MetaDialog + AdherenceBar/Row/SummaryStrip + real /dashboard reading v_adherence_month/_ytd (BUD-01/02/03/04)
+  - [ ] 03-04-PLAN.md — Reservas slice: reservas action (CRUD + registerSaida via atomic RPC + assertOwnedReserva) + ReservaCard/Progress/Form/SaidaForm/LedgerTable + /reservas + detail route (RSV-01/04/05)
+  - [ ] 03-05-PLAN.md — Aporte sub-flow: createTransactionWithReserva + syncReservaLedgerForTransaction + ReservaPicker conditional in transacao-form + Extrato inline re-tag (RSV-02/03)
+  - [ ] 03-06-PLAN.md — [autonomous:false] Human-verify walkthrough: direction-aware dashboard color, qual-reserva sub-flow, alvo-only progress bar
 **UI hint**: yes
 
 ### Phase 4: Upload + classificação inteligente
@@ -115,7 +121,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 |-------|----------------|--------|-----------|
 | 1. Fundação | 3/4 | In progress | - |
 | 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
-| 3. Metas, aderência e reservas | 0/0 | Not started | - |
+| 3. Metas, aderência e reservas | 0/6 | Planned | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |
 | 6. Endurecimento | 0/0 | Not started | - |
