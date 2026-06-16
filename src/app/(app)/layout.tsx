@@ -1,7 +1,14 @@
 import { redirect } from 'next/navigation'
 
+import { AppSidebar } from '@/components/app-sidebar'
+import { MonthSelector } from '@/components/month-selector'
+import { UserMenu } from '@/components/user-menu'
+import {
+  SidebarInset,
+  SidebarProvider,
+  SidebarTrigger,
+} from '@/components/ui/sidebar'
 import { createClient } from '@/lib/supabase/server'
-import { LogoutButton } from '@/components/logout-button'
 
 export default async function AppLayout({
   children,
@@ -15,14 +22,22 @@ export default async function AppLayout({
     redirect('/auth/login')
   }
 
+  const email = (data.claims.email as string | undefined) ?? ''
+
   return (
-    <div className="flex min-h-full flex-1 flex-col">
-      <header className="flex items-center justify-between border-b px-6 py-3">
-        <span className="font-semibold">Gestão Financeira</span>
-        {/* Logout lives in the shared shell → available on every (app) page (AUTH-04). */}
-        <LogoutButton />
-      </header>
-      <main className="flex-1 p-6">{children}</main>
-    </div>
+    <SidebarProvider>
+      <AppSidebar />
+      <SidebarInset>
+        <header className="flex h-14 items-center justify-between gap-2 border-b px-4">
+          <div className="flex items-center gap-2">
+            <SidebarTrigger />
+            <MonthSelector />
+          </div>
+          {/* Logout lives in the shared shell → available on every (app) page (AUTH-04). */}
+          <UserMenu email={email} />
+        </header>
+        <main className="flex-1 p-6">{children}</main>
+      </SidebarInset>
+    </SidebarProvider>
   )
 }
