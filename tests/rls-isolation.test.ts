@@ -15,7 +15,13 @@ import {
 } from './helpers/local-supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const TABLES = ['categories', 'profiles'] as const
+const TABLES = [
+  'categories',
+  'profiles',
+  'income_templates',
+  'income_occurrences',
+  'transactions',
+] as const
 
 let config: LocalSupabaseConfig
 let admin: SupabaseClient
@@ -68,13 +74,32 @@ describe('RLS two-user isolation (AUTH-03)', () => {
 
       it('user B cannot INSERT a row owned by user A', async () => {
         const b = userClient(userB.jwt, config)
-        // Untyped client until Wave 2 generates Database types; the row shape
-        // differs per table, so use a neutral record for the insert call.
-        const row: Record<string, string> =
-          table === 'categories'
-            ? { user_id: userA.id, name: 'Hack', kind: 'consumo' }
-            : { id: userA.id, user_id: userA.id }
-        const { error } = await b.from(table).insert(row)
+        // The row shape differs per table, so use a neutral record for the insert
+        // call. RLS WITH CHECK must reject every attempt to insert a row owned by
+        // user A regardless of which other NOT NULL columns are present.
+        const rowByTable: Record<(typeof TABLES)[number], Record<string, unknown>> = {
+          categories: { user_id: userA.id, name: 'Hack', kind: 'consumo' },
+          profiles: { id: userA.id, user_id: userA.id },
+          income_templates: {
+            user_id: userA.id,
+            source: 'Hack',
+            amount_cents: 100,
+            day_of_month: 1,
+          },
+          income_occurrences: {
+            user_id: userA.id,
+            source: 'Hack',
+            amount_cents: 100,
+            month_key: '2026-06',
+            occurred_on: '2026-06-01',
+          },
+          transactions: {
+            user_id: userA.id,
+            amount_cents: 100,
+            occurred_on: '2026-06-01',
+          },
+        }
+        const { error } = await b.from(table).insert(rowByTable[table])
         expect(error).not.toBeNull()
       })
 
