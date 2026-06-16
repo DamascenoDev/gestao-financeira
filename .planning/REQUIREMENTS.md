@@ -16,10 +16,10 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Receitas
 
-- [ ] **INC-01**: Usuário cadastra receita recorrente fixa (salário, pensão) que repete todo mês
-- [ ] **INC-02**: Usuário ajusta o valor de uma recorrente em um mês específico (quando varia)
-- [ ] **INC-03**: Usuário lança receita avulsa (não recorrente)
-- [ ] **INC-04**: Usuário vê a receita líquida recebida do mês (base de cálculo das metas %)
+- [x] **INC-01**: Usuário cadastra receita recorrente fixa (salário, pensão) que repete todo mês
+- [x] **INC-02**: Usuário ajusta o valor de uma recorrente em um mês específico (quando varia)
+- [x] **INC-03**: Usuário lança receita avulsa (não recorrente)
+- [x] **INC-04**: Usuário vê a receita líquida recebida do mês (base de cálculo das metas %)
 
 ### Categorias
 
@@ -124,10 +124,10 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | AUTH-04 | Phase 1 | Complete |
 | CAT-01 | Phase 1 | Complete |
 | SEC-02 | Phase 1 | Complete |
-| INC-01 | Phase 2 | Pending |
-| INC-02 | Phase 2 | Pending |
-| INC-03 | Phase 2 | Pending |
-| INC-04 | Phase 2 | Pending |
+| INC-01 | Phase 2 | Complete |
+| INC-02 | Phase 2 | Complete |
+| INC-03 | Phase 2 | Complete |
+| INC-04 | Phase 2 | Complete |
 | CAT-02 | Phase 2 | Pending |
 | CAT-03 | Phase 2 | Pending |
 | TXN-01 | Phase 2 | Pending |
