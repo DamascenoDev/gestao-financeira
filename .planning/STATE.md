@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-16T22:24:00.000Z"
+last_updated: "2026-06-16T22:37:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 1
   total_plans: 15
-  completed_plans: 11
+  completed_plans: 12
   percent: 20
 ---
 
@@ -26,7 +26,7 @@ progress:
 ## Current Position
 
 Phase: 3 (Metas, aderência e reservas) — EXECUTING
-Plan: 4 of 6 (03-01 substrate + 03-02 Wave-0 tests + 03-03 Metas+Dashboard slice Complete; next is 03-04 Reservas slice)
+Plan: 5 of 6 (03-01 substrate + 03-02 Wave-0 tests + 03-03 Metas+Dashboard slice + 03-04 Reservas slice Complete; next is 03-05 Aporte sub-flow)
 
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
 - **Plan:** 01-03 complete (auth SSR vertical slice: @supabase/ssr 3-client split + getClaims() middleware, Zod-validated signIn/signUp/signOut actions, custom shadcn login/signup forms, protected (app) shell + logout-anywhere, dashboard real RLS categories read; live local round-trip OK; build + bundle gate GREEN); next is 01-04
@@ -60,6 +60,7 @@ Plan: 4 of 6 (03-01 substrate + 03-02 Wave-0 tests + 03-03 Metas+Dashboard slice
 | 3 | 01 | ~14 min | 2 | 10 created / 3 modified | 2026-06-16 |
 | 3 | 02 | ~13 min | 2 | 12 created / 2 modified | 2026-06-16 |
 | 3 | 03 | ~8 min | 3 | 7 created / 3 modified | 2026-06-16 |
+| 3 | 04 | ~8 min | 3 | 9 created / 0 modified | 2026-06-16 |
 
 ## Accumulated Context
 
