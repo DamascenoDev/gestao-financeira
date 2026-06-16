@@ -29,8 +29,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import type { CategoryKind } from '@/lib/schemas/category'
 
-type TargetCategory = { id: string; name: string; color: string | null }
+type TargetCategory = {
+  id: string
+  name: string
+  color: string | null
+  kind: CategoryKind
+}
 
 /**
  * category-delete-dialog (UI-SPEC §2 / Copywriting Contract). The page passes the
@@ -49,7 +55,7 @@ export function CategoryDeleteDialog({
   open: controlledOpen,
   onOpenChange,
 }: {
-  category: { id: string; name: string; txCount: number }
+  category: { id: string; name: string; kind: CategoryKind; txCount: number }
   /** Other (non-archived) categories the user can reassign transactions to. */
   targets: TargetCategory[]
   trigger?: React.ReactElement
@@ -71,7 +77,13 @@ export function CategoryDeleteDialog({
   const [target, setTarget] = React.useState<string>('')
 
   const blocked = category.txCount > 0
-  const reassignTargets = targets.filter((t) => t.id !== category.id)
+  // MD-01: only offer SAME-kind targets. Reassigning a consumo category's
+  // transactions into an alocação category (or vice-versa) silently reclassifies
+  // "gastos de consumo" as "alocação" — corrupting the very distinction the app
+  // tracks for goal/adherence reporting. The action re-asserts this server-side.
+  const reassignTargets = targets.filter(
+    (t) => t.id !== category.id && t.kind === category.kind,
+  )
 
   function close() {
     setOpen(false)

@@ -215,10 +215,21 @@ export async function reassignAndDelete(
   // a forged/foreign dst (FKs are not RLS-aware).
   const { data: owned } = await supabase
     .from('categories')
-    .select('id')
+    .select('id, kind')
     .in('id', [src, dst])
   if (!owned || owned.length !== 2) {
     return { error: 'Selecione uma categoria de destino diferente.' }
+  }
+
+  // MD-01: block reassigning across kinds (consumo ↔ alocação). Mixing kinds
+  // silently reclassifies the moved transactions and corrupts the consumo-vs-
+  // alocação totals used for goal/adherence reporting.
+  const srcKind = owned.find((c) => c.id === src)?.kind
+  const dstKind = owned.find((c) => c.id === dst)?.kind
+  if (srcKind !== dstKind) {
+    return {
+      error: 'Escolha uma categoria de destino do mesmo tipo (consumo ou alocação).',
+    }
   }
 
   const { error } = await supabase.rpc('reassign_and_delete_category', {

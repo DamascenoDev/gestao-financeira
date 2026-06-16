@@ -59,8 +59,16 @@ export default async function CategoriasPage() {
     'id' | 'name' | 'kind' | 'color' | 'is_archived' | 'sort'
   >[] = categories ?? []
 
-  // Reassign targets for the delete dialog: every other active category.
-  const targets = rows.map((c) => ({ id: c.id, name: c.name, color: c.color }))
+  // Reassign targets for the delete dialog: every other active category. Carry
+  // `kind` so the dialog can offer only same-kind targets (MD-01: reassigning a
+  // consumo category's transactions into an alocação category corrupts the
+  // consumo-vs-alocação totals the app exists to track).
+  const targets = rows.map((c) => ({
+    id: c.id,
+    name: c.name,
+    color: c.color,
+    kind: c.kind as CategoryKind,
+  }))
 
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">

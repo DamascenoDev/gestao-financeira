@@ -22,7 +22,12 @@ type Category = {
   txCount: number
 }
 
-type TargetCategory = { id: string; name: string; color: string | null }
+type TargetCategory = {
+  id: string
+  name: string
+  color: string | null
+  kind: CategoryKind
+}
 
 /**
  * Per-row actions menu for the Categorias list: Editar (opens CategoriaForm in
@@ -79,6 +84,7 @@ export function CategoryRowActions({
         category={{
           id: category.id,
           name: category.name,
+          kind: category.kind,
           txCount: category.txCount,
         }}
         targets={targets}
