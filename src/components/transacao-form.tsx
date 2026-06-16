@@ -5,10 +5,11 @@ import { useTransition } from 'react'
 import { toast } from 'sonner'
 
 import {
-  createTransaction,
+  createTransactionWithReserva,
   updateTransaction,
 } from '@/actions/transactions'
 import { isValidMoney, MoneyInput } from '@/components/money-input'
+import { ReservaPicker, type ReservaOption } from '@/components/reserva-picker'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -31,11 +32,18 @@ import {
 } from '@/components/ui/select'
 import { transactionSchema } from '@/lib/schemas/transaction'
 
-export type CategoryOption = { id: string; name: string }
+export type CategoryOption = {
+  id: string
+  name: string
+  /** RSV-02: when true, choosing this category reveals the "Qual reserva?" picker. */
+  isReserva?: boolean
+}
 
 type TransacaoFormProps = {
-  /** Non-archived categories for the categoria select. */
+  /** Non-archived categories for the categoria select (enriched with is_reserva). */
   categories: CategoryOption[]
+  /** The user's reservas — feeds the conditional ReservaPicker (RSV-02). */
+  reservas?: ReservaOption[]
   /** Default occurred_on / month context (e.g. "2026-06-15"). */
   defaultDate: string
   /** Edit mode: when set, the dialog updates this transaction instead of creating. */
@@ -62,6 +70,7 @@ type TransacaoFormProps = {
  */
 export function TransacaoForm({
   categories,
+  reservas = [],
   defaultDate,
   edit,
   open: controlledOpen,
@@ -80,6 +89,7 @@ export function TransacaoForm({
   const [description, setDescription] = React.useState(edit?.description ?? '')
   const [amount, setAmount] = React.useState(edit?.amount ?? '')
   const [categoryId, setCategoryId] = React.useState(edit?.categoryId ?? '')
+  const [reservaId, setReservaId] = React.useState('')
   const [occurredOn, setOccurredOn] = React.useState(
     edit?.occurredOn ?? defaultDate,
   )
@@ -87,10 +97,16 @@ export function TransacaoForm({
 
   const isEdit = !!edit
 
+  // RSV-02: the chosen category reveals the "Qual reserva?" picker only when its
+  // is_reserva FLAG is set (the same flag the server keys off — never the name).
+  const isReservaCategory =
+    categories.find((c) => c.id === categoryId)?.isReserva ?? false
+
   function reset() {
     setDescription(edit?.description ?? '')
     setAmount(edit?.amount ?? '')
     setCategoryId(edit?.categoryId ?? '')
+    setReservaId('')
     setOccurredOn(edit?.occurredOn ?? defaultDate)
     setErrors({})
   }
@@ -112,6 +128,11 @@ export function TransacaoForm({
     if (amount && !isValidMoney(amount)) {
       next.amount = 'Valor monetário inválido.'
     }
+    // RSV-02: a Reserva category requires a chosen reserva before submit (the
+    // server re-checks ownership; this blocks the obvious empty case up front).
+    if (isReservaCategory && !reservaId) {
+      next.reservaId = 'Selecione uma reserva.'
+    }
     setErrors(next)
     return Object.keys(next).length === 0
   }
@@ -125,11 +146,16 @@ export function TransacaoForm({
     fd.set('amount', amount)
     fd.set('categoryId', categoryId)
     fd.set('occurredOn', occurredOn)
+    if (isReservaCategory && reservaId) fd.set('reservaId', reservaId)
 
     startTransition(async () => {
+      // Both paths route through actions that sync the reserva ledger: edit via
+      // updateTransaction (delete-old + maybe-re-link), create via
+      // createTransactionWithReserva (txn + linked 'in' for a Reserva category;
+      // identical to createTransaction for a non-Reserva one).
       const result = isEdit
         ? await updateTransaction(edit!.id, fd)
-        : await createTransaction(fd)
+        : await createTransactionWithReserva(fd)
       if ('error' in result) {
         toast.error(result.error)
         return
@@ -209,7 +235,15 @@ export function TransacaoForm({
               <FieldLabel htmlFor="tx-category">Categoria</FieldLabel>
               <Select
                 value={categoryId || null}
-                onValueChange={(v) => setCategoryId(v ?? '')}
+                onValueChange={(v) => {
+                  const next = v ?? ''
+                  setCategoryId(next)
+                  // Drop the chosen reserva when leaving a Reserva category so a
+                  // stale reservaId can't ride along on a non-Reserva submit.
+                  const nextIsReserva =
+                    categories.find((c) => c.id === next)?.isReserva ?? false
+                  if (!nextIsReserva) setReservaId('')
+                }}
               >
                 <SelectTrigger id="tx-category" className="w-full">
                   <SelectValue placeholder="Selecione uma categoria" />
@@ -226,6 +260,18 @@ export function TransacaoForm({
                 errors={errors.categoryId ? [{ message: errors.categoryId }] : undefined}
               />
             </Field>
+
+            {/* RSV-02: progressive disclosure — the "Qual reserva?" picker appears
+                INSIDE this same dialog when the chosen category is_reserva. */}
+            {isReservaCategory ? (
+              <ReservaPicker
+                id="tx-reserva"
+                reservas={reservas}
+                value={reservaId}
+                onChange={setReservaId}
+                error={errors.reservaId}
+              />
+            ) : null}
           </FieldGroup>
 
           <DialogFooter className="mt-6">

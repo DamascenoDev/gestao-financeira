@@ -47,17 +47,33 @@ export default async function ExtratoPage({
   const supabase = await createClient()
   const { first, last } = monthBounds(mes)
 
-  // Active categories (the select + filter + inline-edit options).
+  // Active categories (the select + filter + inline-edit options). is_reserva drives
+  // the RSV-02 "Qual reserva?" sub-flow (the FLAG, never the name — CAT-02 rename-safe).
   const { data: categoriesData } = await supabase
     .from('categories')
-    .select('id, name, color')
+    .select('id, name, color, is_reserva')
     .eq('is_archived', false)
     .order('sort', { ascending: true })
     .order('name', { ascending: true })
 
-  const categories: Pick<CategoryRow, 'id' | 'name' | 'color'>[] =
-    categoriesData ?? []
+  const categories: Pick<
+    CategoryRow,
+    'id' | 'name' | 'color' | 'is_reserva'
+  >[] = categoriesData ?? []
   const categoryById = new Map(categories.map((c) => [c.id, c]))
+
+  // The user's reservas feed the conditional "Qual reserva?" picker (RSV-02). Read
+  // from v_reserva_balance (RLS-scoped) for a stable nome list, ordered by nome.
+  const { data: reservasData } = await supabase
+    .from('v_reserva_balance')
+    .select('reserva_id, nome')
+    .order('nome', { ascending: true })
+  const reservas = (reservasData ?? [])
+    .filter(
+      (r): r is { reserva_id: string; nome: string } =>
+        r.reserva_id !== null && r.nome !== null,
+    )
+    .map((r) => ({ id: r.reserva_id, nome: r.nome }))
 
   // The month's transactions, optionally filtered by the selected categories.
   let txQuery = supabase
@@ -110,7 +126,15 @@ export default async function ExtratoPage({
 
   const isFiltered = catFilter.length > 0
   const txForm = (
-    <TransacaoForm categories={categories} defaultDate={`${mes}-15`} />
+    <TransacaoForm
+      categories={categories.map((c) => ({
+        id: c.id,
+        name: c.name,
+        isReserva: c.is_reserva,
+      }))}
+      reservas={reservas}
+      defaultDate={`${mes}-15`}
+    />
   )
 
   return (
@@ -155,7 +179,9 @@ export default async function ExtratoPage({
             id: c.id,
             name: c.name,
             color: c.color,
+            isReserva: c.is_reserva,
           }))}
+          reservas={reservas}
           categoryTotals={categoryTotals}
           grandTotalCents={grandTotalCents}
         />

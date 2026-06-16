@@ -14,11 +14,22 @@ import { toast } from 'sonner'
 
 import { AmountCell } from '@/components/amount-cell'
 import { CategoryBadge } from '@/components/category-badge'
+import { ReservaPicker, type ReservaOption } from '@/components/reserva-picker'
 import {
   SelectionActionBar,
   type SelectionCategory,
 } from '@/components/selection-action-bar'
+import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
 import {
   Select,
   SelectContent,
@@ -53,7 +64,13 @@ export type ExtratoRow = {
   category_id: string | null
 }
 
-export type ExtratoCategory = { id: string; name: string; color: string | null }
+export type ExtratoCategory = {
+  id: string
+  name: string
+  color: string | null
+  /** RSV-02: re-tagging into this category opens the focused "Qual reserva?" dialog. */
+  isReserva?: boolean
+}
 
 export type CategoryTotal = {
   categoryId: string | null
@@ -72,24 +89,41 @@ function ddMM(occurredOn: string): string {
  * Inline category editor — a small Select that calls updateTransaction directly
  * (UI-SPEC §3 "inline category edit"). Keeps the full description/amount/date so
  * the action's transactionSchema validates on a category-only change.
+ *
+ * RSV-02 (UI-SPEC §4): re-tagging a row INTO the is_reserva category has no open
+ * dialog to host the "Qual reserva?" picker, so this cell opens a small FOCUSED
+ * dialog containing just the ReservaPicker; on confirm it sends the chosen
+ * reservaId through updateTransaction (which links the aporte 'in' entry). Re-tagging
+ * AWAY from Reserva is the plain path — updateTransaction now removes the linked
+ * ledger entry so the saldo re-derives (no silent orphan).
  */
 function InlineCategoryCell({
   row,
   categories,
+  reservas,
 }: {
   row: ExtratoRow
   categories: ExtratoCategory[]
+  reservas: ReservaOption[]
 }) {
   const [, startTransition] = React.useTransition()
   const current = categories.find((c) => c.id === row.category_id)
 
-  function onChange(next: string) {
-    if (!next || next === row.category_id) return
+  // Focused re-tag dialog: holds the pending Reserva category + the chosen reserva.
+  const [pendingCategoryId, setPendingCategoryId] = React.useState<string | null>(
+    null,
+  )
+  const [reservaId, setReservaId] = React.useState('')
+  const [reservaError, setReservaError] = React.useState<string | undefined>()
+  const [isSaving, setIsSaving] = React.useState(false)
+
+  function apply(categoryId: string, reservaIdToSend?: string) {
     const fd = new FormData()
     fd.set('description', row.description)
     fd.set('amount', centsToEditableBRL(row.amount_cents))
-    fd.set('categoryId', next)
+    fd.set('categoryId', categoryId)
     fd.set('occurredOn', row.occurred_on)
+    if (reservaIdToSend) fd.set('reservaId', reservaIdToSend)
     startTransition(async () => {
       const result = await updateTransaction(row.id, fd)
       if ('error' in result) toast.error(result.error)
@@ -97,29 +131,95 @@ function InlineCategoryCell({
     })
   }
 
+  function onChange(next: string) {
+    if (!next || next === row.category_id) return
+    const target = categories.find((c) => c.id === next)
+    if (target?.isReserva) {
+      // Open the focused picker dialog instead of writing immediately.
+      setPendingCategoryId(next)
+      setReservaId('')
+      setReservaError(undefined)
+      return
+    }
+    apply(next)
+  }
+
+  function confirmReserva() {
+    if (!reservaId) {
+      setReservaError('Selecione uma reserva.')
+      return
+    }
+    if (pendingCategoryId) {
+      setIsSaving(true)
+      apply(pendingCategoryId, reservaId)
+      setIsSaving(false)
+      setPendingCategoryId(null)
+    }
+  }
+
   return (
-    <Select value={row.category_id ?? null} onValueChange={(v) => onChange(v ?? '')}>
-      <SelectTrigger
-        size="sm"
-        className="border-transparent bg-transparent hover:border-input"
-        aria-label="Alterar categoria"
-      >
-        <SelectValue
-          placeholder={<span className="text-muted-foreground">Sem categoria</span>}
+    <>
+      <Select value={row.category_id ?? null} onValueChange={(v) => onChange(v ?? '')}>
+        <SelectTrigger
+          size="sm"
+          className="border-transparent bg-transparent hover:border-input"
+          aria-label="Alterar categoria"
         >
-          {current ? (
-            <CategoryBadge name={current.name} color={current.color} />
-          ) : null}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        {categories.map((c) => (
-          <SelectItem key={c.id} value={c.id}>
-            <CategoryBadge name={c.name} color={c.color} />
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+          <SelectValue
+            placeholder={<span className="text-muted-foreground">Sem categoria</span>}
+          >
+            {current ? (
+              <CategoryBadge name={current.name} color={current.color} />
+            ) : null}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {categories.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              <CategoryBadge name={c.name} color={c.color} />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Dialog
+        open={pendingCategoryId !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingCategoryId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Qual reserva?</DialogTitle>
+            <DialogDescription>
+              Classificar como Reserva registra este lançamento como aporte.
+            </DialogDescription>
+          </DialogHeader>
+          <ReservaPicker
+            id="extrato-reserva"
+            reservas={reservas}
+            value={reservaId}
+            onChange={(v) => {
+              setReservaId(v)
+              setReservaError(undefined)
+            }}
+            error={reservaError}
+          />
+          <DialogFooter className="mt-6">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              }
+            />
+            <Button type="button" onClick={confirmReserva} disabled={isSaving}>
+              Confirmar aporte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
   )
 }
 
@@ -135,11 +235,14 @@ function InlineCategoryCell({
 export function ExtratoTable({
   rows,
   categories,
+  reservas = [],
   categoryTotals,
   grandTotalCents,
 }: {
   rows: ExtratoRow[]
   categories: ExtratoCategory[]
+  /** RSV-02: the user's reservas — feeds the focused re-tag "Qual reserva?" dialog. */
+  reservas?: ReservaOption[]
   categoryTotals: CategoryTotal[]
   grandTotalCents: bigint
 }) {
@@ -210,7 +313,11 @@ export function ExtratoTable({
         header: 'Categoria',
         enableSorting: false,
         cell: ({ row }) => (
-          <InlineCategoryCell row={row.original} categories={categories} />
+          <InlineCategoryCell
+            row={row.original}
+            categories={categories}
+            reservas={reservas}
+          />
         ),
       },
       {
@@ -227,7 +334,7 @@ export function ExtratoTable({
         ),
       },
     ],
-    [categories],
+    [categories, reservas],
   )
 
   const table = useReactTable({
