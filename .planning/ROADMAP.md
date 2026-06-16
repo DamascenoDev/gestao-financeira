@@ -79,13 +79,18 @@ This roadmap follows the research-converged build order: **foundation → manual
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, CLS-01, CLS-02, CLS-03, CLS-04, CLS-05, CLS-06, RSV-06, SEC-03
+**Scope note (AI deferred — user decision 2026-06-16):** Phase 4 ships the full ingestion + memory-first pipeline; the LLM-suggestion step is DEFERRED. On a memory miss the row stays unclassified for manual pick; a clean, pluggable suggestion seam (returns null in v1, enum-validated) ships so AI slots in later. **CLS-02** stays Pending/deferred (only the seam ships); **SEC-03** holds by construction (no external call ⇒ no PII egress) + the enum-validation wrapper. **Supply chain:** OFX is parsed by a small in-house parser (`src/lib/parsers/ofx.ts`) — `ofx-data-extractor` (flagged low-trust) is NOT installed; CSV uses `papaparse` (the only new npm dep). No AI/@ai-sdk packages.
 **Success Criteria** (what must be TRUE):
   1. Usuário faz upload de OFX e de CSV direto para o Storage privado (signed URL, sem passar pela função); o sistema faz parse em transações normalizadas (centavos inteiros, data, descritor) e deduplica idempotentemente (hash do arquivo + unique de transação) — re-upload mostra "0 novas" e não duplica
-  2. Na importação, o sistema classifica por memória primeiro (padrão merchant→categoria já aprendido) e só chama a IA para estabelecimento nunca visto, com a saída restrita ao enum de categorias do usuário; para um extrato de merchants conhecidos a contagem de chamadas à IA é ~0
+  2. Na importação, o sistema classifica por memória primeiro (padrão merchant→categoria já aprendido) e só chama a IA para estabelecimento nunca visto, com a saída restrita ao enum de categorias do usuário; para um extrato de merchants conhecidos a contagem de chamadas à IA é ~0 (no v1: zero — IA deferida; merchant novo fica não-classificado para escolha manual)
   3. Usuário revisa as transações importadas antes de persistir; ao confirmar ou corrigir uma sugestão, só então o padrão merchant→categoria (e merchant→reserva) é salvo na memória e auto-classifica as próximas faturas
   4. A categoria gravada na transação é point-in-time — renomear uma categoria não reescreve o histórico (regras chaveadas por `category_id`, não por nome) — e o sistema detecta gastos recorrentes (assinaturas) automaticamente
-  5. Na classificação via IA só o descritor normalizado é enviado (sem PII, sem valores) e a saída é validada contra o enum antes de virar sugestão; um descritor com tentativa de injeção ainda retorna uma categoria válida
-**Plans**: TBD
+  5. Na classificação via IA só o descritor normalizado é enviado (sem PII, sem valores) e a saída é validada contra o enum antes de virar sugestão; um descritor com tentativa de injeção ainda retorna uma categoria válida (no v1: o seam retorna null com segurança; a normalização + enum-validation já existem)
+**Plans**: 4 plans
+  - [ ] 04-01-PLAN.md — Substrate [BLOCKING]: migrations 0019-0023 (statements, transactions ALTER, merchant_patterns, csv_import_profiles, recurring view) applied LOCAL + types regen + papaparse install; pure libs (normalizeDescriptor, dedupe, in-house OFX parser, papaparse CSV, classifier memory + deferred-AI suggest seam) + the 10 Wave-0 tests + 5 synthetic fixtures (IMP-03/04, CLS-01/04/05/06, RSV-06, SEC-03)
+  - [ ] 04-02-PLAN.md — Upload slice: import.ts (createSignedStatementUpload + ingestStatement: download→decode latin1→parse→two-layer dedup→memory-classify→review rows, nothing persisted) + saveCsvProfile; /importar screen (UploadDropzone + UploadProgress + signed-URL uploader + CsvColumnMapper + reusable profile) + Importar nav (IMP-01/02/03/04, CLS-01)
+  - [ ] 04-03-PLAN.md — Review + confirm + learn slice: confirmImport (persist point-in-time + dedupe_key ON CONFLICT + learn merchant_patterns only-on-confirm-only-classified + reserva aporte via reused Phase-3 path + IDOR re-derive + recurring flag) + ImportReviewTable (ExtratoTable sibling) + ImportSummaryHeader + OriginBadge + RecorrenteTag + inert SuggestionSlot (IMP-05, CLS-03/04/05/06, RSV-06, SEC-03)
+  - [ ] 04-04-PLAN.md — [autonomous:false] Human-verify walkthrough: OFX/CSV upload + drag, CSV mapping dialog + profile reuse, inline+bulk classify + Reserva picker, Confirmar + unclassified guard, learn→auto-classify loop, "0 novas" re-upload
 **UI hint**: yes
 
 ### Phase 5: Módulo MEI / DASN-SIMEI
@@ -122,7 +127,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 1. Fundação | 3/4 | In progress | - |
 | 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
 | 3. Metas, aderência e reservas | 5/6 | In progress | - |
-| 4. Upload + classificação inteligente | 0/0 | Not started | - |
+| 4. Upload + classificação inteligente | 0/4 | Planned | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |
 | 6. Endurecimento | 0/0 | Not started | - |
 
@@ -145,3 +150,4 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 ---
 *Roadmap created: 2026-06-16*
 *Coverage: 47/47 v1 requirements mapped*
+*Phase 4 planned: 2026-06-16 (4 plans, AI deferred — memory-first pipeline + suggestion seam)*
