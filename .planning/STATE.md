@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-16T15:28:14.522Z"
+last_updated: "2026-06-16T15:39:31Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 4
-  completed_plans: 2
+  completed_plans: 3
   percent: 0
 ---
 
@@ -26,12 +26,12 @@ progress:
 ## Current Position
 
 Phase: 1 (Fundação (auth, RLS, dinheiro, schema)) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
-- **Plan:** 01-02 complete (SQL migrations + RLS + role grants + seed trigger + storage bucket, applied locally, types generated, RLS/seed tests GREEN); next is 01-03
+- **Plan:** 01-03 complete (auth SSR vertical slice: @supabase/ssr 3-client split + getClaims() middleware, Zod-validated signIn/signUp/signOut actions, custom shadcn login/signup forms, protected (app) shell + logout-anywhere, dashboard real RLS categories read; live local round-trip OK; build + bundle gate GREEN); next is 01-04
 - **Status:** Executing Phase 1
-- **Progress:** Phase 0/6 complete (Phase 1: 2/4 plans)
+- **Progress:** Phase 0/6 complete (Phase 1: 3/4 plans)
 
 ```
 [··········] 0/6 phases
@@ -45,7 +45,7 @@ Plan: 3 of 4
 | Phases complete | 0 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 2 |
+| Plans complete | 3 |
 
 ### Plan Execution Log
 
@@ -53,6 +53,7 @@ Plan: 3 of 4
 |-------|------|----------|-------|-------|-----------|
 | 1 | 01 | ~11 min | 3 | 13 created | 2026-06-16 |
 | 1 | 02 | ~12 min | 2 | 4 created / 1 modified | 2026-06-16 |
+| 1 | 03 | ~8 min | 3 | 13 created / 3 modified | 2026-06-16 |
 
 ## Accumulated Context
 
@@ -87,9 +88,9 @@ Plan: 3 of 4
 
 ## Session Continuity
 
-**Last session (2026-06-16):** Completed 01-02-PLAN.md — três migrações SQL (profiles, categories+seed trigger, storage bucket) que SÃO a fronteira de segurança, aplicadas ao stack local Supabase (portas remapeadas para 553xx por conflito com outro projeto), tipos gerados (`database.types.ts`), e os testes RLS-isolation + seed-categories agora GREEN (suite completa 18/18, `tsc --noEmit` limpo). Stack local deixado rodando.
+**Last session (2026-06-16):** Completed 01-03-PLAN.md — fatia vertical de auth: split de 3 clients `@supabase/ssr` (chave publishable + `getClaims()`) com middleware de refresh que protege todas as rotas, Server Actions `signIn`/`signUp`/`signOut` validadas por Zod (TDD, 8/8 green), formulários custom shadcn de login/signup, shell `(app)` protegido com logout em qualquer página, e `/dashboard` lendo as categorias do usuário via RLS real. Round-trip local provado (signUp → sessão ativa → lê exatamente as 11 categorias isoladas; 2º usuário só vê as suas 11; sem sessão = 0). `npm run build` limpo, gate de bundle-secret GREEN (nenhum segredo em `.next/static`), `tsc --noEmit` limpo, suite 26/26. `.env.local` apontado para o stack LOCAL (gitignored, sem segredo commitado).
 
-**Next action:** Continue Phase 1 with plan 01-03 (auth SSR wiring: `@supabase/ssr` clients, middleware, server actions, login/signup/logout UI).
+**Next action:** Continue Phase 1 with plan 01-04 (autonomous:false — wire credenciais reais do Supabase pessoal, desligar confirmação de email, `db push` remoto, deploy Vercel, verificar fluxo de auth ao vivo).
 
 ---
 *State initialized: 2026-06-16 after roadmap creation*

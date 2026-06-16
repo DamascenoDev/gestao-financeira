@@ -9,10 +9,10 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Autenticação & Conta
 
-- [ ] **AUTH-01**: Usuário faz login com email/senha no Supabase pessoal (single-user no v1)
-- [ ] **AUTH-02**: Sessão persiste entre refreshes do browser (SSR + middleware)
+- [x] **AUTH-01**: Usuário faz login com email/senha no Supabase pessoal (single-user no v1)
+- [x] **AUTH-02**: Sessão persiste entre refreshes do browser (SSR + middleware)
 - [x] **AUTH-03**: Todos os dados escopados por `user_id` com RLS em todas as tabelas e no Storage (multi-user-ready, sem migração futura)
-- [ ] **AUTH-04**: Usuário faz logout de qualquer página
+- [x] **AUTH-04**: Usuário faz logout de qualquer página
 
 ### Receitas
 
@@ -84,7 +84,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 ### Segurança
 
 - [ ] **SEC-01**: RLS isola dados por usuário em tabelas e Storage, validado com teste de 2 usuários
-- [ ] **SEC-02**: Chaves de serviço ficam só no servidor, nunca no bundle do cliente
+- [x] **SEC-02**: Chaves de serviço ficam só no servidor, nunca no bundle do cliente
 - [ ] **SEC-03**: Na classificação via IA, só o descritor normalizado é enviado (sem PII) e a saída é validada contra o enum de categorias
 
 ## v2 Requirements
@@ -118,12 +118,12 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| AUTH-01 | Phase 1 | Pending |
-| AUTH-02 | Phase 1 | Pending |
+| AUTH-01 | Phase 1 | Complete |
+| AUTH-02 | Phase 1 | Complete |
 | AUTH-03 | Phase 1 | Complete |
-| AUTH-04 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Complete |
 | CAT-01 | Phase 1 | Complete |
-| SEC-02 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Complete |
 | INC-01 | Phase 2 | Pending |
 | INC-02 | Phase 2 | Pending |
 | INC-03 | Phase 2 | Pending |
