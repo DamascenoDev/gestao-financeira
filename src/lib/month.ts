@@ -75,3 +75,21 @@ export function monthBounds(monthKey: string): { first: string; last: string } {
     last: format(endOfMonth(start), 'yyyy-MM-dd'),
   }
 }
+
+/**
+ * The current civil year in America/Sao_Paulo as 'YYYY' — the default Anual/YTD
+ * window. Uses the same TZ as the month helpers so a transaction near midnight on
+ * 31-Dec never slips into the wrong year via UTC. (BUD-03)
+ */
+export function currentYear(): string {
+  return formatInTimeZone(new Date(), TZ, 'yyyy')
+}
+
+/**
+ * First and last civil day of the year (YYYY-MM-DD) for the YTD window. The civil
+ * year is a fixed [YYYY-01-01 .. YYYY-12-31] span — no TZ math needed beyond the
+ * year string, which currentYear() already pins to America/Sao_Paulo. (BUD-03)
+ */
+export function yearBounds(year: string): { first: string; last: string } {
+  return { first: `${year}-01-01`, last: `${year}-12-31` }
+}

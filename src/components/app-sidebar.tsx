@@ -1,6 +1,6 @@
 'use client'
 
-import { ArrowDownCircle, LayoutDashboard, ReceiptText, Tags } from 'lucide-react'
+import { ArrowDownCircle, LayoutDashboard, PiggyBank, ReceiptText, Tags } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -20,6 +20,7 @@ const NAV_ITEMS = [
   { href: '/receitas', label: 'Receitas', icon: ArrowDownCircle },
   { href: '/categorias', label: 'Categorias', icon: Tags },
   { href: '/extrato', label: 'Extrato', icon: ReceiptText },
+  { href: '/reservas', label: 'Reservas', icon: PiggyBank },
 ] as const
 
 /**
