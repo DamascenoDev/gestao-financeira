@@ -15,6 +15,13 @@ create index if not exists profiles_user_id_idx on public.profiles (user_id);
 
 alter table public.profiles enable row level security;
 
+-- Table-level privileges for the Supabase API roles. RLS is the row gate, but a
+-- role must first hold table privileges to reach the table at all — without these
+-- grants every access is denied at the privilege layer, masking whether RLS works
+-- (a silent false-green; see PITFALLS Pitfall 2). service_role bypasses RLS and is
+-- used by the local seed test's admin client.
+grant select, insert, update, delete on public.profiles to authenticated, service_role;
+
 drop policy if exists "own profile" on public.profiles;
 create policy "own profile" on public.profiles
   for all to authenticated

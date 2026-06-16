@@ -21,6 +21,11 @@ create index if not exists categories_user_id_idx on public.categories (user_id)
 
 alter table public.categories enable row level security;
 
+-- Table-level privileges for the Supabase API roles (see 0001_profiles.sql).
+-- RLS scopes rows; these grants let the role reach the table so RLS is the real
+-- gate rather than a blanket privilege denial. service_role bypasses RLS.
+grant select, insert, update, delete on public.categories to authenticated, service_role;
+
 drop policy if exists "own categories" on public.categories;
 create policy "own categories" on public.categories
   for all to authenticated
