@@ -57,6 +57,12 @@ export async function signUp(formData: FormData): Promise<AuthActionResult> {
 
 export async function signOut(): Promise<void> {
   const supabase = await createClient()
-  await supabase.auth.signOut()
+  const { error } = await supabase.auth.signOut()
+  if (error) {
+    // Do not silently pretend the session is gone — on a financial app a
+    // false "logged out" while the cookie persists is security-relevant.
+    // Log server-side; the redirect still clears the UI session view (MD-03).
+    console.error('signOut failed:', error.message)
+  }
   redirect('/auth/login')
 }
