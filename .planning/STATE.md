@@ -1,3 +1,17 @@
+---
+gsd_state_version: 1.0
+milestone: v1.0
+milestone_name: milestone
+status: executing
+last_updated: "2026-06-16T15:15:32Z"
+progress:
+  total_phases: 6
+  completed_phases: 0
+  total_plans: 4
+  completed_plans: 1
+  percent: 0
+---
+
 # Project State: Gestão Financeira Pessoal
 
 *Project memory. Updated at phase/plan transitions. Read first when resuming work.*
@@ -7,14 +21,17 @@
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 1 — Fundação (auth, RLS, dinheiro em centavos, schema)
+- **Current focus:** Phase 1 — Fundação (auth, RLS, dinheiro, schema)
 
 ## Current Position
 
+Phase: 1 (Fundação (auth, RLS, dinheiro, schema)) — EXECUTING
+Plan: 2 of 4
+
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
-- **Plan:** None yet (roadmap just created; next step is `/gsd:plan-phase 1`)
-- **Status:** Roadmap approved, ready to plan Phase 1
-- **Progress:** Phase 0/6 complete
+- **Plan:** 01-01 complete (scaffold + Wave-0 tests + money.ts); next is 01-02 (SQL migrations + RLS + local apply)
+- **Status:** Executing Phase 1
+- **Progress:** Phase 0/6 complete (Phase 1: 1/4 plans)
 
 ```
 [··········] 0/6 phases
@@ -28,7 +45,13 @@
 | Phases complete | 0 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 0 |
+| Plans complete | 1 |
+
+### Plan Execution Log
+
+| Phase | Plan | Duration | Tasks | Files | Completed |
+|-------|------|----------|-------|-------|-----------|
+| 1 | 01 | ~11 min | 3 | 13 created | 2026-06-16 |
 
 ## Accumulated Context
 
