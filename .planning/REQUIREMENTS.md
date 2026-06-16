@@ -134,15 +134,15 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | TXN-02 | Phase 2 | Complete |
 | TXN-03 | Phase 2 | Complete |
 | TXN-04 | Phase 2 | Complete |
-| BUD-01 | Phase 3 | Pending |
-| BUD-02 | Phase 3 | Pending |
-| BUD-03 | Phase 3 | Pending |
-| BUD-04 | Phase 3 | Pending |
-| RSV-01 | Phase 3 | Pending |
-| RSV-02 | Phase 3 | Pending |
-| RSV-03 | Phase 3 | Pending |
-| RSV-04 | Phase 3 | Pending |
-| RSV-05 | Phase 3 | Pending |
+| BUD-01 | Phase 3 | Wave-0 tested (impl 03-03) |
+| BUD-02 | Phase 3 | Wave-0 tested (impl 03-03) |
+| BUD-03 | Phase 3 | Wave-0 tested (impl 03-03) |
+| BUD-04 | Phase 3 | Wave-0 tested (impl 03-03) |
+| RSV-01 | Phase 3 | Wave-0 tested (impl 03-04) |
+| RSV-02 | Phase 3 | Wave-0 tested (impl 03-05) |
+| RSV-03 | Phase 3 | Wave-0 tested (impl 03-05) |
+| RSV-04 | Phase 3 | Wave-0 tested (impl 03-04) |
+| RSV-05 | Phase 3 | Wave-0 tested (impl 03-04) |
 | IMP-01 | Phase 4 | Pending |
 | IMP-02 | Phase 4 | Pending |
 | IMP-03 | Phase 4 | Pending |
