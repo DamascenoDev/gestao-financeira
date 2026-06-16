@@ -36,7 +36,8 @@ findings:
   medium: 4
   low: 4
   total: 10
-status: findings
+fixed: 10
+status: fixed
 ---
 
 # Phase 1: Code Review Report
@@ -59,7 +60,7 @@ The findings below are real but none are CRITICAL: two HIGH items are silent-fai
 
 ## High
 
-### HG-01: `parseBRLToCents` silently returns `NaN` on common real inputs (money corruption vector)
+### HG-01: [FIXED 0f01a9b] `parseBRLToCents` silently returns `NaN` on common real inputs (money corruption vector)
 
 **File:** `src/lib/money.ts:9-12`
 **Issue:** The helper does `Math.round(Number(normalized) * 100)` with **no validation of the parse result**. Verified empirically:
@@ -87,7 +88,7 @@ export function parseBRLToCents(input: string): number {
 ```
 Add tests for `''`, `'abc'`, `'R$ 10,00'`, and a negative value to lock the contract.
 
-### HG-02: `profiles` "1:1 with auth.users" invariant is not enforced — `user_id` lacks UNIQUE
+### HG-02: [FIXED 8423afe] `profiles` "1:1 with auth.users" invariant is not enforced — `user_id` lacks UNIQUE
 
 **File:** `supabase/migrations/0001_profiles.sql:7-12`
 **Issue:** The table is documented as 1:1 with `auth.users` and the uniform RLS shape relies on `id == user_id`. But only `id` is `primary key`; `user_id` has **no UNIQUE constraint**. The RLS `WITH CHECK ((select auth.uid()) = user_id)` permits an authenticated user to `INSERT` *additional* profile rows for themselves with a different `id` (any `id` value that is also a valid `auth.users(id)` — e.g. their own duplicated, which the PK blocks, but the model still allows N rows per `user_id` if `id` ever diverges from `user_id` in a future migration or manual insert). The moment any Phase-2+ code does `.from('profiles').single()` it can throw `PGRST116` (multiple/zero rows) on a "1:1" table the schema never actually constrained to 1:1. Cheap to enforce now, expensive to retrofit after rows exist.
@@ -104,7 +105,7 @@ create table if not exists public.profiles (
 
 ## Medium
 
-### MD-01: `formatCents` loses precision above `Number.MAX_SAFE_INTEGER` centavos
+### MD-01: [FIXED 0f01a9b] `formatCents` loses precision above `Number.MAX_SAFE_INTEGER` centavos
 
 **File:** `src/lib/money.ts:20-22`
 **Issue:** Money is stored as `bigint` (correctly), but `formatCents(cents: number)` takes a JS `number` and does `cents / 100`. Any centavos value beyond `2^53` (≈ R$ 90 trillion) silently loses precision — and more practically, reading a `bigint` column through supabase-js can yield a `string` or `number` depending on size/driver, so passing it straight in is fragile. For a personal-finance app the headline risk is low, but the type boundary (`bigint` DB ↔ `number` helper) is exactly where the "no float in money" discipline leaks. Establish the safe boundary now since this is the convention everything inherits.
@@ -120,7 +121,7 @@ export function formatCents(cents: number | bigint): string {
 ```
 At a minimum, guard the `number` path with `if (!Number.isSafeInteger(cents)) throw ...`.
 
-### MD-02: Authenticated users are not redirected away from `/auth/login` and `/auth/signup`
+### MD-02: [FIXED e25041e] Authenticated users are not redirected away from `/auth/login` and `/auth/signup`
 
 **File:** `src/lib/supabase/middleware.ts:37-45`
 **Issue:** The redirect only sends *unauthenticated* users to `/auth/login`. There is no inverse guard, and the `(auth)` pages do not call `getClaims()`. A logged-in user navigating to `/auth/login` or `/auth/signup` sees the login form and can re-submit `signUp` (which, with confirmations off, errors as "User already registered") — confusing, and a minor open-signup surface. Not a security hole (RLS still isolates), but a correctness/UX gap in the protected-routing model.
@@ -130,7 +131,7 @@ const { data } = await supabase.auth.getClaims()
 if (data?.claims) redirect('/dashboard')
 ```
 
-### MD-03: `signOut` failure is swallowed — user believes they logged out when they may not have
+### MD-03: [FIXED 151420e] `signOut` failure is swallowed — user believes they logged out when they may not have
 
 **File:** `src/actions/auth.ts:58-62`
 **Issue:** `await supabase.auth.signOut()` ignores its returned `{ error }`, then unconditionally `redirect('/auth/login')`. If `signOut` fails (network/cookie issue), the session cookie may persist while the UI claims the user is logged out — a security-relevant false sense of logout on a financial app, and it diverges from the rest of the file which carefully threads errors. The `logout-button.tsx` calls this fire-and-forget with no error channel either.
@@ -148,7 +149,7 @@ export async function signOut(): Promise<void> {
 ```
 (Ideally surface failure to the user; at minimum stop discarding it.)
 
-### MD-04: Storage policy is `for all to authenticated` with no per-operation scoping, and the bucket row itself is world-listable to authenticated
+### MD-04: [FIXED ba8daa3] Storage policy is `for all to authenticated` with no per-operation scoping, and the bucket row itself is world-listable to authenticated
 
 **File:** `supabase/migrations/0003_storage_statements.sql:13-23`
 **Issue:** The object-level policy is correct and path-scoped. However: (a) `for all` bundles SELECT/INSERT/UPDATE/DELETE under one predicate — fine for now, but when upload lands in Phase 4 you'll likely want INSERT-time checks distinct from SELECT (e.g. content-type/size) and a single `for all` makes that harder to evolve safely; (b) there is no policy on `storage.buckets`, so any authenticated user can enumerate the existence/metadata of the `statements` bucket. Neither leaks file contents (object policy holds), but the boundary is looser than the "private from the first byte" intent. Acceptable for Phase 1 *if consciously deferred*; flagging so it is not forgotten when upload ships.
@@ -156,25 +157,25 @@ export async function signOut(): Promise<void> {
 
 ## Low
 
-### LW-01: Dead `/login` branch in the middleware redirect guard
+### LW-01: [FIXED d0dd90c] Dead `/login` branch in the middleware redirect guard
 
 **File:** `src/lib/supabase/middleware.ts:39`
 **Issue:** The guard exempts `request.nextUrl.pathname.startsWith('/login')`, but no `/login` route exists — the only auth routes are `/auth/login` and `/auth/signup`, already covered by the `'/auth'` prefix. The `/login` check is dead (verbatim carryover from the upstream Supabase template). Harmless, but misleading: a reader assumes a `/login` route exists, and the broad `startsWith('/auth')` also unintentionally exempts *any* future `/auth/*` route from protection.
 **Fix:** Remove the `/login` clause; consider tightening `/auth` to the exact auth routes if future `/auth/*` routes should be protected.
 
-### LW-02: `<html lang="en">` on a pt-BR-only application
+### LW-02: [FIXED d8eba31] `<html lang="en">` on a pt-BR-only application
 
 **File:** `src/app/layout.tsx:28`
 **Issue:** The entire UI, content, and currency are pt-BR, but the root `lang` is `"en"`. This misinforms screen readers and translation tooling.
 **Fix:** `lang="pt-BR"`.
 
-### LW-03: `Home` redirects to `/dashboard` relying solely on middleware for the unauth case
+### LW-03: [FIXED ccda3e1] `Home` redirects to `/dashboard` relying solely on middleware for the unauth case
 
 **File:** `src/app/page.tsx:3-7`
 **Issue:** `/` unconditionally `redirect('/dashboard')`. For an unauthenticated user the middleware catches `/dashboard` and bounces to `/auth/login`, so the net behavior is correct — but it's two redirects and couples `/` correctness to the middleware matcher. Minor; works today.
 **Fix:** Optionally check `getClaims()` in `page.tsx` and redirect to `/auth/login` directly when unauthenticated, saving a hop. Not required.
 
-### LW-04: No `import 'server-only'` on the server Supabase module (defense-in-depth gap)
+### LW-04: [FIXED f9505fe] No `import 'server-only'` on the server Supabase module (defense-in-depth gap)
 
 **File:** `src/lib/supabase/server.ts:1`
 **Issue:** `server-only` is installed (per `package.json`) and SEC-02 calls for guarding any secret-touching server module with it. Phase 1 legitimately touches **no** secret key, so there is no leak today — but `server.ts` is the natural home for any future admin/secret client, and adding the guard now makes a later accidental client import fail the build loudly rather than silently bundle. Low because there is presently nothing secret to protect.
