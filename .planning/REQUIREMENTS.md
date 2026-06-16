@@ -118,13 +118,67 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| (a preencher pelo roadmapper) | — | Pending |
+| AUTH-01 | Phase 1 | Pending |
+| AUTH-02 | Phase 1 | Pending |
+| AUTH-03 | Phase 1 | Pending |
+| AUTH-04 | Phase 1 | Pending |
+| CAT-01 | Phase 1 | Pending |
+| SEC-02 | Phase 1 | Pending |
+| INC-01 | Phase 2 | Pending |
+| INC-02 | Phase 2 | Pending |
+| INC-03 | Phase 2 | Pending |
+| INC-04 | Phase 2 | Pending |
+| CAT-02 | Phase 2 | Pending |
+| CAT-03 | Phase 2 | Pending |
+| TXN-01 | Phase 2 | Pending |
+| TXN-02 | Phase 2 | Pending |
+| TXN-03 | Phase 2 | Pending |
+| TXN-04 | Phase 2 | Pending |
+| BUD-01 | Phase 3 | Pending |
+| BUD-02 | Phase 3 | Pending |
+| BUD-03 | Phase 3 | Pending |
+| BUD-04 | Phase 3 | Pending |
+| RSV-01 | Phase 3 | Pending |
+| RSV-02 | Phase 3 | Pending |
+| RSV-03 | Phase 3 | Pending |
+| RSV-04 | Phase 3 | Pending |
+| RSV-05 | Phase 3 | Pending |
+| IMP-01 | Phase 4 | Pending |
+| IMP-02 | Phase 4 | Pending |
+| IMP-03 | Phase 4 | Pending |
+| IMP-04 | Phase 4 | Pending |
+| IMP-05 | Phase 4 | Pending |
+| CLS-01 | Phase 4 | Pending |
+| CLS-02 | Phase 4 | Pending |
+| CLS-03 | Phase 4 | Pending |
+| CLS-04 | Phase 4 | Pending |
+| CLS-05 | Phase 4 | Pending |
+| CLS-06 | Phase 4 | Pending |
+| RSV-06 | Phase 4 | Pending |
+| SEC-03 | Phase 4 | Pending |
+| MEI-01 | Phase 5 | Pending |
+| MEI-02 | Phase 5 | Pending |
+| MEI-03 | Phase 5 | Pending |
+| MEI-04 | Phase 5 | Pending |
+| MEI-05 | Phase 5 | Pending |
+| MEI-06 | Phase 5 | Pending |
+| DATA-01 | Phase 6 | Pending |
+| DATA-02 | Phase 6 | Pending |
+| SEC-01 | Phase 6 | Pending |
 
 **Coverage:**
-- v1 requirements: 40 total
-- Mapped to phases: 0 (pré-roadmap)
-- Unmapped: 40 ⚠️
+- v1 requirements: 47 total
+- Mapped to phases: 47 ✓
+- Unmapped: 0 ✓
+
+**Por fase:**
+- Phase 1 (Fundação): 6 — AUTH-01/02/03/04, CAT-01, SEC-02
+- Phase 2 (Receitas/categorias/lançamentos): 10 — INC-01/02/03/04, CAT-02/03, TXN-01/02/03/04
+- Phase 3 (Metas/aderência/reservas): 9 — BUD-01/02/03/04, RSV-01/02/03/04/05
+- Phase 4 (Upload + classificação): 13 — IMP-01/02/03/04/05, CLS-01/02/03/04/05/06, RSV-06, SEC-03
+- Phase 5 (MEI/DASN): 6 — MEI-01/02/03/04/05/06
+- Phase 6 (Endurecimento): 3 — DATA-01/02, SEC-01
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-16 after initial definition*
+*Last updated: 2026-06-16 after roadmap creation (traceability mapped, 47/47 covered)*
