@@ -195,10 +195,12 @@ export async function registerSaida(input: {
     p_occurred_on: parsed.data.occurredOn,
     p_note: parsed.data.note ?? '',
   })
-  // The RPC raises P0001 'Saída maior que o saldo da reserva' on overdraw → map to
-  // the friendly UI-SPEC copy; any other error → generic fallback (never raw).
+  // LW-02: the RPC raises the DEDICATED SQLSTATE 'P0002' for an overdraw (0018) → map
+  // to the friendly UI-SPEC copy by branching on the structured `error.code`, not the
+  // pt-BR message text (a copy/i18n change must not downgrade this to the generic
+  // toast). Any other error → generic fallback (never raw details to the client).
   if (error) {
-    if (error.message.includes('saldo')) {
+    if (error.code === 'P0002') {
       return { error: 'A saída não pode ser maior que o saldo da reserva.' }
     }
     return { error: 'Não foi possível registrar a saída.' }

@@ -93,7 +93,7 @@ describe('register_reserva_saida is atomic + never-negative (RSV-04)', () => {
     expect(await saldoOf(a, reserva)).toBe(60000)
   })
 
-  it('a saída > saldo raises with a message that mentions saldo, balance unchanged', async () => {
+  it('a saída > saldo raises the dedicated P0002 overdraw code, balance unchanged (LW-02)', async () => {
     const a = userClient(userA.jwt, config)
     const reserva = await newReserva(a, 50000)
     const { error } = await a.rpc('register_reserva_saida', {
@@ -103,6 +103,9 @@ describe('register_reserva_saida is atomic + never-negative (RSV-04)', () => {
       p_note: 'overdraw',
     })
     expect(error).not.toBeNull()
+    // LW-02: the overdraw case carries the structured SQLSTATE the action branches on,
+    // independent of the (i18n-able) raise text.
+    expect(error?.code).toBe('P0002')
     expect((error?.message ?? '').toLowerCase()).toContain('saldo')
     // Balance unchanged and never negative.
     expect(await saldoOf(a, reserva)).toBe(50000)
