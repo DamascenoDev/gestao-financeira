@@ -47,7 +47,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   4. Usuário vê o extrato/lista de transações filtrável por mês e categoria
   5. Usuário reclassifica a categoria de várias transações de uma vez (bulk re-classify)
 **Plans**: 5 plans
-  - [ ] 02-01-PLAN.md — Foundation slice: migrations (incomes/transactions/color/views/RPC) applied to local stack + typed client, civil-month + Zod schemas, app shell (sidebar + global MonthSelector), Wave-0 tests
+  - [x] 02-01-PLAN.md — Foundation slice: migrations (incomes/transactions/color/views/RPC) applied to local stack + typed client, civil-month + Zod schemas, app shell (sidebar + global MonthSelector), Wave-0 tests (suite 72/72 GREEN, view-leak leak-free, build+tsc clean)
   - [ ] 02-02-PLAN.md — Receitas slice: income actions (template/occurrence/avulsa, materialize-on-read) + Receitas page with receita-líquida hero (INC-01/02/03/04)
   - [ ] 02-03-PLAN.md — Categorias slice: category actions (CRUD + consumo/alocação + color + delete-block/archive/atomic reassign) + Categorias page (CAT-02/03)
   - [ ] 02-04-PLAN.md — Extrato slice: transaction actions (CRUD + bulkReclassify) + dense TanStack table with URL filters, per-category totals, SelectionActionBar (TXN-01/02/03/04)
@@ -114,7 +114,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | Phase | Plans Complete | Status | Completed |
 |-------|----------------|--------|-----------|
 | 1. Fundação | 3/4 | In progress | - |
-| 2. Receitas, categorias e lançamentos | 0/5 | Not started | - |
+| 2. Receitas, categorias e lançamentos | 1/5 | In progress | - |
 | 3. Metas, aderência e reservas | 0/0 | Not started | - |
 | 4. Upload + classificação inteligente | 0/0 | Not started | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |

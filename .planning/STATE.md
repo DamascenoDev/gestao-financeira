@@ -3,12 +3,12 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-16T17:47:50.408Z"
+last_updated: "2026-06-16T18:22:00.000Z"
 progress:
   total_phases: 6
   completed_phases: 0
   total_plans: 9
-  completed_plans: 3
+  completed_plans: 4
   percent: 0
 ---
 
@@ -26,7 +26,7 @@ progress:
 ## Current Position
 
 Phase: 2 (Receitas, categorias e lançamentos manuais) — EXECUTING
-Plan: 1 of 5
+Plan: 2 of 5
 
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
 - **Plan:** 01-03 complete (auth SSR vertical slice: @supabase/ssr 3-client split + getClaims() middleware, Zod-validated signIn/signUp/signOut actions, custom shadcn login/signup forms, protected (app) shell + logout-anywhere, dashboard real RLS categories read; live local round-trip OK; build + bundle gate GREEN); next is 01-04
@@ -45,7 +45,7 @@ Plan: 1 of 5
 | Phases complete | 0 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 3 |
+| Plans complete | 4 |
 
 ### Plan Execution Log
 
@@ -54,6 +54,7 @@ Plan: 1 of 5
 | 1 | 01 | ~11 min | 3 | 13 created | 2026-06-16 |
 | 1 | 02 | ~12 min | 2 | 4 created / 1 modified | 2026-06-16 |
 | 1 | 03 | ~8 min | 3 | 13 created / 3 modified | 2026-06-16 |
+| 2 | 01 | ~9 min | 4 | ~37 created / 6 modified | 2026-06-16 |
 
 ## Accumulated Context
 
@@ -88,9 +89,9 @@ Plan: 1 of 5
 
 ## Session Continuity
 
-**Last session (2026-06-16):** Completed 01-03-PLAN.md — fatia vertical de auth: split de 3 clients `@supabase/ssr` (chave publishable + `getClaims()`) com middleware de refresh que protege todas as rotas, Server Actions `signIn`/`signUp`/`signOut` validadas por Zod (TDD, 8/8 green), formulários custom shadcn de login/signup, shell `(app)` protegido com logout em qualquer página, e `/dashboard` lendo as categorias do usuário via RLS real. Round-trip local provado (signUp → sessão ativa → lê exatamente as 11 categorias isoladas; 2º usuário só vê as suas 11; sem sessão = 0). `npm run build` limpo, gate de bundle-secret GREEN (nenhum segredo em `.next/static`), `tsc --noEmit` limpo, suite 26/26. `.env.local` apontado para o stack LOCAL (gitignored, sem segredo commitado).
+**Last session (2026-06-16):** Completed 02-01-PLAN.md — fatia de substrato da Fase 2 (não-worktree, sequencial em `main`). Migrations 0004-0008 aplicadas ao stack LOCAL via `db:reset` (income_templates + income_occurrences com `unique(user_id,template_id,month_key)`, transactions com FK `ON DELETE RESTRICT`, color em categories, duas views `security_invoker=true` v_income_month/v_category_totals, RPC atômico reassign_and_delete_category) + `database.types.ts` regenerado sem drift. `lib/month.ts` (civil-month America/Sao_Paulo, TDD 9/9), três schemas Zod compartilhados (income/category/transaction), shell upgradado para sidebar + MonthSelector global (`?mes` na URL) + logout em dropdown (AUTH-04 preservado), tokens financeiros app-wide (teal primary + income/expense/allocation/consumption). Oito testes Wave-0 + rls-isolation estendido — suite 72/72 GREEN, `tsc --noEmit` limpo, `npm run build` OK, `view-leak` prova views leak-free. Stack local deixado RODANDO. Fix Rule 3: calendar.tsx `table`→`month_grid` para react-day-picker v10.
 
-**Next action:** Fase 1 provada local (01-01/02/03). 01-04 (deploy remoto) ADIADO por decisão do usuário. Verificar Fase 1 e avançar para Fase 2 (Receitas, categorias e lançamentos manuais) construindo contra o Supabase local. Deploy remoto (01-04) + wiring de credenciais ficam para o fim do milestone.
+**Next action:** Substrato pronto. Avançar para 02-02 (fatia Receitas: income actions materialize-on-read + página com hero de receita líquida, INC-01/02/03/04), executável test-first contra o schema já migrado. Requisitos INC/CAT/TXN permanecem Pending até suas fatias de UI (02-02/03/04) entregarem as capacidades ao usuário.
 
 ---
 *State initialized: 2026-06-16 after roadmap creation*
