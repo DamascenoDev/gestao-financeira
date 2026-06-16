@@ -84,13 +84,13 @@ Plan: 4 of 4
 
 ### Blockers
 
-- (nenhum)
+- **01-04 ADIADO (decisão do usuário, 2026-06-16):** plano `autonomous:false` de deploy — credenciais do Supabase remoto + Vercel + verificação no browser. Código da Fase 1 está provado no stack LOCAL. Fases 2-5 serão construídas/testadas contra o Supabase local; todo o wiring remoto + deploy fica para o fim, quando o usuário tiver as credenciais à mão. NÃO é gap de implementação — é etapa de credencial/deploy pendente.
 
 ## Session Continuity
 
 **Last session (2026-06-16):** Completed 01-03-PLAN.md — fatia vertical de auth: split de 3 clients `@supabase/ssr` (chave publishable + `getClaims()`) com middleware de refresh que protege todas as rotas, Server Actions `signIn`/`signUp`/`signOut` validadas por Zod (TDD, 8/8 green), formulários custom shadcn de login/signup, shell `(app)` protegido com logout em qualquer página, e `/dashboard` lendo as categorias do usuário via RLS real. Round-trip local provado (signUp → sessão ativa → lê exatamente as 11 categorias isoladas; 2º usuário só vê as suas 11; sem sessão = 0). `npm run build` limpo, gate de bundle-secret GREEN (nenhum segredo em `.next/static`), `tsc --noEmit` limpo, suite 26/26. `.env.local` apontado para o stack LOCAL (gitignored, sem segredo commitado).
 
-**Next action:** Continue Phase 1 with plan 01-04 (autonomous:false — wire credenciais reais do Supabase pessoal, desligar confirmação de email, `db push` remoto, deploy Vercel, verificar fluxo de auth ao vivo).
+**Next action:** Fase 1 provada local (01-01/02/03). 01-04 (deploy remoto) ADIADO por decisão do usuário. Verificar Fase 1 e avançar para Fase 2 (Receitas, categorias e lançamentos manuais) construindo contra o Supabase local. Deploy remoto (01-04) + wiring de credenciais ficam para o fim do milestone.
 
 ---
 *State initialized: 2026-06-16 after roadmap creation*
