@@ -49,7 +49,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 **Plans**: 5 plans
   - [x] 02-01-PLAN.md — Foundation slice: migrations (incomes/transactions/color/views/RPC) applied to local stack + typed client, civil-month + Zod schemas, app shell (sidebar + global MonthSelector), Wave-0 tests (suite 72/72 GREEN, view-leak leak-free, build+tsc clean)
   - [x] 02-02-PLAN.md — Receitas slice: income actions (template/occurrence/avulsa, materialize-on-read) + Receitas page with receita-líquida hero (INC-01/02/03/04); 12 action tests + Wave-0 income tests GREEN, suite 84/84, build+tsc clean
-  - [ ] 02-03-PLAN.md — Categorias slice: category actions (CRUD + consumo/alocação + color + delete-block/archive/atomic reassign) + Categorias page (CAT-02/03)
+  - [x] 02-03-PLAN.md — Categorias slice: category actions (CRUD + consumo/alocação + color + delete-block/archive/atomic reassign) + Categorias page (CAT-02/03); 19 action tests + Wave-0 category tests GREEN, suite 103/103, build+tsc clean
   - [ ] 02-04-PLAN.md — Extrato slice: transaction actions (CRUD + bulkReclassify) + dense TanStack table with URL filters, per-category totals, SelectionActionBar (TXN-01/02/03/04)
   - [ ] 02-05-PLAN.md — [autonomous:false] Human-verify walkthrough: INC-02 edit-choice, TXN-03 filter URL round-trip, TXN-04 bulk re-classify + design-contract sanity
 **UI hint**: yes

@@ -24,8 +24,8 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 ### Categorias
 
 - [x] **CAT-01**: Sistema já vem com conjunto padrão BR de categorias de gasto
-- [ ] **CAT-02**: Usuário cria, renomeia e remove categorias
-- [ ] **CAT-03**: Categoria é marcada como consumo (gasto) ou alocação (investimento/poupança) — afeta como entra nas metas
+- [x] **CAT-02**: Usuário cria, renomeia e remove categorias
+- [x] **CAT-03**: Categoria é marcada como consumo (gasto) ou alocação (investimento/poupança) — afeta como entra nas metas
 
 ### Transações / Lançamentos
 
@@ -128,8 +128,8 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | INC-02 | Phase 2 | Complete |
 | INC-03 | Phase 2 | Complete |
 | INC-04 | Phase 2 | Complete |
-| CAT-02 | Phase 2 | Pending |
-| CAT-03 | Phase 2 | Pending |
+| CAT-02 | Phase 2 | Complete |
+| CAT-03 | Phase 2 | Complete |
 | TXN-01 | Phase 2 | Pending |
 | TXN-02 | Phase 2 | Pending |
 | TXN-03 | Phase 2 | Pending |
