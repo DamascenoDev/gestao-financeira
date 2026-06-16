@@ -32,6 +32,29 @@ function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
 }
 
+/**
+ * HG-01: verify EVERY category id belongs to the caller before writing it as a
+ * foreign key. RLS scopes WHICH transaction rows are written (the caller's own),
+ * but Postgres foreign keys are NOT RLS-aware: a forged `category_id` pointing at
+ * another user's category satisfies the FK (the row exists globally) and would
+ * silently attach the caller's financial data to a category they do not own
+ * (IDOR on the FK target). The RLS-active client only returns the caller's own
+ * categories, so a `select ... in (ids)` that returns fewer rows than requested
+ * means at least one id is missing or not-owned — reject the whole write.
+ */
+async function assertOwnedCategories(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  ids: string[],
+): Promise<boolean> {
+  const unique = [...new Set(ids)]
+  const { data, error } = await supabase
+    .from('categories')
+    .select('id')
+    .in('id', unique)
+  if (error || !data) return false
+  return data.length === unique.length
+}
+
 /** Create a manual expense (data, valor, descrição, categoria) for the user (TXN-01). */
 export async function createTransaction(
   formData: FormData,
@@ -57,6 +80,11 @@ export async function createTransaction(
   const { data: claims } = await supabase.auth.getClaims()
   const userId = claims?.claims.sub
   if (!userId) return { error: 'Sessão expirada.' }
+
+  // HG-01: re-derive category ownership server-side (FKs are not RLS-aware).
+  if (!(await assertOwnedCategories(supabase, [parsed.data.categoryId]))) {
+    return { error: 'Categoria inválida.' }
+  }
 
   const { error } = await supabase.from('transactions').insert({
     user_id: userId,
@@ -100,6 +128,11 @@ export async function updateTransaction(
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
+
+  // HG-01: re-derive category ownership server-side (FKs are not RLS-aware).
+  if (!(await assertOwnedCategories(supabase, [parsed.data.categoryId]))) {
+    return { error: 'Categoria inválida.' }
+  }
 
   const { error } = await supabase
     .from('transactions')
@@ -149,6 +182,12 @@ export async function bulkReclassify(
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
+
+  // HG-01: re-derive ownership of the target category server-side before the
+  // bulk update (FKs are not RLS-aware — a forged target would otherwise stick).
+  if (!(await assertOwnedCategories(supabase, [parsed.data]))) {
+    return { error: 'Categoria inválida.' }
+  }
 
   const { error } = await supabase
     .from('transactions')
