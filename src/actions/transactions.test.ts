@@ -28,6 +28,9 @@ let insertResult: QueryResult = { data: { id: 'new-id' }, error: null }
 let updateResult: QueryResult = { data: null, error: null }
 let deleteResult: QueryResult = { data: null, error: null }
 let claimsSub: string | null = 'user-1'
+// When set, the HG-01 ownership check sees exactly these category ids as owned;
+// null = echo back whatever was queried (the default "all owned" happy path).
+let ownedCategoryIds: string[] | null = null
 
 function makeBuilder(from: string) {
   const record: (typeof calls)[number] = { from, op: '', filters: [] }
@@ -68,8 +71,19 @@ function makeBuilder(from: string) {
     if (record.op === 'insert') return Promise.resolve(insertResult)
     return Promise.resolve(resolveResult)
   })
-  builder.then = (onF: (v: QueryResult) => unknown) =>
-    Promise.resolve(resolveResult).then(onF)
+  builder.then = (onF: (v: QueryResult) => unknown) => {
+    // HG-01 ownership check: `from('categories').select('id').in('id', ids)`.
+    // Echo back a row per queried id so assertOwnedCategories sees them as owned
+    // (the integration test tests/category-idor.test.ts proves the real RLS path).
+    if (from === 'categories' && record.op === 'select') {
+      const owned: unknown[] = ownedCategoryIds ?? record.inFilter?.vals ?? []
+      return Promise.resolve({
+        data: owned.map((id) => ({ id })),
+        error: null,
+      } as QueryResult).then(onF)
+    }
+    return Promise.resolve(resolveResult).then(onF)
+  }
 
   calls.push(record)
   return builder
@@ -97,6 +111,13 @@ import {
 
 const CATEGORY_ID = '11111111-1111-4111-8111-111111111111'
 const DEST_CATEGORY = '22222222-2222-4222-8222-222222222222'
+const TX_ID = '33333333-3333-4333-8333-333333333333'
+// Real transaction UUIDs for the bulk path (WR-06 rejects non-UUID ids).
+const TX_IDS = [
+  '44444444-4444-4444-8444-444444444444',
+  '55555555-5555-4555-8555-555555555555',
+  '66666666-6666-4666-8666-666666666666',
+]
 
 function fd(fields: Record<string, string>): FormData {
   const f = new FormData()
@@ -112,6 +133,7 @@ beforeEach(() => {
   updateResult = { data: null, error: null }
   deleteResult = { data: null, error: null }
   claimsSub = 'user-1'
+  ownedCategoryIds = null
 })
 
 // --- createTransaction (TXN-01) --------------------------------------------
@@ -185,6 +207,21 @@ describe('createTransaction', () => {
     expect(calls.some((c) => c.op === 'insert')).toBe(false)
   })
 
+  it('rejects a forged/foreign category before inserting (HG-01)', async () => {
+    // Ownership check returns 0 owned for the (well-formed but foreign) id.
+    ownedCategoryIds = []
+    const r = await createTransaction(
+      fd({
+        description: 'x',
+        amount: 'R$ 10,00',
+        categoryId: CATEGORY_ID,
+        occurredOn: '2026-06-10',
+      }),
+    )
+    expect(r).toEqual({ error: 'Categoria inválida.' })
+    expect(calls.some((c) => c.op === 'insert')).toBe(false)
+  })
+
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await createTransaction(
@@ -204,7 +241,7 @@ describe('createTransaction', () => {
 describe('updateTransaction', () => {
   it('updates the row by id (RLS scopes it to the owner)', async () => {
     const r = await updateTransaction(
-      'tx-1',
+      TX_ID,
       fd({
         description: 'Atualizado',
         amount: 'R$ 50,00',
@@ -215,7 +252,7 @@ describe('updateTransaction', () => {
     expect(r).toEqual({ ok: true })
     const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
     expect(upd).toBeDefined()
-    expect(upd!.filters).toContainEqual(['id', 'tx-1'])
+    expect(upd!.filters).toContainEqual(['id', TX_ID])
     expect(upd!.payload).toMatchObject({
       description: 'Atualizado',
       amount_cents: 5000,
@@ -227,7 +264,7 @@ describe('updateTransaction', () => {
 
   it('rejects invalid money on update', async () => {
     const r = await updateTransaction(
-      'tx-1',
+      TX_ID,
       fd({
         description: 'x',
         amount: 'xyz',
@@ -242,7 +279,7 @@ describe('updateTransaction', () => {
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await updateTransaction(
-      'tx-1',
+      TX_ID,
       fd({
         description: 'x',
         amount: 'R$ 10,00',
@@ -258,17 +295,17 @@ describe('updateTransaction', () => {
 
 describe('deleteTransaction', () => {
   it('deletes the row by id', async () => {
-    const r = await deleteTransaction('tx-1')
+    const r = await deleteTransaction(TX_ID)
     expect(r).toEqual({ ok: true })
     const del = calls.find((c) => c.from === 'transactions' && c.op === 'delete')
     expect(del).toBeDefined()
-    expect(del!.filters).toContainEqual(['id', 'tx-1'])
+    expect(del!.filters).toContainEqual(['id', TX_ID])
     expect(revalidatePath).toHaveBeenCalledWith('/extrato')
   })
 
   it('gates on an absent session', async () => {
     claimsSub = null
-    const r = await deleteTransaction('tx-1')
+    const r = await deleteTransaction(TX_ID)
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
 })
@@ -277,7 +314,7 @@ describe('deleteTransaction', () => {
 
 describe('bulkReclassify', () => {
   it('updates all selected ids to one category in a single .in() update', async () => {
-    const ids = ['a', 'b', 'c']
+    const ids = TX_IDS
     const r = await bulkReclassify(ids, DEST_CATEGORY)
     expect(r).toEqual({ ok: true })
     const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
@@ -297,14 +334,28 @@ describe('bulkReclassify', () => {
   })
 
   it('rejects a non-uuid target category before updating', async () => {
-    const r = await bulkReclassify(['a'], 'not-a-uuid')
+    const r = await bulkReclassify([TX_IDS[0]!], 'not-a-uuid')
     expect('error' in r).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('rejects a non-uuid selected id before updating (WR-06)', async () => {
+    const r = await bulkReclassify(['not-a-uuid'], DEST_CATEGORY)
+    expect('error' in r).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('rejects a forged/foreign target category before updating (HG-01)', async () => {
+    // The ownership check returns 0 owned for the queried target → rejected.
+    ownedCategoryIds = []
+    const r = await bulkReclassify([TX_IDS[0]!], DEST_CATEGORY)
+    expect(r).toEqual({ error: 'Categoria inválida.' })
     expect(calls.some((c) => c.op === 'update')).toBe(false)
   })
 
   it('gates on an absent session', async () => {
     claimsSub = null
-    const r = await bulkReclassify(['a'], DEST_CATEGORY)
+    const r = await bulkReclassify([TX_IDS[0]!], DEST_CATEGORY)
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
 })

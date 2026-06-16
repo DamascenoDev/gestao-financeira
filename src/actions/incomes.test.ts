@@ -118,6 +118,10 @@ function fd(fields: Record<string, string>): FormData {
   return f
 }
 
+// Real UUIDs for the id-arg actions — the actions now reject non-UUID ids (WR-06).
+const OCC_ID = '11111111-1111-4111-8111-111111111111'
+const TPL_ID = '22222222-2222-4222-8222-222222222222'
+
 beforeEach(() => {
   calls.length = 0
   revalidatePath.mockClear()
@@ -256,12 +260,12 @@ describe('createAdhocIncome', () => {
 
 describe('updateOccurrence', () => {
   it('updates only the income_occurrences row, never the template', async () => {
-    const r = await updateOccurrence('occ-1', fd({ amount: 'R$ 4.500,00' }))
+    const r = await updateOccurrence(OCC_ID, fd({ amount: 'R$ 4.500,00' }))
     expect(r).toEqual({ ok: true })
     const update = calls.find((c) => c.op === 'update')
     expect(update!.from).toBe('income_occurrences')
     expect(update!.payload).toMatchObject({ amount_cents: 450000 })
-    expect(update!.filters).toContainEqual(['id', 'occ-1'])
+    expect(update!.filters).toContainEqual(['id', OCC_ID])
     // No write ever lands on income_templates.
     expect(calls.find((c) => c.from === 'income_templates' && c.op !== 'select')).toBeUndefined()
   })
@@ -272,7 +276,7 @@ describe('updateOccurrence', () => {
 describe('updateTemplate', () => {
   it('updates the template row (future months) and not occurrences', async () => {
     const r = await updateTemplate(
-      't1',
+      TPL_ID,
       fd({ source: 'Salário', amount: 'R$ 6.000,00', dayOfMonth: '10' }),
     )
     expect(r).toEqual({ ok: true })
@@ -283,20 +287,20 @@ describe('updateTemplate', () => {
       amount_cents: 600000,
       day_of_month: 10,
     })
-    expect(update!.filters).toContainEqual(['id', 't1'])
+    expect(update!.filters).toContainEqual(['id', TPL_ID])
   })
 
   // WR-04: an amount-only edit (no source/dayOfMonth sent) must NOT overwrite the
   // template's real source/day_of_month — the payload carries ONLY amount_cents.
   it('amount-only edit writes only amount_cents (never resets source/day)', async () => {
-    const r = await updateTemplate('t1', fd({ amount: 'R$ 7.000,00' }))
+    const r = await updateTemplate(TPL_ID, fd({ amount: 'R$ 7.000,00' }))
     expect(r).toEqual({ ok: true })
     const update = calls.find((c) => c.op === 'update')
     expect(update!.from).toBe('income_templates')
     expect(update!.payload).toEqual({ amount_cents: 700000 })
     expect(update!.payload).not.toHaveProperty('source')
     expect(update!.payload).not.toHaveProperty('day_of_month')
-    expect(update!.filters).toContainEqual(['id', 't1'])
+    expect(update!.filters).toContainEqual(['id', TPL_ID])
   })
 })
 
@@ -304,11 +308,11 @@ describe('updateTemplate', () => {
 
 describe('deleteOccurrence', () => {
   it('deletes a single occurrence by id', async () => {
-    const r = await deleteOccurrence('occ-9')
+    const r = await deleteOccurrence(OCC_ID)
     expect(r).toEqual({ ok: true })
     const del = calls.find((c) => c.op === 'delete')
     expect(del!.from).toBe('income_occurrences')
-    expect(del!.filters).toContainEqual(['id', 'occ-9'])
+    expect(del!.filters).toContainEqual(['id', OCC_ID])
     expect(revalidatePath).toHaveBeenCalledWith('/receitas')
   })
 })

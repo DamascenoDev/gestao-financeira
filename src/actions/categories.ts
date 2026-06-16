@@ -39,6 +39,13 @@ const nameSchema = z.string().trim().min(1, 'Informe o nome').max(60)
 const kindSchema = z.enum(CATEGORY_KINDS)
 const colorSchema = z.enum(CATEGORY_COLORS)
 
+/**
+ * WR-06: validate every row-id argument before it reaches `.eq('id', id)`. RLS
+ * already makes a foreign/garbage id safe, so this is defense-in-depth + cleaner
+ * errors (a non-UUID id otherwise raises 22P02 surfaced as a confusing toast).
+ */
+const idSchema = z.string().uuid('Identificador inválido')
+
 function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
 }
@@ -78,6 +85,8 @@ export async function renameCategory(
   id: string,
   name: string,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const parsed = nameSchema.safeParse(name)
   if (!parsed.success) {
     return { error: firstIssue(parsed.error.issues[0]?.message) }
@@ -102,6 +111,8 @@ export async function setKind(
   id: string,
   kind: CategoryKind,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const parsed = kindSchema.safeParse(kind)
   if (!parsed.success) return { error: 'Tipo inválido.' }
 
@@ -124,6 +135,8 @@ export async function setColor(
   id: string,
   color: CategoryColor,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const parsed = colorSchema.safeParse(color)
   if (!parsed.success) return { error: 'Cor inválida.' }
 
@@ -147,6 +160,8 @@ export async function setColor(
  * The graceful alternative to a blocked delete (CAT-02).
  */
 export async function archiveCategory(id: string): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
@@ -168,6 +183,8 @@ export async function archiveCategory(id: string): Promise<ActionResult> {
  * message rather than a raw DB error (RESEARCH Pitfall 5).
  */
 export async function deleteCategory(id: string): Promise<DeleteCategoryResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
@@ -213,6 +230,10 @@ export async function reassignAndDelete(
 ): Promise<ActionResult> {
   if (!src || !dst || src === dst) {
     return { error: 'Selecione uma categoria de destino diferente.' }
+  }
+  // WR-06: both ids must be UUIDs before reaching the RPC / `.in('id', [...])`.
+  if (!idSchema.safeParse(src).success || !idSchema.safeParse(dst).success) {
+    return { error: 'Identificador inválido.' }
   }
 
   const supabase = await createClient()

@@ -11,6 +11,7 @@ import {
 } from '@/lib/schemas/income'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
+import { z } from 'zod'
 
 /**
  * Income Server Actions: recurring templates + per-month occurrences + ad-hoc
@@ -26,6 +27,15 @@ type OccurrenceInsert =
   Database['public']['Tables']['income_occurrences']['Insert']
 
 const RECEITAS_PATH = '/receitas'
+
+/**
+ * WR-06: validate every row-id argument before it reaches `.eq('id', id)`. RLS
+ * already makes a foreign/garbage id safe (it matches 0 of the caller's rows),
+ * so this is defense-in-depth + cleaner errors: a non-UUID id otherwise triggers
+ * a 22P02 (invalid_text_representation) DB error that the generic catch turns
+ * into a confusing toast.
+ */
+const idSchema = z.string().uuid('Identificador inválido')
 
 /**
  * Concrete civil day for a template's monthly occurrence: the template's
@@ -229,6 +239,8 @@ export async function updateOccurrence(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const parsed = incomeOccurrenceSchema.safeParse({
     amount: formData.get('amount'),
   })
@@ -274,6 +286,8 @@ export async function updateTemplate(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const rawSource = formData.get('source')
   const rawDay = formData.get('dayOfMonth')
   // Amount-only intent: neither template structural field was sent.
@@ -335,6 +349,8 @@ export async function updateTemplate(
 
 /** Remove a single occurrence (a month's recurring instance or an avulsa). */
 export async function deleteOccurrence(id: string): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }

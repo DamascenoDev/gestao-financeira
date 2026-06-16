@@ -28,6 +28,13 @@ const EXTRATO_PATH = '/extrato'
 /** The bulk target must be a real category id — validated at the boundary. */
 const categoryIdSchema = z.string().uuid('Selecione uma categoria')
 
+/**
+ * WR-06: validate every row-id argument before it reaches `.eq('id', id)` /
+ * `.in('id', ids)`. RLS already makes a foreign/garbage id safe, so this is
+ * defense-in-depth + cleaner errors (a non-UUID id otherwise raises 22P02).
+ */
+const idSchema = z.string().uuid('Identificador inválido')
+
 function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
 }
@@ -123,6 +130,8 @@ export async function updateTransaction(
   id: string,
   formData: FormData,
 ): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const parsed = transactionSchema.safeParse({
     description: formData.get('description'),
     amount: formData.get('amount'),
@@ -169,6 +178,8 @@ export async function updateTransaction(
 
 /** Remove the user's own transaction by id (TXN-02); RLS scopes the delete. */
 export async function deleteTransaction(id: string): Promise<ActionResult> {
+  if (!idSchema.safeParse(id).success) return { error: 'Identificador inválido.' }
+
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
@@ -191,6 +202,11 @@ export async function bulkReclassify(
   categoryId: string,
 ): Promise<ActionResult> {
   if (ids.length === 0) return { error: 'Nenhuma transação selecionada.' }
+
+  // WR-06: every selected id must be a UUID before it reaches `.in('id', ids)`.
+  if (!ids.every((id) => idSchema.safeParse(id).success)) {
+    return { error: 'Seleção inválida.' }
+  }
 
   const parsed = categoryIdSchema.safeParse(categoryId)
   if (!parsed.success) {
