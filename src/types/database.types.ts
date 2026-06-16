@@ -36,6 +36,7 @@ export type Database = {
     Tables: {
       categories: {
         Row: {
+          color: string | null
           created_at: string
           id: string
           is_archived: boolean
@@ -45,6 +46,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          color?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean
@@ -54,12 +56,84 @@ export type Database = {
           user_id: string
         }
         Update: {
+          color?: string | null
           created_at?: string
           id?: string
           is_archived?: boolean
           kind?: string
           name?: string
           sort?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
+      income_occurrences: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          id: string
+          month_key: string
+          occurred_on: string
+          source: string
+          template_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          id?: string
+          month_key: string
+          occurred_on: string
+          source: string
+          template_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          id?: string
+          month_key?: string
+          occurred_on?: string
+          source?: string
+          template_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "income_occurrences_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "income_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      income_templates: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          day_of_month: number
+          id: string
+          is_active: boolean
+          source: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          day_of_month: number
+          id?: string
+          is_active?: boolean
+          source: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          day_of_month?: number
+          id?: string
+          is_active?: boolean
+          source?: string
           user_id?: string
         }
         Relationships: []
@@ -85,12 +159,81 @@ export type Database = {
         }
         Relationships: []
       }
+      transactions: {
+        Row: {
+          amount_cents: number
+          category_id: string | null
+          created_at: string
+          description: string
+          id: string
+          kind: string
+          occurred_on: string
+          user_id: string
+        }
+        Insert: {
+          amount_cents: number
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          occurred_on: string
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number
+          category_id?: string | null
+          created_at?: string
+          description?: string
+          id?: string
+          kind?: string
+          occurred_on?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
-      [_ in never]: never
+      v_category_totals: {
+        Row: {
+          category_id: string | null
+          month_key: string | null
+          total_cents: number | null
+          tx_count: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transactions_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      v_income_month: {
+        Row: {
+          month_key: string | null
+          total_cents: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
-      [_ in never]: never
+      reassign_and_delete_category: {
+        Args: { dst: string; src: string }
+        Returns: undefined
+      }
     }
     Enums: {
       [_ in never]: never
