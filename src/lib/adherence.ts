@@ -9,6 +9,17 @@
 export type Direction = 'teto' | 'alvo'
 
 /**
+ * The default meta direction for a category kind (BUD-01): consumo → 'teto' (não
+ * exceder), alocacao → 'alvo' (atingir). This is the pure business rule the MetaDialog
+ * prefills from the category's kind; the user may override it before saving and the
+ * action persists whatever direction the form sends. Kept here (not in the action or
+ * the DB) so the form, the action contract, and the tests share one source of truth.
+ */
+export function directionForKind(kind: 'consumo' | 'alocacao'): Direction {
+  return kind === 'alocacao' ? 'alvo' : 'teto'
+}
+
+/**
  * Discriminated adherence status. 'sem-receita' is shared (adherence_bp === null,
  * i.e. no net income in the period → the % meta is undefined). The teto branch and
  * the alvo branch are otherwise disjoint.

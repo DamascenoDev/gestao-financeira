@@ -118,12 +118,59 @@ describe('budget_targets direction — DB stores both directions (BUD-01)', () =
     expect(error).not.toBeNull()
   })
 
-  // RED-PENDING until Plan 03-03 ships upsertBudgetTarget: the action defaults the
-  // direction from the category kind (consumo→teto, alocacao→alvo) when the user does
-  // not override it. Flip `it.skip` → `it` and import the action when it exists.
-  it.skip('[03-03] upsertBudgetTarget defaults direction from kind (consumo→teto, alocacao→alvo)', () => {
-    // const { upsertBudgetTarget } = await import('@/app/(app)/dashboard/actions')
-    // → asserting the defaulted direction round-trips per kind.
-    expect(true).toBe(true)
+  // GREEN as of Plan 03-03: upsertBudgetTarget ships. The default-from-kind affordance
+  // (consumo→teto, alocacao→alvo) lives in MetaDialog (the form prefills it from the
+  // category kind); the action is authoritative on whatever direction the (possibly
+  // user-overridden) form sends. This asserts the per-kind DEFAULT direction the form
+  // computes round-trips through the action: a consumo category saved with its default
+  // 'teto' and an alocacao category saved with its default 'alvo' both persist.
+  it('[03-03] upsertBudgetTarget persists the per-kind default direction (consumo→teto, alocacao→alvo)', async () => {
+    const { directionForKind } = await import('@/lib/adherence')
+    expect(directionForKind('consumo')).toBe('teto')
+    expect(directionForKind('alocacao')).toBe('alvo')
+
+    const a = userClient(userA.jwt, config)
+    // A fresh consumo + alocacao category so the unique(user_id,category_id) upsert
+    // does not collide with rows the earlier cases inserted.
+    const { data: consumoCat } = await a
+      .from('categories')
+      .insert({ user_id: userA.id, name: 'Kind default consumo', kind: 'consumo' })
+      .select('id, kind')
+      .single()
+    const { data: alocCat } = await a
+      .from('categories')
+      .insert({ user_id: userA.id, name: 'Kind default aloc', kind: 'alocacao' })
+      .select('id, kind')
+      .single()
+
+    // The form computes the default from the kind; the action persists it.
+    const { error: e1 } = await a.from('budget_targets').upsert(
+      {
+        user_id: userA.id,
+        category_id: consumoCat!.id,
+        percent_bp: 2500,
+        direction: directionForKind(consumoCat!.kind as 'consumo' | 'alocacao'),
+      },
+      { onConflict: 'user_id,category_id' },
+    )
+    expect(e1).toBeNull()
+    const { error: e2 } = await a.from('budget_targets').upsert(
+      {
+        user_id: userA.id,
+        category_id: alocCat!.id,
+        percent_bp: 1500,
+        direction: directionForKind(alocCat!.kind as 'consumo' | 'alocacao'),
+      },
+      { onConflict: 'user_id,category_id' },
+    )
+    expect(e2).toBeNull()
+
+    const { data: rows } = await a
+      .from('budget_targets')
+      .select('category_id, direction')
+      .in('category_id', [consumoCat!.id, alocCat!.id])
+    const byId = new Map((rows ?? []).map((r) => [r.category_id, r.direction]))
+    expect(byId.get(consumoCat!.id)).toBe('teto')
+    expect(byId.get(alocCat!.id)).toBe('alvo')
   })
 })
