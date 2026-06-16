@@ -251,8 +251,15 @@ export function ExtratoTable({
     { id: 'occurred_on', desc: true },
   ])
 
+  // HG-01: the Reserva category is NOT a valid bulk target — the bulk path cannot
+  // collect a per-row reservaId to create the required aporte ('in') ledger entry,
+  // so it would silently break the saldo==ledger invariant. Drop it from the picker
+  // (the server also rejects it authoritatively).
   const selectCategories: SelectionCategory[] = React.useMemo(
-    () => categories.map((c) => ({ id: c.id, name: c.name })),
+    () =>
+      categories
+        .filter((c) => !c.isReserva)
+        .map((c) => ({ id: c.id, name: c.name })),
     [categories],
   )
 

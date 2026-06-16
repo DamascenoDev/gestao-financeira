@@ -462,12 +462,35 @@ export async function bulkReclassify(
     return { error: 'Categoria inválida.' }
   }
 
+  // HG-01: the bulk path has no UI to collect a per-row reservaId, so it CANNOT
+  // create the required aporte ('in') ledger entry for a Reserva target. Block
+  // bulk-into-Reserva server-side (authoritative — the picker also hides it) so
+  // we never count the spend as alocação while the saldo/ledger stays untouched.
+  if (await isReservaCategory(supabase, parsed.data)) {
+    return {
+      error: 'Use o lançamento individual para classificar como Reserva.',
+    }
+  }
+
   const { error } = await supabase
     .from('transactions')
     .update({ category_id: parsed.data })
     .in('id', ids)
   if (error) return { error: 'Não foi possível reclassificar.' }
 
+  // HG-01: the target is now a NON-Reserva category, so any of these rows that
+  // previously carried a linked aporte ('in') entry must have it removed — else a
+  // phantom aporte keeps inflating the old reserva's saldo (the single-row edit
+  // path deletes it via deleteOld; the bulk path must mirror that). RLS scopes the
+  // delete to the caller's own ledger rows.
+  const { error: ledgerError } = await supabase
+    .from('reserva_ledger')
+    .delete()
+    .in('transaction_id', ids)
+  if (ledgerError) return { error: 'Não foi possível sincronizar a reserva.' }
+
   revalidatePath(EXTRATO_PATH)
+  revalidatePath(RESERVAS_PATH)
+  revalidatePath(DASHBOARD_PATH)
   return { ok: true }
 }
