@@ -10,18 +10,31 @@
  * Rejects non-money input by throwing — never silently returns NaN or 0.
  * Blank/whitespace-only and unparseable strings (e.g. "abc") are invalid
  * (HG-01: silent NaN/0 is a money-corruption vector for a financial app).
+ *
+ * Enforces the app's core money invariant in ONE place: the result must be a
+ * STRICTLY POSITIVE integer of centavos (HG-03). Negative and zero amounts are
+ * rejected here — they are not a valid domain value for a receita/transação and
+ * must never depend on a divergent DB CHECK to be caught.
+ *
+ * Rejects ambiguous thousands-grouping input rather than silently coercing it to
+ * a plausible-but-wrong value (WR-05): "10.5" (a US-style decimal) is NOT R$ 105,00.
  */
 export function parseBRLToCents(input: string): number {
-  const normalized = input
-    .trim()
-    .replace(/^R\$\s*/i, '')
-    .replace(/\./g, '')
-    .replace(',', '.')
-  const value = Number(normalized)
-  if (normalized === '' || !Number.isFinite(value)) {
+  const trimmed = input.trim().replace(/^R\$\s*/i, '')
+  // Validate the pt-BR grouping shape on the pre-strip string so ambiguous input
+  // ("1.2.3,45", "10.5") becomes a field error rather than a wrong amount (WR-05).
+  // Accepts: optional sign, integer part with optional well-formed thousands dots,
+  // optional ",dd" decimals.
+  if (!/^-?\d{1,3}(\.\d{3})*(,\d{1,2})?$|^-?\d+(,\d{1,2})?$/.test(trimmed)) {
     throw new Error(`Valor monetário inválido: "${input}"`)
   }
-  return Math.round(value * 100)
+  const normalized = trimmed.replace(/\./g, '').replace(',', '.')
+  const value = Number(normalized)
+  const cents = Math.round(value * 100)
+  if (normalized === '' || !Number.isFinite(value) || cents <= 0) {
+    throw new Error(`Valor monetário inválido: "${input}"`)
+  }
+  return cents
 }
 
 const brl = new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })

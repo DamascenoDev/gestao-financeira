@@ -31,8 +31,18 @@ describe('parseBRLToCents', () => {
     expect(parseBRLToCents('R$1.234,56')).toBe(123456)
   })
 
-  it('parses a negative value to negative centavos', () => {
-    expect(parseBRLToCents('-10,00')).toBe(-1000)
+  // HG-03: amounts must be STRICTLY POSITIVE. Negative and zero are rejected at
+  // the parse boundary (single source of truth), never left to a divergent DB CHECK.
+  it('rejects (throws on) negative values', () => {
+    expect(() => parseBRLToCents('-10,00')).toThrow()
+    expect(() => parseBRLToCents('-1')).toThrow()
+    expect(() => parseBRLToCents('-0,01')).toThrow()
+  })
+
+  it('rejects (throws on) zero (R$ 0,00 is not a valid amount)', () => {
+    expect(() => parseBRLToCents('0,00')).toThrow()
+    expect(() => parseBRLToCents('0')).toThrow()
+    expect(() => parseBRLToCents('R$ 0,00')).toThrow()
   })
 
   it('rejects (throws on) blank / whitespace-only input instead of returning 0', () => {
@@ -43,6 +53,15 @@ describe('parseBRLToCents', () => {
   it('rejects (throws on) non-money input instead of returning NaN', () => {
     expect(() => parseBRLToCents('abc')).toThrow()
     expect(() => parseBRLToCents('R$')).toThrow()
+  })
+
+  // WR-05: ambiguous thousands-grouping must throw rather than silently coerce
+  // to a plausible-but-wrong amount ("10.5" is NOT R$ 105,00; "1.2.3,45" is junk).
+  it('rejects (throws on) ambiguous / malformed grouping', () => {
+    expect(() => parseBRLToCents('10.5')).toThrow()
+    expect(() => parseBRLToCents('1.2.3,45')).toThrow()
+    expect(() => parseBRLToCents('1.23,45')).toThrow()
+    expect(() => parseBRLToCents('12,345')).toThrow()
   })
 })
 
