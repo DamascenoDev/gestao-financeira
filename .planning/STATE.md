@@ -3,11 +3,11 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-16T15:39:31Z"
+last_updated: "2026-06-16T17:47:50.408Z"
 progress:
   total_phases: 6
   completed_phases: 0
-  total_plans: 4
+  total_plans: 9
   completed_plans: 3
   percent: 0
 ---
@@ -21,16 +21,16 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 1 — Fundação (auth, RLS, dinheiro, schema)
+- **Current focus:** Phase 2 — Receitas, categorias e lançamentos manuais
 
 ## Current Position
 
-Phase: 1 (Fundação (auth, RLS, dinheiro, schema)) — EXECUTING
-Plan: 4 of 4
+Phase: 2 (Receitas, categorias e lançamentos manuais) — EXECUTING
+Plan: 1 of 5
 
 - **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
 - **Plan:** 01-03 complete (auth SSR vertical slice: @supabase/ssr 3-client split + getClaims() middleware, Zod-validated signIn/signUp/signOut actions, custom shadcn login/signup forms, protected (app) shell + logout-anywhere, dashboard real RLS categories read; live local round-trip OK; build + bundle gate GREEN); next is 01-04
-- **Status:** Executing Phase 1
+- **Status:** Executing Phase 2
 - **Progress:** Phase 0/6 complete (Phase 1: 3/4 plans)
 
 ```
