@@ -28,7 +28,23 @@ findings:
   medium: 4
   warning: 6
   total: 13
-status: findings
+status: fixed
+fixed_at: 2026-06-16
+fixed_findings:
+  - HG-01
+  - HG-02
+  - HG-03
+  - MD-01
+  - MD-02
+  - MD-03
+  - MD-04
+  - WR-01
+  - WR-02
+  - WR-03
+  - WR-04
+  - WR-05
+  - WR-06
+deferred_findings: []
 ---
 
 # Phase 2: Code Review Report — Receitas, Categorias e Lançamentos Manuais
@@ -50,7 +66,7 @@ No CRITICAL (no secret leak, no SQLi, no auth bypass, no RLS hole). Findings are
 
 ## High
 
-### HG-01: `category_id` foreign-key target is never verified to belong to the caller (IDOR on category ownership)
+### HG-01 ✅ FIXED: `category_id` foreign-key target is never verified to belong to the caller (IDOR on category ownership)
 
 **Files:**
 - `src/actions/transactions.ts:61-68` (createTransaction)
@@ -76,7 +92,7 @@ For `bulkReclassify`, do the same single existence check on `categoryId` before 
 
 ---
 
-### HG-02: `reassignAndDelete` / `reassign_and_delete_category` does not validate that `dst` belongs to the caller
+### HG-02 ✅ FIXED: `reassignAndDelete` / `reassign_and_delete_category` does not validate that `dst` belongs to the caller
 
 **Files:**
 - `src/actions/categories.ts:200-216` (reassignAndDelete)
@@ -115,7 +131,7 @@ Because the function is `security invoker`, the `exists` checks run under the ca
 
 ---
 
-### HG-03: Negative and zero money amounts are accepted by the parser/schemas; only an inconsistent DB CHECK stops them
+### HG-03 ✅ FIXED: Negative and zero money amounts are accepted by the parser/schemas; only an inconsistent DB CHECK stops them
 
 **Files:**
 - `src/lib/money.ts:14-25` (parseBRLToCents — no sign/zero guard)
@@ -146,7 +162,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 ## Medium
 
-### MD-01: `reassign_and_delete` allows mixing category `kind` (consumo ↔ alocação), corrupting totals semantics
+### MD-01 ✅ FIXED: `reassign_and_delete` allows mixing category `kind` (consumo ↔ alocação), corrupting totals semantics
 
 **Files:** `src/actions/categories.ts:200-216`, `src/components/category-delete-dialog.tsx:62-63,149-173`
 
@@ -154,7 +170,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Filter reassign targets to the same `kind` as the source category, and re-assert it server-side (the page already has `kind` in scope on `categorias/page.tsx`). At minimum, surface a confirmation when kinds differ. Carry `kind` into `TargetCategory` and `reassignTargets = targets.filter(t => t.id !== category.id && t.kind === category.kind)`.
 
-### MD-02: `ensureMonthOccurrences` materializes occurrences for **any** month string with no validation
+### MD-02 ✅ FIXED: `ensureMonthOccurrences` materializes occurrences for **any** month string with no validation
 
 **File:** `src/actions/incomes.ts:56-82`; caller `src/app/(app)/receitas/page.tsx:44-48`
 
@@ -162,7 +178,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Validate `mes` against `^\d{4}-(0[1-9]|1[0-2])$` at the page boundary and fall back to `currentMonthKey()` on mismatch (a tiny `isMonthKey()` in `lib/month.ts`), so no unvalidated month string reaches the DB or `date-fns`.
 
-### MD-03: Generic DB-error swallowing hides constraint failures the user must act on
+### MD-03 ✅ FIXED: Generic DB-error swallowing hides constraint failures the user must act on
 
 **Files:** `src/actions/transactions.ts:69,113,157`; `src/actions/categories.ts:70,94,116,138,158,189,216`; `src/actions/incomes.ts:124-145,184,217,257,273`
 
@@ -170,7 +186,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Branch on `error.code` for the cases the comments promise — at minimum map `23514` (check_violation) to "Valor monetário inválido." and `23503` (foreign_key_violation) in `deleteCategory` to the blocked/race message. Keep the generic fallback for everything else. Do not log raw `error` to the client.
 
-### MD-04: `formatCents(Number(total_cents))` silently truncates totals above `Number.MAX_SAFE_INTEGER`
+### MD-04 ✅ FIXED: `formatCents(Number(total_cents))` silently truncates totals above `Number.MAX_SAFE_INTEGER`
 
 **Files:** `src/app/(app)/receitas/page.tsx:69,81,151`; `src/app/(app)/extrato/page.tsx:81,100,105`; `src/components/extrato-table.tsx`
 
@@ -182,7 +198,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 ## Warnings
 
-### WR-01: `monthKeyFromDate` derives `month_key` by string slice, decoupled from the civil-month helper
+### WR-01 ✅ FIXED: `monthKeyFromDate` derives `month_key` by string slice, decoupled from the civil-month helper
 
 **File:** `src/actions/incomes.ts:43-45`, used at `:181`
 
@@ -190,7 +206,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Route through the helper (e.g. add/export a `monthKeyOf(dateStr)` in `lib/month.ts`) so there is one owner of month-key derivation.
 
-### WR-02: `currentAmount` / `centsToRawBRL` round-trips cents through float for prefill
+### WR-02 ✅ FIXED: `currentAmount` / `centsToRawBRL` round-trips cents through float for prefill
 
 **Files:** `src/app/(app)/receitas/page.tsx:31-36`, `src/components/extrato-table.tsx:72-77`
 
@@ -198,7 +214,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Format the prefill from the bigint via the existing integer-safe split (a `centsToEditableBRL(cents)` that does `String(cents/100n)` + `,` + 2-digit remainder), or carry the raw amount string rather than reconstructing it.
 
-### WR-03: `createIncomeTemplate` reads `monthKey` from `FormData` with an unchecked `as string` cast
+### WR-03 ✅ FIXED: `createIncomeTemplate` reads `monthKey` from `FormData` with an unchecked `as string` cast
 
 **File:** `src/actions/incomes.ts:105-106`
 
@@ -206,7 +222,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** `typeof raw === 'string' ? raw : currentMonthKey()` and validate against the month-key regex (see MD-02).
 
-### WR-04: `updateTemplate` reconstructs `source`/`dayOfMonth` from client-held state, risking a silent template overwrite
+### WR-04 ✅ FIXED: `updateTemplate` reconstructs `source`/`dayOfMonth` from client-held state, risking a silent template overwrite
 
 **Files:** `src/components/receita-form.tsx:258-263` (EditOccurrenceDialog → run('template')), `src/actions/incomes.ts:224-261`
 
@@ -214,7 +230,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** Fetch the template's real `source`/`day_of_month` server-side in `updateTemplate` and update only `amount_cents` when the dialog's intent is amount-only, or pass the genuine template fields (not the occurrence snapshot/defaults) from a query that selects the template row.
 
-### WR-05: `parseBRLToCents` accepts malformed multi-separator input by collapsing all dots
+### WR-05 ✅ FIXED: `parseBRLToCents` accepts malformed multi-separator input by collapsing all dots
 
 **File:** `src/lib/money.ts:14-25`
 
@@ -222,7 +238,7 @@ And in `0004_incomes.sql`, tighten both columns to `check (amount_cents > 0)` (a
 
 **Fix:** After normalization, optionally validate the grouping shape (`/^\d{1,3}(\.\d{3})*(,\d{1,2})?$/` on the original, pre-strip string) and throw on a mismatch, so ambiguous input becomes a field error rather than a wrong amount.
 
-### WR-06: `deleteOccurrence`/`updateOccurrence` parse no id and trust the client-supplied row id
+### WR-06 ✅ FIXED: `deleteOccurrence`/`updateOccurrence` parse no id and trust the client-supplied row id
 
 **Files:** `src/actions/incomes.ts:191-221,264-277`; mirrors `transactions.ts:79,120` and `categories.ts:77,101,123,149,170`
 
