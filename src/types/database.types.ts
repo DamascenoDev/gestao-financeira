@@ -108,6 +108,33 @@ export type Database = {
         }
         Relationships: []
       }
+      csv_import_profiles: {
+        Row: {
+          created_at: string
+          header_signature: string
+          id: string
+          mapping: Json
+          name: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          header_signature: string
+          id?: string
+          mapping: Json
+          name?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          header_signature?: string
+          id?: string
+          mapping?: Json
+          name?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       income_occurrences: {
         Row: {
           amount_cents: number
@@ -178,6 +205,61 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      merchant_patterns: {
+        Row: {
+          category_id: string
+          created_at: string
+          descriptor_norm: string
+          hit_count: number
+          id: string
+          last_used_at: string | null
+          reserva_id: string | null
+          user_id: string
+        }
+        Insert: {
+          category_id: string
+          created_at?: string
+          descriptor_norm: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string | null
+          reserva_id?: string | null
+          user_id: string
+        }
+        Update: {
+          category_id?: string
+          created_at?: string
+          descriptor_norm?: string
+          hit_count?: number
+          id?: string
+          last_used_at?: string | null
+          reserva_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "merchant_patterns_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_patterns_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "reservas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "merchant_patterns_reserva_id_fkey"
+            columns: ["reserva_id"]
+            isOneToOne: false
+            referencedRelation: "v_reserva_balance"
+            referencedColumns: ["reserva_id"]
+          },
+        ]
       }
       profiles: {
         Row: {
@@ -285,35 +367,92 @@ export type Database = {
         }
         Relationships: []
       }
+      statements: {
+        Row: {
+          content_hash: string
+          created_at: string
+          format: string
+          id: string
+          original_filename: string
+          period_end: string | null
+          period_start: string | null
+          status: string
+          storage_path: string
+          tx_count: number
+          user_id: string
+        }
+        Insert: {
+          content_hash: string
+          created_at?: string
+          format: string
+          id?: string
+          original_filename?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          storage_path: string
+          tx_count?: number
+          user_id: string
+        }
+        Update: {
+          content_hash?: string
+          created_at?: string
+          format?: string
+          id?: string
+          original_filename?: string
+          period_end?: string | null
+          period_start?: string | null
+          status?: string
+          storage_path?: string
+          tx_count?: number
+          user_id?: string
+        }
+        Relationships: []
+      }
       transactions: {
         Row: {
           amount_cents: number
           category_id: string | null
+          classification_source: string | null
           created_at: string
+          dedupe_key: string | null
           description: string
+          descriptor_norm: string | null
           id: string
+          is_recurring: boolean
           kind: string
           occurred_on: string
+          statement_id: string | null
           user_id: string
         }
         Insert: {
           amount_cents: number
           category_id?: string | null
+          classification_source?: string | null
           created_at?: string
+          dedupe_key?: string | null
           description?: string
+          descriptor_norm?: string | null
           id?: string
+          is_recurring?: boolean
           kind?: string
           occurred_on: string
+          statement_id?: string | null
           user_id: string
         }
         Update: {
           amount_cents?: number
           category_id?: string | null
+          classification_source?: string | null
           created_at?: string
+          dedupe_key?: string | null
           description?: string
+          descriptor_norm?: string | null
           id?: string
+          is_recurring?: boolean
           kind?: string
           occurred_on?: string
+          statement_id?: string | null
           user_id?: string
         }
         Relationships: [
@@ -322,6 +461,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_statement_id_fkey"
+            columns: ["statement_id"]
+            isOneToOne: false
+            referencedRelation: "statements"
             referencedColumns: ["id"]
           },
         ]
@@ -398,6 +544,14 @@ export type Database = {
         Row: {
           month_key: string | null
           total_cents: number | null
+          user_id: string | null
+        }
+        Relationships: []
+      }
+      v_recurring_descriptors: {
+        Row: {
+          descriptor_norm: string | null
+          month_count: number | null
           user_id: string | null
         }
         Relationships: []

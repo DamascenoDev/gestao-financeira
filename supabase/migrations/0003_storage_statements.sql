@@ -10,25 +10,54 @@ insert into storage.buckets (id, name, public)
 values ('statements', 'statements', false)
 on conflict (id) do nothing;
 
--- DEFERRED (MD-04): the object policy below is path-scoped and holds file
--- contents private, but two refinements are consciously deferred to Phase 4
--- (when the upload/parse flow actually lands):
---   1. Split this single `for all` into explicit `for select` / `for insert`
---      / `for update` / `for delete` policies so INSERT-time checks
---      (content-type, size) can differ from SELECT.
---   2. Add a `storage.buckets` policy so an authenticated user cannot enumerate
---      the existence/metadata of the private 'statements' bucket (matters once
---      the wife joins as a second titular — AUTH-03 multi-user scenario).
--- Neither leaks file bytes today (the object policy holds), so deferring is safe
--- for Phase 1 — recorded here so it is not forgotten when upload ships.
-drop policy if exists "own statement files" on storage.objects;
-create policy "own statement files" on storage.objects
-  for all to authenticated
+-- Phase 4 (threat T-04-03): the per-verb split deferred in Phase 1 lands here, now
+-- that the upload/parse flow ships. The single `for all` policy is replaced by
+-- explicit `for select` / `for insert` / `for update` / `for delete` policies so
+-- INSERT-time checks can later differ from SELECT (content-type/size at upload).
+-- The `{user_id}/` path scope is PRESERVED verbatim on every verb — the first path
+-- segment MUST equal the caller's auth.uid() — so this is NOT a loosening; it is
+-- the same gate, split by verb. Idempotent: drop policy if exists before each
+-- create (including the legacy `for all` policy name so a re-reset is clean).
+--   (Refinement 2 — a storage.buckets enumeration policy for the multi-user
+--    AUTH-03 scenario — remains deferred; the wife is not yet a second titular and
+--    no bucket-metadata leak exists in single-user v1.)
+--
+-- NOTE: editing this already-applied migration requires a `db reset` to take
+-- effect (the reset replays 0001-0023); Plan 04-01 performs that reset.
+drop policy if exists "own statement files"        on storage.objects;
+drop policy if exists "own statement files select" on storage.objects;
+drop policy if exists "own statement files insert" on storage.objects;
+drop policy if exists "own statement files update" on storage.objects;
+drop policy if exists "own statement files delete" on storage.objects;
+
+create policy "own statement files select" on storage.objects
+  for select to authenticated
+  using (
+    bucket_id = 'statements'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "own statement files insert" on storage.objects
+  for insert to authenticated
+  with check (
+    bucket_id = 'statements'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "own statement files update" on storage.objects
+  for update to authenticated
   using (
     bucket_id = 'statements'
     and (storage.foldername(name))[1] = (select auth.uid())::text
   )
   with check (
+    bucket_id = 'statements'
+    and (storage.foldername(name))[1] = (select auth.uid())::text
+  );
+
+create policy "own statement files delete" on storage.objects
+  for delete to authenticated
+  using (
     bucket_id = 'statements'
     and (storage.foldername(name))[1] = (select auth.uid())::text
   );
