@@ -69,6 +69,27 @@ beforeAll(async () => {
     occurred_on: `${MONTH}-12`,
     description: 'gasto A',
   })
+
+  // Phase-3 substrate for user A: a budget_target (so adherence rows exist) and a
+  // reserva + ledger (so a balance row exists) — the new security_invoker views.
+  await a.from('budget_targets').insert({
+    user_id: userA.id,
+    category_id: cat!.id,
+    percent_bp: 3000,
+    direction: 'teto',
+  })
+  const { data: reserva } = await a
+    .from('reservas')
+    .insert({ user_id: userA.id, nome: 'Reserva A', alvo_cents: 100000 })
+    .select('id')
+    .single()
+  await a.from('reserva_ledger').insert({
+    user_id: userA.id,
+    reserva_id: reserva!.id,
+    kind: 'in',
+    amount_cents: 40000,
+    occurred_on: `${MONTH}-03`,
+  })
 })
 
 afterAll(async () => {
@@ -95,6 +116,34 @@ describe('aggregate views are security_invoker (T-02-VIEW)', () => {
   it('user B reads ZERO of user A category-totals rows', async () => {
     const b = userClient(userB.jwt, config)
     const { data } = await b.from('v_category_totals').select('*').eq('user_id', userA.id)
+    expect(data ?? []).toHaveLength(0)
+  })
+})
+
+describe('Phase-3 adherence/balance views are security_invoker (T-03-T1)', () => {
+  it('user A sees its own adherence + reserva-balance rows', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: month } = await a.from('v_adherence_month').select('*').eq('month_key', MONTH)
+    expect((month ?? []).length).toBeGreaterThan(0)
+    const { data: bal } = await a.from('v_reserva_balance').select('*')
+    expect((bal ?? []).length).toBeGreaterThan(0)
+  })
+
+  it('user B reads ZERO of user A v_adherence_month rows', async () => {
+    const b = userClient(userB.jwt, config)
+    const { data } = await b.from('v_adherence_month').select('*').eq('user_id', userA.id)
+    expect(data ?? []).toHaveLength(0)
+  })
+
+  it('user B reads ZERO of user A v_adherence_ytd rows', async () => {
+    const b = userClient(userB.jwt, config)
+    const { data } = await b.from('v_adherence_ytd').select('*').eq('user_id', userA.id)
+    expect(data ?? []).toHaveLength(0)
+  })
+
+  it('user B reads ZERO of user A v_reserva_balance rows', async () => {
+    const b = userClient(userB.jwt, config)
+    const { data } = await b.from('v_reserva_balance').select('*').eq('user_id', userA.id)
     expect(data ?? []).toHaveLength(0)
   })
 })

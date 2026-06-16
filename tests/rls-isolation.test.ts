@@ -21,6 +21,9 @@ const TABLES = [
   'income_templates',
   'income_occurrences',
   'transactions',
+  'budget_targets',
+  'reservas',
+  'reserva_ledger',
 ] as const
 
 let config: LocalSupabaseConfig
@@ -95,6 +98,25 @@ describe('RLS two-user isolation (AUTH-03)', () => {
           },
           transactions: {
             user_id: userA.id,
+            amount_cents: 100,
+            occurred_on: '2026-06-01',
+          },
+          // RLS WITH CHECK rejects on user_id = userA.id BEFORE any FK is resolved,
+          // so a placeholder category_id/reserva_id is sufficient to prove isolation.
+          budget_targets: {
+            user_id: userA.id,
+            category_id: crypto.randomUUID(),
+            percent_bp: 3000,
+            direction: 'teto',
+          },
+          reservas: {
+            user_id: userA.id,
+            nome: 'Hack',
+          },
+          reserva_ledger: {
+            user_id: userA.id,
+            reserva_id: crypto.randomUUID(),
+            kind: 'in',
             amount_cents: 100,
             occurred_on: '2026-06-01',
           },
