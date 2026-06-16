@@ -51,6 +51,19 @@ function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
 }
 
+/** A Postgres error carries a SQLSTATE `code` we can branch on (MD-03). */
+type DbError = { code?: string } | null
+
+/**
+ * MD-03: map the `amount_cents > 0` check violation (23514) to a money-specific
+ * message instead of a generic "não foi possível salvar"; keep the generic
+ * fallback otherwise. Raw error details are never returned to the client.
+ */
+function moneyWriteError(error: DbError, fallback: string): string {
+  if (error?.code === '23514') return 'Valor monetário inválido.'
+  return fallback
+}
+
 /**
  * Materialize-on-read: upsert one occurrence per active template for the month.
  * `ignoreDuplicates` makes a re-open a no-op — it never overwrites an INC-02
@@ -126,7 +139,12 @@ export async function createIncomeTemplate(
     .select('id')
     .single()
   if (tplErr || !tpl) {
-    return { error: 'Não foi possível salvar a receita recorrente.' }
+    return {
+      error: moneyWriteError(
+        tplErr,
+        'Não foi possível salvar a receita recorrente.',
+      ),
+    }
   }
 
   // Materialize this template's occurrence for the selected month immediately.
@@ -146,7 +164,10 @@ export async function createIncomeTemplate(
         ignoreDuplicates: true,
       },
     )
-  if (occErr) return { error: 'Não foi possível materializar a ocorrência.' }
+  if (occErr)
+    return {
+      error: moneyWriteError(occErr, 'Não foi possível materializar a ocorrência.'),
+    }
 
   revalidatePath(RECEITAS_PATH)
   return { ok: true }
@@ -194,7 +215,10 @@ export async function createAdhocIncome(
     month_key: monthKey,
     occurred_on: parsed.data.occurredOn,
   })
-  if (error) return { error: 'Não foi possível salvar a receita avulsa.' }
+  if (error)
+    return {
+      error: moneyWriteError(error, 'Não foi possível salvar a receita avulsa.'),
+    }
 
   revalidatePath(RECEITAS_PATH)
   return { ok: true }
@@ -227,7 +251,10 @@ export async function updateOccurrence(
     .from('income_occurrences')
     .update({ amount_cents: amountCents })
     .eq('id', id)
-  if (error) return { error: 'Não foi possível atualizar a receita.' }
+  if (error)
+    return {
+      error: moneyWriteError(error, 'Não foi possível atualizar a receita.'),
+    }
 
   revalidatePath(RECEITAS_PATH)
   return { ok: true }
@@ -267,7 +294,10 @@ export async function updateTemplate(
       day_of_month: parsed.data.dayOfMonth,
     })
     .eq('id', id)
-  if (error) return { error: 'Não foi possível atualizar o template.' }
+  if (error)
+    return {
+      error: moneyWriteError(error, 'Não foi possível atualizar o template.'),
+    }
 
   revalidatePath(RECEITAS_PATH)
   return { ok: true }

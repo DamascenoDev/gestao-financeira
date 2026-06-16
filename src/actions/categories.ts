@@ -184,9 +184,19 @@ export async function deleteCategory(id: string): Promise<DeleteCategoryResult> 
   if (txCount > 0) return { blocked: true, txCount }
 
   const { error } = await supabase.from('categories').delete().eq('id', id)
-  // 23503 backstop (a transaction inserted between the pre-check and the delete):
-  // surface the same friendly message, never a raw DB error toast.
-  if (error) return { error: 'Não foi possível excluir a categoria.' }
+  // MD-03: 23503 (foreign_key_violation) is the documented RESTRICT backstop — a
+  // transaction landed between the pre-check and the delete. Differentiate it from
+  // a real failure with the blocked/race message; keep the generic fallback for
+  // anything else. Never surface a raw DB error to the client.
+  if (error) {
+    if (error.code === '23503') {
+      return {
+        error:
+          'Esta categoria passou a ter transações. Arquive-a ou reatribua antes de excluir.',
+      }
+    }
+    return { error: 'Não foi possível excluir a categoria.' }
+  }
 
   revalidatePath(CATEGORIAS_PATH)
   return { ok: true }

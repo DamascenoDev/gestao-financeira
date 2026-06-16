@@ -32,6 +32,20 @@ function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
 }
 
+/** A Postgres error carries a SQLSTATE `code` we can branch on (MD-03). */
+type DbError = { code?: string } | null
+
+/**
+ * MD-03: differentiate the DB errors the user can act on instead of collapsing
+ * everything into one generic string. 23514 (check_violation) is the
+ * `amount_cents > 0` money rule → a money-specific message; everything else keeps
+ * the provided generic fallback. Raw error details are never returned to the client.
+ */
+function moneyWriteError(error: DbError, fallback: string): string {
+  if (error?.code === '23514') return 'Valor monetário inválido.'
+  return fallback
+}
+
 /**
  * HG-01: verify EVERY category id belongs to the caller before writing it as a
  * foreign key. RLS scopes WHICH transaction rows are written (the caller's own),
@@ -94,7 +108,8 @@ export async function createTransaction(
     occurred_on: parsed.data.occurredOn,
     description: parsed.data.description,
   })
-  if (error) return { error: 'Não foi possível salvar a transação.' }
+  if (error)
+    return { error: moneyWriteError(error, 'Não foi possível salvar a transação.') }
 
   revalidatePath(EXTRATO_PATH)
   return { ok: true }
@@ -143,7 +158,10 @@ export async function updateTransaction(
       description: parsed.data.description,
     })
     .eq('id', id)
-  if (error) return { error: 'Não foi possível atualizar a transação.' }
+  if (error)
+    return {
+      error: moneyWriteError(error, 'Não foi possível atualizar a transação.'),
+    }
 
   revalidatePath(EXTRATO_PATH)
   return { ok: true }
