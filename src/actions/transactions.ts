@@ -349,6 +349,68 @@ export async function deleteTransaction(id: string): Promise<ActionResult> {
   return { ok: true }
 }
 
+/** A uuid carro id on the bulk-tag path — validated at the boundary (WR-06). */
+const carroIdSchema = z.string().uuid('Selecione um carro')
+
+/**
+ * Tag (or clear) the `carro_id` of every selected own transaction in a SINGLE
+ * update().in('id', ids) (CAR-02). Modeled verbatim on bulkReclassify: RLS scopes
+ * the UPDATE to the caller's own rows even if an id is forged (the
+ * bulk-reclassify.test.ts guarantee — a forged id touches 0 foreign rows).
+ *
+ * D4 (non-destructive lens, T-09-02): the write payload contains ONLY carro_id —
+ * never category_id, amount_cents, kind, or the reserva_ledger — so tagging cannot
+ * perturb any metas aggregate. Only '/extrato' is revalidated (tagging does not
+ * affect '/reservas' or '/dashboard' metas).
+ *
+ * T-09-01: the target carro is validated ONCE for the whole batch via the WR-04
+ * tri-state assertOwnedCarro before any write; a forged carro_id issues NO write.
+ * A null carroId (bulk-unlink) is always allowed on own rows — no ownership check.
+ */
+export async function bulkTagCarro(
+  ids: string[],
+  carroId: string | null,
+): Promise<ActionResult> {
+  if (ids.length === 0) return { error: 'Nenhuma transação selecionada.' }
+
+  // WR-06: every selected id must be a UUID before it reaches `.in('id', ids)`.
+  if (!ids.every((id) => idSchema.safeParse(id).success)) {
+    return { error: 'Seleção inválida.' }
+  }
+
+  // The carro target, when set, must be a real uuid before the ownership re-derive.
+  if (carroId !== null && !carroIdSchema.safeParse(carroId).success) {
+    return { error: 'Carro inválido.' }
+  }
+
+  const supabase = await createClient()
+  const { data: claims } = await supabase.auth.getClaims()
+  if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
+
+  // T-09-01: re-derive carro ownership ONCE for the whole batch (FKs are not
+  // RLS-aware). WR-04 tri-state: 'error' → generic retry; 'not-owned' → invalid.
+  // A null carroId (bulk-unlink) needs no check — clearing own rows is allowed.
+  if (carroId !== null) {
+    const owned = await assertOwnedCarro(supabase, carroId)
+    if (owned === 'error') {
+      return { error: 'Não foi possível vincular ao carro. Tente novamente.' }
+    }
+    if (owned === 'not-owned') return { error: 'Carro inválido.' }
+  }
+
+  // D4 (T-09-02): update ONLY carro_id — never category_id or the reserva_ledger.
+  // RLS scopes the UPDATE to the caller's own rows even if an id is forged.
+  const { error } = await supabase
+    .from('transactions')
+    .update({ carro_id: carroId })
+    .in('id', ids)
+  if (error) return { error: 'Não foi possível vincular ao carro.' }
+
+  // Tagging does not affect metas — only the extrato view changes (D4).
+  revalidatePath(EXTRATO_PATH)
+  return { ok: true }
+}
+
 /**
  * Re-classify every selected transaction to one category in a SINGLE
  * update().in('id', ids) (TXN-04). RLS scopes the UPDATE to the caller's own

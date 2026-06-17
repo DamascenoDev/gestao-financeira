@@ -160,6 +160,7 @@ import {
   updateTransaction,
   deleteTransaction,
   bulkReclassify,
+  bulkTagCarro,
 } from './transactions'
 
 const CATEGORY_ID = '11111111-1111-4111-8111-111111111111'
@@ -733,6 +734,72 @@ describe('bulkReclassify', () => {
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await bulkReclassify([TX_IDS[0]!], DEST_CATEGORY)
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+})
+
+// --- bulkTagCarro (CAR-02) -------------------------------------------------
+
+describe('bulkTagCarro', () => {
+  it('tags all selected ids to one owned carro in a single .in() update (D4 carro_id-only)', async () => {
+    const ids = TX_IDS
+    const r = await bulkTagCarro(ids, CARRO_ID)
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd).toBeDefined()
+    // D4 field isolation: the payload contains ONLY carro_id (no category_id key).
+    expect(upd!.payload).toEqual({ carro_id: CARRO_ID })
+    expect(upd!.inFilter).toEqual({ col: 'id', vals: ids })
+    const updates = calls.filter((c) => c.op === 'update')
+    expect(updates).toHaveLength(1)
+    expect(revalidatePath).toHaveBeenCalledWith('/extrato')
+  })
+
+  it('clears carro_id on a bulk-unlink (null) with no carro ownership read', async () => {
+    const r = await bulkTagCarro(TX_IDS, null)
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd!.payload).toEqual({ carro_id: null })
+    // No assertOwnedCarro / carros read on the unlink path.
+    expect(calls.some((c) => c.from === 'carros')).toBe(false)
+  })
+
+  it('guards an empty selection without touching the DB', async () => {
+    const r = await bulkTagCarro([], CARRO_ID)
+    expect(r).toEqual({ error: 'Nenhuma transação selecionada.' })
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('rejects a non-uuid selected id before updating (WR-06)', async () => {
+    const r = await bulkTagCarro(['not-a-uuid'], CARRO_ID)
+    expect('error' in r).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('rejects a non-uuid carro id before updating', async () => {
+    const r = await bulkTagCarro([TX_IDS[0]!], 'not-a-uuid')
+    expect('error' in r).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('rejects a forged/foreign carro before updating (IDOR no-write)', async () => {
+    ownedCarroIds = [] // assertOwnedCarro → 'not-owned'
+    const r = await bulkTagCarro(TX_IDS, CARRO_ID)
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('returns a generic retry error on a transient carro ownership failure (WR-04)', async () => {
+    carroOwnershipErrors = true // assertOwnedCarro → 'error'
+    const r = await bulkTagCarro(TX_IDS, CARRO_ID)
+    expect('error' in r).toBe(true)
+    expect((r as { error: string }).error).not.toBe('Carro inválido.')
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('gates on an absent session', async () => {
+    claimsSub = null
+    const r = await bulkTagCarro([TX_IDS[0]!], CARRO_ID)
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
 })
