@@ -206,6 +206,13 @@ describe('updateCarro', () => {
     expect(r).toEqual({ error: 'Sessão expirada.' })
     expect(calls.find((c) => c.op === 'update')).toBeUndefined()
   })
+
+  it('surfaces a generic retry message on a transient ownership-query error, NOT "Carro inválido." (WR-04)', async () => {
+    ownershipSelectResult = { data: null, error: { code: '08006' } } // assertOwnedCarro → 'error'
+    const r = await updateCarro(CARRO_ID, { apelido: 'A' })
+    expect(r).toEqual({ error: 'Não foi possível atualizar o carro. Tente novamente.' })
+    expect(calls.find((c) => c.op === 'update')).toBeUndefined()
+  })
 })
 
 // --- archiveCarro / unarchiveCarro ------------------------------------------
@@ -231,6 +238,13 @@ describe('archiveCarro', () => {
     ownershipSelectResult = { data: [], error: null }
     const r = await archiveCarro(CARRO_ID)
     expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(calls.find((c) => c.op === 'update')).toBeUndefined()
+  })
+
+  it('surfaces a generic retry message on a transient ownership-query error (WR-04)', async () => {
+    ownershipSelectResult = { data: null, error: { code: '08006' } }
+    const r = await archiveCarro(CARRO_ID)
+    expect(r).toEqual({ error: 'Não foi possível atualizar o carro. Tente novamente.' })
     expect(calls.find((c) => c.op === 'update')).toBeUndefined()
   })
 })

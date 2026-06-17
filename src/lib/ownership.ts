@@ -110,6 +110,12 @@ export async function assertOwnedMeiInvoice(
   return data.length === 1
 }
 
+/** Tri-state ownership result: distinguishes a transient query failure from a
+ * genuine zero-rows not-owned result so the caller can surface the right message
+ * (WR-04). Both `'error'` and `'not-owned'` are fail-safe — neither path issues a
+ * write — but only `'not-owned'` is the user's "this carro isn't yours" case. */
+export type OwnershipResult = 'owned' | 'not-owned' | 'error'
+
 /**
  * IDOR (Pitfall 6/7, T-08-06): verify the carro id belongs to the caller before any
  * write touches it (updateCarro / archiveCarro / unarchiveCarro now, and the
@@ -117,15 +123,21 @@ export async function assertOwnedMeiInvoice(
  * Postgres FKs are NOT RLS-aware — a forged carro_id pointing at another user's carro
  * satisfies the FK globally; the RLS-active client only returns the caller's own
  * carros, so a `select id where id = $1` returning exactly 1 row means owned; 0 rows
- * ⇒ not owned ⇒ reject. Verbatim clone of assertOwnedReserva retargeted to carros.
+ * ⇒ not owned ⇒ reject.
+ *
+ * WR-04: unlike the sibling boolean helpers, this distinguishes a transient DB/query
+ * error (`'error'`) from a genuine zero-rows not-owned result (`'not-owned'`). A
+ * legitimately-owned carro must NOT be reported "inválido" on a backend hiccup — the
+ * caller maps `'error'` to a generic "tente novamente". Both non-owned outcomes are
+ * fail-safe: no write is ever issued.
  */
 export async function assertOwnedCarro(
   supabase: Client,
   id: string,
-): Promise<boolean> {
+): Promise<OwnershipResult> {
   const { data, error } = await supabase.from('carros').select('id').eq('id', id)
-  if (error || !data) return false
-  return data.length === 1
+  if (error) return 'error'
+  return data?.length === 1 ? 'owned' : 'not-owned'
 }
 
 /**

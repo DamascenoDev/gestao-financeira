@@ -88,10 +88,12 @@ export async function updateCarro(
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
 
   // IDOR re-derive (Pitfall 6/7): a forged id not owned by the caller never reaches
-  // the `.eq('id', id)` update — no write is issued.
-  if (!(await assertOwnedCarro(supabase, id))) {
-    return { error: 'Carro inválido.' }
-  }
+  // the `.eq('id', id)` update — no write is issued. WR-04: a transient query error
+  // is NOT a "not owned" — surface a generic retry message instead of telling the
+  // user their legitimately-owned carro is invalid.
+  const owned = await assertOwnedCarro(supabase, id)
+  if (owned === 'error') return { error: 'Não foi possível atualizar o carro. Tente novamente.' }
+  if (owned === 'not-owned') return { error: 'Carro inválido.' }
 
   const { error } = await supabase
     .from('carros')
@@ -114,9 +116,11 @@ async function setArchived(id: string, archived: boolean): Promise<ActionResult>
   const { data: claims } = await supabase.auth.getClaims()
   if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
 
-  if (!(await assertOwnedCarro(supabase, id))) {
-    return { error: 'Carro inválido.' }
-  }
+  // WR-04: distinguish a transient query error from a genuine not-owned result so a
+  // backend hiccup on an owned carro doesn't surface as "Carro inválido."
+  const owned = await assertOwnedCarro(supabase, id)
+  if (owned === 'error') return { error: 'Não foi possível atualizar o carro. Tente novamente.' }
+  if (owned === 'not-owned') return { error: 'Carro inválido.' }
 
   const { error } = await supabase
     .from('carros')
