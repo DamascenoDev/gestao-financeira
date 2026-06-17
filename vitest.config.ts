@@ -10,6 +10,13 @@ export default defineConfig({
       // Match the tsconfig `@/*` path alias so test code can import app modules
       // by the same specifier the app uses (e.g. `@/lib/supabase/server`).
       '@': fileURLToPath(new URL('./src', import.meta.url)),
+      // The jsdom test environment resolves `server-only` to its browser build,
+      // which throws on import. Server-only modules (e.g. csv-profile.server.ts)
+      // are exercised here as plain Node modules, so alias the guard to a no-op so
+      // importing them under test does not trip the client-component guard (WR-04).
+      'server-only': fileURLToPath(
+        new URL('./node_modules/server-only/empty.js', import.meta.url),
+      ),
     },
   },
   test: {

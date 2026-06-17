@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { lookupMemory } from '@/lib/classifier/memory'
 import { suggestCategory } from '@/lib/classifier/suggest'
 import { csvHeaderSignature } from '@/lib/csv-profile'
+import { lookupCsvProfile } from '@/lib/csv-profile.server'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseBRLToCents } from '@/lib/money'
 import {
@@ -453,24 +454,6 @@ export async function saveCsvProfile(
   )
   if (error) return { error: 'Não foi possível salvar o perfil.' }
   return { ok: true }
-}
-
-/**
- * Point-read a saved CSV profile by header signature for silent reuse. Returns the
- * mapping on a hit (the dialog is skipped) or null on a miss. RLS scopes the read.
- */
-export async function lookupCsvProfile(
-  headerSignature: string,
-): Promise<CsvMapping | null> {
-  const supabase = await createClient()
-  const { data } = await supabase
-    .from('csv_import_profiles')
-    .select('mapping')
-    .eq('header_signature', headerSignature)
-    .maybeSingle()
-  if (!data?.mapping) return null
-  const parsed = csvMappingSchema.safeParse(data.mapping)
-  return parsed.success ? parsed.data : null
 }
 
 /** Resolve a confirm row's amount to positive integer cents (OFX cents | CSV BRL). */
