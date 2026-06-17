@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-17T00:41:00.000Z"
+last_updated: "2026-06-17T01:56:01Z"
 progress:
   total_phases: 6
-  completed_phases: 2
-  total_plans: 19
-  completed_plans: 17
-  percent: 37
+  completed_phases: 3
+  total_plans: 23
+  completed_plans: 19
+  percent: 52
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -21,20 +21,20 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 4 — Upload + classificação inteligente
+- **Current focus:** Phase 5 — Módulo MEI / DASN-SIMEI
 
 ## Current Position
 
-Phase: 4 (Upload + classificação inteligente) — EXECUTING
-Plan: 4 of 4 (04-01 substrate + 04-02 upload + 04-03 review/confirm/learn complete; 04-04 is the autonomous:false human-verify walkthrough)
+Phase: 5 (Módulo MEI / DASN-SIMEI) — EXECUTING
+Plan: 2 of 4
 
-- **Phase:** 1 — Fundação (auth, RLS, dinheiro, schema)
-- **Plan:** 01-03 complete (auth SSR vertical slice: @supabase/ssr 3-client split + getClaims() middleware, Zod-validated signIn/signUp/signOut actions, custom shadcn login/signup forms, protected (app) shell + logout-anywhere, dashboard real RLS categories read; live local round-trip OK; build + bundle gate GREEN); next is 01-04
-- **Status:** Executing Phase 4
-- **Progress:** Phase 0/6 complete (Phase 2: 3/5 plans — TXN-01/02/03/04 Complete)
+- **Phase:** 5 — Módulo MEI / DASN-SIMEI
+- **Plan:** 05-01 complete (MEI substrate: migrations 0025/0026 [mei_settings, mei_year_flags, mei_invoices + v_mei_year_summary security_invoker] applied LOCAL + types regen; pure libs rules.ts [SOLE source of the 4 verified 2026 numbers] + limit.ts + status.ts + csv.ts with SQL↔TS parity guard + never-hardcode grep gate clean; assertOwnedMeiInvoice IDOR; 4 local-DB Wave-0 tests [RLS isolation, report split+employee+limit parity, view-leak, IDOR]; full suite 430 GREEN, tsc + build clean; local stack left running); next is 05-02 (actions + dashboard slice)
+- **Status:** Executing Phase 5
+- **Progress:** Phase 3/6 complete (Phase 5: 1/4 plans — substrate Wave-0 GREEN)
 
 ```
-[··········] 0/6 phases
+[█████·····] 3/6 phases
 ```
 
 ## Performance Metrics
@@ -42,10 +42,10 @@ Plan: 4 of 4 (04-01 substrate + 04-02 upload + 04-03 review/confirm/learn comple
 | Metric | Value |
 |--------|-------|
 | Phases total | 6 |
-| Phases complete | 0 |
+| Phases complete | 3 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 17 |
+| Plans complete | 19 |
 
 ### Plan Execution Log
 
@@ -65,6 +65,7 @@ Plan: 4 of 4 (04-01 substrate + 04-02 upload + 04-03 review/confirm/learn comple
 | 4 | 01 | ~10 min | 3 | 31 created / 4 modified | 2026-06-16 |
 | 4 | 02 | ~13 min | 2 | 9 created / 6 modified | 2026-06-16 |
 | 4 | 03 | ~17 min | 2 | 7 created / 9 modified | 2026-06-16 |
+| 5 | 01 | ~1h | 3 | 14 created / 3 modified | 2026-06-17 |
 
 ## Accumulated Context
 
