@@ -70,11 +70,11 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 ### MEI
 
 - [ ] **MEI-01**: Usuário registra NF de serviço emitida (data, valor, tomador, descrição)
-- [ ] **MEI-02**: Sistema acompanha o faturamento anual vs limite R$81k, com cap proporcional no 1º ano e banda de tolerância de 20%
+- [x] **MEI-02**: Sistema acompanha o faturamento anual vs limite R$81k, com cap proporcional no 1º ano e banda de tolerância de 20%
 - [ ] **MEI-03**: Sistema modela a receita por tipo (comércio/indústria vs serviços) e flag de funcionário (campos exigidos pela DASN)
 - [ ] **MEI-04**: Sistema gera relatório anual consolidado para facilitar a declaração DASN-SIMEI
-- [ ] **MEI-05**: Usuário recebe alerta ao se aproximar do limite R$81k
-- [ ] **MEI-06**: Interface deixa claro que o módulo é informativo, não consultoria fiscal
+- [x] **MEI-05**: Usuário recebe alerta ao se aproximar do limite R$81k
+- [x] **MEI-06**: Interface deixa claro que o módulo é informativo, não consultoria fiscal
 
 ### Dados & Privacidade
 
@@ -157,11 +157,11 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | RSV-06 | Phase 4 | Complete (04-03) |
 | SEC-03 | Phase 4 | Complete (04-03 — seam + enum wrapper; LLM call deferred per CLS-02) |
 | MEI-01 | Phase 5 | Pending |
-| MEI-02 | Phase 5 | Pending |
+| MEI-02 | Phase 5 | Complete (05-02) |
 | MEI-03 | Phase 5 | Pending |
 | MEI-04 | Phase 5 | Pending |
-| MEI-05 | Phase 5 | Pending |
-| MEI-06 | Phase 5 | Pending |
+| MEI-05 | Phase 5 | Complete (05-02) |
+| MEI-06 | Phase 5 | Complete (05-02) |
 | DATA-01 | Phase 6 | Pending |
 | DATA-02 | Phase 6 | Pending |
 | SEC-01 | Phase 6 | Pending |
