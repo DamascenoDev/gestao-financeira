@@ -9,7 +9,7 @@ import Papa from 'papaparse'
 import { parseBRLToCents } from '@/lib/money'
 import { normalizeDescriptor } from '@/lib/normalize'
 import type { CsvMapping } from '@/lib/schemas/import'
-import type { RawTransaction } from './types'
+import { MAX_PARSED_ROWS, type ParseResult, type RawTransaction } from './types'
 
 /**
  * Convert a pt-BR 'DD/MM/YYYY' (or 'DD/MM/YY') date to civil 'YYYY-MM-DD'
@@ -51,13 +51,19 @@ export function parseCsvRaw(text: string): Record<string, string>[] {
 }
 
 /**
- * Parse CSV text into normalized RawTransaction[] using the column mapping. Header
- * mode + delimiter auto-detect. Each row maps mapping.dateCol → brDateToCivil,
+ * Parse CSV text into a ParseResult using the column mapping. Header mode +
+ * delimiter auto-detect. Each row maps mapping.dateCol → brDateToCivil,
  * mapping.valorCol → parseBRLToCents (comma decimal), mapping.descCol →
  * descriptor_raw; descriptor_norm via normalizeDescriptor. Rows whose mapped cells
- * are blank are skipped (trailing/empty lines).
+ * are all blank are skipped (trailing/empty lines).
+ *
+ * CR-01: parsing is RESILIENT. A row whose date/valor cell fails the field
+ * converters (a non-pt-BR date, a non-money valor — e.g. a header papaparse
+ * mis-detected, a trailing balance line) is SKIPPED and counted in `dropped`,
+ * never thrown — one garbage line never aborts the whole parse. WR-02: parsing
+ * stops at MAX_PARSED_ROWS and flags `capped`.
  */
-export function parseCsv(text: string, mapping: CsvMapping): RawTransaction[] {
+export function parseCsv(text: string, mapping: CsvMapping): ParseResult {
   const { data } = Papa.parse<Record<string, string>>(text, {
     header: true,
     skipEmptyLines: true,
@@ -66,18 +72,29 @@ export function parseCsv(text: string, mapping: CsvMapping): RawTransaction[] {
   })
 
   const rows: RawTransaction[] = []
+  let dropped = 0
+  let capped = false
   for (const r of data) {
+    if (rows.length >= MAX_PARSED_ROWS) {
+      capped = true
+      break
+    }
     const dateCell = (r[mapping.dateCol] ?? '').trim()
     const valorCell = (r[mapping.valorCol] ?? '').trim()
     const descCell = (r[mapping.descCol] ?? '').trim()
     if (!dateCell && !valorCell && !descCell) continue
 
-    rows.push({
-      occurred_on: brDateToCivil(dateCell),
-      amount_cents: parseBRLToCents(valorCell),
-      descriptor_raw: descCell,
-      descriptor_norm: normalizeDescriptor(descCell),
-    })
+    try {
+      rows.push({
+        occurred_on: brDateToCivil(dateCell),
+        amount_cents: parseBRLToCents(valorCell),
+        descriptor_raw: descCell,
+        descriptor_norm: normalizeDescriptor(descCell),
+      })
+    } catch {
+      // A malformed row (bad date / non-money valor) is skipped, not fatal.
+      dropped += 1
+    }
   }
-  return rows
+  return { rows, dropped, capped }
 }

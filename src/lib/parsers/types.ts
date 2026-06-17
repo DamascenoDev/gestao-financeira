@@ -3,6 +3,35 @@
 // (Plan 02) hands the review table after dedup + memory classification. Interface
 // -first so the parsers, the ingest action, and the review table all agree.
 
+/**
+ * WR-02: hard cap on the number of transactions a single statement may contribute.
+ * A hostile file with hundreds of thousands of tiny `<STMTTRN>` blocks is cheap to
+ * generate yet would produce an unbounded in-memory array, an enormous `parsed_rows`
+ * jsonb write, and N sequential DB round-trips. The parsers stop at this cap; the
+ * ingest action rejects the file with a friendly message when it is reached so the
+ * truncation is never silent.
+ */
+export const MAX_PARSED_ROWS = 10_000
+
+/**
+ * The result of parsing a whole statement (CR-01). A malformed row (bad date /
+ * amount) is SKIPPED, never thrown — `rows` holds the usable transactions and
+ * `dropped` counts the rows that failed to parse, so the ingest summary can report
+ * honestly (e.g. a file that parsed 0 usable rows out of N) instead of silently
+ * importing nothing or aborting the whole upload on the first bad line.
+ */
+export interface ParseResult {
+  rows: RawTransaction[]
+  /** Count of rows skipped because a field (date/amount) failed to parse. */
+  dropped: number
+  /**
+   * WR-02: true when the statement carried more usable rows than MAX_PARSED_ROWS,
+   * so parsing stopped early. The ingest action rejects a capped result with a
+   * friendly message rather than importing a silently-truncated statement.
+   */
+  capped: boolean
+}
+
 /** A normalized statement row, parser output (Supabase-free, pure). */
 export interface RawTransaction {
   /** Civil date 'YYYY-MM-DD' (SP). */

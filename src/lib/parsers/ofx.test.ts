@@ -42,10 +42,12 @@ describe('ofxAmountToCents (dot-decimal, NOT parseBRLToCents)', () => {
 })
 
 describe('parseOfx — itau fixture', () => {
-  const rows = parseOfx(itauText)
+  const { rows, dropped, capped } = parseOfx(itauText)
 
   it('extracts all three STMTTRN rows', () => {
     expect(rows).toHaveLength(3)
+    expect(dropped).toBe(0)
+    expect(capped).toBe(false)
   })
 
   it('maps the first STMTTRN to the normalized row (date, cents, descriptor, fitid)', () => {
@@ -66,5 +68,43 @@ describe('parseOfx — itau fixture', () => {
     const uber = rows[2]!
     expect(uber.fitid).toBe('20260120003')
     expect(uber.amount_cents).toBe(8900)
+  })
+})
+
+// CR-01: parse robustness — a malformed STMTTRN (garbage DTPOSTED/TRNAMT) is
+// SKIPPED and counted, never thrown. The phase's top-priority concern: one bad
+// line must not abort the whole import.
+describe('parseOfx — hostile/malformed fixture degrades gracefully (CR-01)', () => {
+  const hostileText = readFileSync(
+    join(process.cwd(), 'tests/fixtures/hostile-sample.ofx'),
+    'latin1',
+  )
+
+  it('does not throw on garbage dates/amounts', () => {
+    expect(() => parseOfx(hostileText)).not.toThrow()
+  })
+
+  it('keeps the good rows and counts the bad ones as dropped', () => {
+    const { rows, dropped } = parseOfx(hostileText)
+    // PADARIA (good) + SPOTIFY (good) survive; the 3 garbage blocks are dropped.
+    expect(rows).toHaveLength(2)
+    expect(dropped).toBe(3)
+    expect(rows.map((r) => r.fitid)).toEqual(['20260131001', '20260118004'])
+  })
+
+  it('a file of ALL-malformed rows yields 0 usable rows but never throws', () => {
+    const allBad = `<OFX><STMTTRN><DTPOSTED>00000000<TRNAMT>N/A<FITID>x</STMTTRN>` +
+      `<STMTTRN><DTPOSTED>garbage<TRNAMT>nope<FITID>y</STMTTRN></OFX>`
+    const { rows, dropped } = parseOfx(allBad)
+    expect(rows).toHaveLength(0)
+    expect(dropped).toBe(2)
+  })
+
+  it('a truncated file (mid-block, no closing tag) parses what it can without crashing', () => {
+    const truncated = hostileText.slice(0, hostileText.indexOf('SPOTIFY'))
+    expect(() => parseOfx(truncated)).not.toThrow()
+    const { rows } = parseOfx(truncated)
+    // The one well-formed, fully-closed block before the cut survives.
+    expect(rows.map((r) => r.fitid)).toEqual(['20260131001'])
   })
 })

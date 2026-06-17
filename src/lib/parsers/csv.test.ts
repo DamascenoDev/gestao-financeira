@@ -31,10 +31,12 @@ describe('brDateToCivil', () => {
 })
 
 describe('parseCsv — generic-bank fixture (pt-BR comma decimal + DD/MM)', () => {
-  const rows = parseCsv(fixture('generic-bank.csv'), MAPPING)
+  const { rows, dropped, capped } = parseCsv(fixture('generic-bank.csv'), MAPPING)
 
   it('parses all three rows', () => {
     expect(rows).toHaveLength(3)
+    expect(dropped).toBe(0)
+    expect(capped).toBe(false)
   })
 
   it('maps comma-decimal money via parseBRLToCents (NOT dot-decimal)', () => {
@@ -67,11 +69,35 @@ describe('readCsvHeaders — ambiguous-cols fixture (drives the mapper)', () => 
 
 describe('parseCsv — injection fixture parses to a plain row', () => {
   it('yields an ordinary normalized row (the seam null-handles classification)', () => {
-    const rows = parseCsv(fixture('injection.csv'), MAPPING)
+    const { rows } = parseCsv(fixture('injection.csv'), MAPPING)
     expect(rows).toHaveLength(1)
     expect(rows[0]!.amount_cents).toBe(4200)
     expect(rows[0]!.descriptor_raw).toContain('IGNORE INSTRUCTIONS')
     // descriptor_norm is just a normalized string — no special handling at parse.
     expect(typeof rows[0]!.descriptor_norm).toBe('string')
+  })
+})
+
+// CR-01: parse robustness — a malformed row (non-pt-BR date, non-money valor) is
+// SKIPPED and counted, never thrown. One bad line must not abort the whole import.
+describe('parseCsv — hostile/malformed fixture degrades gracefully (CR-01)', () => {
+  it('does not throw on garbage dates/amounts', () => {
+    expect(() => parseCsv(fixture('hostile-sample.csv'), MAPPING)).not.toThrow()
+  })
+
+  it('keeps the good rows and counts the bad ones as dropped', () => {
+    const { rows, dropped } = parseCsv(fixture('hostile-sample.csv'), MAPPING)
+    // PADARIA + SPOTIFY are well-formed; the bad-date, bad-amount, ISO-date, and
+    // non-money rows are dropped. The all-blank line is skipped (not counted).
+    expect(rows).toHaveLength(2)
+    expect(rows.map((r) => r.occurred_on)).toEqual(['2026-01-31', '2026-01-18'])
+    expect(dropped).toBe(4)
+  })
+
+  it('a file of ALL-malformed rows yields 0 usable rows but never throws', () => {
+    const allBad = 'Data;Histórico;Valor\nbad;X;nope\n2026-01-01;Y;abc\n'
+    const { rows, dropped } = parseCsv(allBad, MAPPING)
+    expect(rows).toHaveLength(0)
+    expect(dropped).toBe(2)
   })
 })

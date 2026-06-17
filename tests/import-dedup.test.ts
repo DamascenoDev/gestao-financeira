@@ -85,8 +85,8 @@ describe('IMP-04 file-level idempotency: re-upload same bytes ⇒ "0 novas"', ()
 
 describe('IMP-04 transaction-level: cross-statement dedupe_key collapse', () => {
   it('the same OFX FITID yields the same dedupe_key across itau and nubank', () => {
-    const itauRows = parseOfx(ofx('itau-sample.ofx'))
-    const nuRows = parseOfx(ofx('nubank-sample.ofx'))
+    const itauRows = parseOfx(ofx('itau-sample.ofx')).rows
+    const nuRows = parseOfx(ofx('nubank-sample.ofx')).rows
     const itauUber = itauRows.find((r) => r.fitid === '20260120003')!
     const nuUber = nuRows.find((r) => r.fitid === '20260120003')!
     expect(itauUber).toBeTruthy()

@@ -10,7 +10,7 @@
 // the ingest action, Plan 02) so this stays a pure string→rows function.
 
 import { normalizeDescriptor } from '@/lib/normalize'
-import type { RawTransaction } from './types'
+import { MAX_PARSED_ROWS, type ParseResult, type RawTransaction } from './types'
 
 /**
  * Convert an OFX DTPOSTED ('YYYYMMDD' optionally followed by 'HHMMSS[.xxx][TZ]')
@@ -50,20 +50,31 @@ function readTag(block: string, tag: string): string | undefined {
 }
 
 /**
- * Parse OFX text into normalized RawTransaction[]. Walks every <STMTTRN> block and
- * extracts TRNTYPE/DTPOSTED/TRNAMT/FITID/NAME/MEMO. descriptor_raw prefers MEMO
- * then NAME (Pitfall 5: MEMO carries the richer merchant string); descriptor_norm
- * is normalizeDescriptor(descriptor_raw). Handles single-vs-many STMTTRN, latin1
+ * Parse OFX text into a ParseResult. Walks every <STMTTRN> block and extracts
+ * TRNTYPE/DTPOSTED/TRNAMT/FITID/NAME/MEMO. descriptor_raw prefers MEMO then NAME
+ * (Pitfall 5: MEMO carries the richer merchant string); descriptor_norm is
+ * normalizeDescriptor(descriptor_raw). Handles single-vs-many STMTTRN, latin1
  * (already decoded by the caller), and multi-line MEMO (the value is read up to the
  * line break, matching how BR exports lay out STMTTRN leaves one-per-line).
+ *
+ * CR-01: parsing is RESILIENT. A block whose DTPOSTED/TRNAMT fails the field
+ * converters is SKIPPED and counted in `dropped` — one garbage line never aborts
+ * the whole parse. WR-02: parsing stops at MAX_PARSED_ROWS and flags `capped` so a
+ * hostile file with an unbounded number of blocks cannot exhaust memory.
  */
-export function parseOfx(text: string): RawTransaction[] {
+export function parseOfx(text: string): ParseResult {
   const rows: RawTransaction[] = []
+  let dropped = 0
+  let capped = false
   // Each transaction lives in a <STMTTRN>...</STMTTRN> block. The closing tag is
   // present in well-formed OFX; we split defensively on the opening tag too.
   const blockRe = /<STMTTRN>([\s\S]*?)<\/STMTTRN>/gi
   let match: RegExpExecArray | null
   while ((match = blockRe.exec(text)) !== null) {
+    if (rows.length >= MAX_PARSED_ROWS) {
+      capped = true
+      break
+    }
     const block = match[1] ?? ''
     const dtposted = readTag(block, 'DTPOSTED')
     const trnamt = readTag(block, 'TRNAMT')
@@ -73,13 +84,18 @@ export function parseOfx(text: string): RawTransaction[] {
     const name = readTag(block, 'NAME')
     const descriptor_raw = (memo ?? name ?? '').trim()
 
-    rows.push({
-      occurred_on: ofxDateToCivil(dtposted),
-      amount_cents: ofxAmountToCents(trnamt),
-      descriptor_raw,
-      descriptor_norm: normalizeDescriptor(descriptor_raw),
-      fitid: readTag(block, 'FITID'),
-    })
+    try {
+      rows.push({
+        occurred_on: ofxDateToCivil(dtposted),
+        amount_cents: ofxAmountToCents(trnamt),
+        descriptor_raw,
+        descriptor_norm: normalizeDescriptor(descriptor_raw),
+        fitid: readTag(block, 'FITID'),
+      })
+    } catch {
+      // A malformed STMTTRN (garbage DTPOSTED/TRNAMT) is skipped, not fatal.
+      dropped += 1
+    }
   }
-  return rows
+  return { rows, dropped, capped }
 }
