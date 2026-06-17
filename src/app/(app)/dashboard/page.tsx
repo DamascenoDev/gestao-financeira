@@ -1,7 +1,15 @@
 import { AdherenceRow, type AdherenceRowData } from '@/components/adherence-row'
 import { AdherenceSummaryStrip } from '@/components/adherence-summary-strip'
+import {
+  CategoryDistributionChart,
+  type CategoryDistributionDatum,
+} from '@/components/category-distribution-chart'
 import { MetaDialog, type MetaCategory } from '@/components/meta-dialog'
 import { PeriodTabs } from '@/components/period-tabs'
+import {
+  ReceitaGastoChart,
+  type ReceitaGastoDatum,
+} from '@/components/receita-gasto-chart'
 import { Button } from '@/components/ui/button'
 import {
   Empty,
@@ -10,11 +18,18 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
+import {
+  Card,
+  CardContent,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card'
 import { directionForKind, type Direction } from '@/lib/adherence'
 import { centsToBigInt } from '@/lib/money'
 import {
   currentYear,
   monthLabel,
+  shiftMonthKey,
   toMonthKeyOrCurrent,
 } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
@@ -175,9 +190,16 @@ export default async function DashboardPage({
 
   const supabase = await createClient()
 
+  // ~12-month window (SP-pinned via month.ts) for the receita-vs-gasto evolution
+  // chart: the current month back through 11 prior months, oldest → newest.
+  const chartMonthKeys: string[] = Array.from({ length: 12 }, (_, i) =>
+    shiftMonthKey(mes, i - 11),
+  )
+
   // RLS-scoped reads: the server client runs under the user's JWT, so the
   // security_invoker views (0014) return ONLY this user's rows.
-  const [monthRes, ytdRes, categoriesRes, incomeRes] = await Promise.all([
+  const [monthRes, ytdRes, categoriesRes, incomeRes, incomeSeriesRes, categoryTotalsRes, allCategoriesRes] =
+    await Promise.all([
     supabase
       .from('v_adherence_month')
       .select(
@@ -202,6 +224,22 @@ export default async function DashboardPage({
       .select('total_cents')
       .eq('month_key', mes)
       .maybeSingle(),
+    // Chart data — existing views only, no new query/view/migration:
+    // receita per month across the 12-month window.
+    supabase
+      .from('v_income_month')
+      .select('month_key, total_cents')
+      .in('month_key', chartMonthKeys),
+    // gasto per (month, category) across the window — summed to a monthly gasto
+    // (consumo categories) for the evolution chart and filtered to `mes` for the
+    // category-distribution donut.
+    supabase
+      .from('v_category_totals')
+      .select('month_key, category_id, total_cents')
+      .in('month_key', chartMonthKeys),
+    // Category kind + name for ALL categories (incl. archived) so historical
+    // transactions classify correctly into gasto (consumo) and carry a label.
+    supabase.from('categories').select('id, name, kind'),
   ])
 
   const error = monthRes.error || ytdRes.error
@@ -234,6 +272,63 @@ export default async function DashboardPage({
     categoryRows.map((c) => [c.id, c.color]),
   )
 
+  // ---- Chart data (UI-04 / UI-05) — derived from existing-view reads only. ----
+  type AllCategory = { id: string; name: string; kind: string }
+  const allCategories = (allCategoriesRes.data ?? []) as AllCategory[]
+  const kindById = new Map(allCategories.map((c) => [c.id, c.kind]))
+  const nameById = new Map(allCategories.map((c) => [c.id, c.name]))
+
+  type IncomeMonthRow = { month_key: string | null; total_cents: number | null }
+  type CategoryTotalRow = {
+    month_key: string | null
+    category_id: string | null
+    total_cents: number | null
+  }
+  const incomeSeries = (incomeSeriesRes.data ?? []) as IncomeMonthRow[]
+  const categoryTotals = (categoryTotalsRes.data ?? []) as CategoryTotalRow[]
+
+  // receita per month (Number cents — chart values stay within the safe integer
+  // range; formatCents guards the boundary).
+  const receitaByMonth = new Map<string, number>()
+  for (const r of incomeSeries) {
+    if (r.month_key) receitaByMonth.set(r.month_key, Number(r.total_cents ?? 0))
+  }
+  // gasto per month = Σ consumo-category totals (alocação is a transfer, not gasto).
+  const gastoByMonth = new Map<string, number>()
+  for (const r of categoryTotals) {
+    if (!r.month_key) continue
+    if (r.category_id && kindById.get(r.category_id) !== 'consumo') continue
+    gastoByMonth.set(
+      r.month_key,
+      (gastoByMonth.get(r.month_key) ?? 0) + Number(r.total_cents ?? 0),
+    )
+  }
+  const shortMonthLabel = (key: string) => monthLabel(key).split(' ')[0]!.slice(0, 3)
+  const receitaGastoData: ReceitaGastoDatum[] = chartMonthKeys.map((key) => ({
+    mes: shortMonthLabel(key),
+    receita: receitaByMonth.get(key) ?? 0,
+    gasto: gastoByMonth.get(key) ?? 0,
+  }))
+  const hasReceitaGastoData = receitaGastoData.some(
+    (d) => d.receita > 0 || d.gasto > 0,
+  )
+
+  // category distribution for the selected month (consumo gasto by categoria).
+  const distributionData: CategoryDistributionDatum[] = categoryTotals
+    .filter(
+      (r) =>
+        r.month_key === mes &&
+        (!r.category_id || kindById.get(r.category_id) === 'consumo'),
+    )
+    .map((r) => ({
+      categoria: r.category_id
+        ? (nameById.get(r.category_id) ?? 'Sem categoria')
+        : 'Sem categoria',
+      cents: Number(r.total_cents ?? 0),
+    }))
+    .filter((d) => d.cents > 0)
+    .sort((a, b) => b.cents - a.cents)
+
   const hasMetas = monthRows.length > 0 || ytdRows.length > 0
 
   const month = buildRows(monthRows, colorById)
@@ -261,6 +356,33 @@ export default async function DashboardPage({
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-xl font-semibold">Metas e aderência</h1>
         {metaDialog}
+      </div>
+
+      {/* Data-viz (UI-04 / UI-05): evolução receita-vs-gasto + distribuição por
+          categoria do mês. 2-col em lg, empilhado abaixo de md. Each chart carries
+          its own labeled total/legend (the chart is never the sole carrier). */}
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle>Evolução mensal</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <ReceitaGastoChart
+              data={hasReceitaGastoData ? receitaGastoData : []}
+            />
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader>
+            <CardTitle>Gastos por categoria — {monthLabel(mes)}</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <CategoryDistributionChart
+              data={distributionData}
+              mes={monthLabel(mes)}
+            />
+          </CardContent>
+        </Card>
       </div>
 
       {error ? (
