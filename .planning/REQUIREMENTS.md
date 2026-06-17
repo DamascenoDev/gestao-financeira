@@ -106,7 +106,7 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 ### Polimento & Mobile
 
 - [x] **UI-07**: Refinamento mobile-first de todas as telas (tabelas densas → cards, nav adapta) — 07-02 (BottomNav nav adapta) + 07-04 (4 tabelas → cards <md)
-- [ ] **UI-08**: Empty/loading/error states + micro-interações/transições consistentes em todas as telas
+- [x] **UI-08**: Empty/loading/error states + micro-interações/transições consistentes em todas as telas — 07-06 (TableSkeleton/CardSkeleton/ChartSkeleton sobre shadcn skeleton + loading.tsx por segmento dashboard/extrato/mei + gramática Empty/text-destructive confirmada nas ~20 rotas, 0 spinners, foco gold --ring, reduced-motion)
 
 ## v2 Requirements
 
@@ -191,6 +191,9 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | UI-04 | Phase 7 | Complete (07-03: ReceitaGastoChart recharts no dashboard, lendo views existentes) |
 | UI-05 | Phase 7 | Complete (07-03: CategoryDistributionChart donut --chart-1..5 no dashboard) |
 | UI-06 | Phase 7 | Complete (07-03: LimiteGauge/AdherenceBar direction-aware via token-swap 07-01) |
+| UI-03 | Phase 7 | Complete (07-02 chrome/brand + 07-05 AuthShell login/landing + favicon) |
+| UI-07 | Phase 7 | Complete (07-02 BottomNav nav adapta + 07-04 4 tabelas → cards <md) |
+| UI-08 | Phase 7 | Complete (07-06: skeletons sobre shadcn skeleton + loading.tsx por segmento + gramática empty/error confirmada, 0 spinners) |
 
 **Coverage:**
 - v1 requirements: 47 total
