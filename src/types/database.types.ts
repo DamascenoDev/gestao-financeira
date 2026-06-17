@@ -374,10 +374,12 @@ export type Database = {
           format: string
           id: string
           original_filename: string
+          parsed_rows: Json | null
           period_end: string | null
           period_start: string | null
           status: string
           storage_path: string
+          summary: Json | null
           tx_count: number
           user_id: string
         }
@@ -387,10 +389,12 @@ export type Database = {
           format: string
           id?: string
           original_filename?: string
+          parsed_rows?: Json | null
           period_end?: string | null
           period_start?: string | null
           status?: string
           storage_path: string
+          summary?: Json | null
           tx_count?: number
           user_id: string
         }
@@ -400,10 +404,12 @@ export type Database = {
           format?: string
           id?: string
           original_filename?: string
+          parsed_rows?: Json | null
           period_end?: string | null
           period_start?: string | null
           status?: string
           storage_path?: string
+          summary?: Json | null
           tx_count?: number
           user_id?: string
         }
