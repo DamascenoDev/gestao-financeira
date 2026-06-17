@@ -287,31 +287,36 @@ export default async function DashboardPage({
   const incomeSeries = (incomeSeriesRes.data ?? []) as IncomeMonthRow[]
   const categoryTotals = (categoryTotalsRes.data ?? []) as CategoryTotalRow[]
 
-  // receita per month (Number cents — chart values stay within the safe integer
-  // range; formatCents guards the boundary).
-  const receitaByMonth = new Map<string, number>()
+  // receita per month (MD-04: aggregate on bigint via centsToBigInt — never a
+  // lossy Number() cast — and cast to Number only at the chart-datum boundary
+  // below, where Recharts requires a plain number).
+  const receitaByMonth = new Map<string, bigint>()
   for (const r of incomeSeries) {
-    if (r.month_key) receitaByMonth.set(r.month_key, Number(r.total_cents ?? 0))
+    if (r.month_key) receitaByMonth.set(r.month_key, centsToBigInt(r.total_cents))
   }
   // gasto per month = Σ consumo-category totals (alocação is a transfer, not gasto).
-  const gastoByMonth = new Map<string, number>()
+  const gastoByMonth = new Map<string, bigint>()
   for (const r of categoryTotals) {
     if (!r.month_key) continue
     if (r.category_id && kindById.get(r.category_id) !== 'consumo') continue
     gastoByMonth.set(
       r.month_key,
-      (gastoByMonth.get(r.month_key) ?? 0) + Number(r.total_cents ?? 0),
+      (gastoByMonth.get(r.month_key) ?? 0n) + centsToBigInt(r.total_cents),
     )
   }
   const shortMonthLabel = (key: string) => monthLabel(key).split(' ')[0]!.slice(0, 3)
   const receitaGastoData: ReceitaGastoDatum[] = chartMonthKeys.map((key) => ({
     mes: shortMonthLabel(key),
-    receita: receitaByMonth.get(key) ?? 0,
-    gasto: gastoByMonth.get(key) ?? 0,
+    receita: Number(receitaByMonth.get(key) ?? 0n),
+    gasto: Number(gastoByMonth.get(key) ?? 0n),
   }))
-  const hasReceitaGastoData = receitaGastoData.some(
-    (d) => d.receita > 0 || d.gasto > 0,
-  )
+  // WR-02: gate the empty state on whether ANY source rows existed in the window,
+  // not on the post-filter receita/gasto sums. The sum-based gate showed the
+  // "Sem dados" copy even when the user had activity that nets to zero in both
+  // series (e.g. only alocação transfers, which are correctly excluded from gasto
+  // and have no matching receita). "Has any row" is the truthful contract.
+  const hasReceitaGastoData =
+    incomeSeries.length > 0 || categoryTotals.length > 0
 
   // category distribution for the selected month (consumo gasto by categoria).
   const distributionData: CategoryDistributionDatum[] = categoryTotals
@@ -324,7 +329,9 @@ export default async function DashboardPage({
       categoria: r.category_id
         ? (nameById.get(r.category_id) ?? 'Sem categoria')
         : 'Sem categoria',
-      cents: Number(r.total_cents ?? 0),
+      // MD-04: coerce via centsToBigInt then cast to Number only at the datum
+      // boundary (Recharts needs a plain number), never a raw lossy Number().
+      cents: Number(centsToBigInt(r.total_cents)),
     }))
     .filter((d) => d.cents > 0)
     .sort((a, b) => b.cents - a.cents)
