@@ -199,7 +199,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 - [x] **Phase 8: Substrato Carro + CRUD + navegação** - Tabelas/views/RLS do carro + coluna `carro_id`; usuário cadastra/edita/arquiva carros e navega para `/carros` (3/3 plans ✓ 2026-06-17)
 - [x] **Phase 9: Etiquetar gastos da fatura ao carro** - Usuário etiqueta lançamentos a um carro via form e via ação no extrato, sem alterar categoria/metas (lente não-destrutiva) (1/3 plans — 09-01 contrato server ✓ 2026-06-17) (completed 2026-06-17)
 - [x] **Phase 10: Abastecimento híbrido + consumo** - Usuário registra abastecimento (custo da fatura OU manual, XOR) com odômetro/litros/tanque-cheio; sistema calcula km/l e R$/km (completed 2026-06-17)
-- [ ] **Phase 11: Detalhe do carro + gráfico de consumo** - Detalhe do carro com gasto total, histórico de abastecimentos e gráfico de consumo km/l no tempo
+- [x] **Phase 11: Detalhe do carro + gráfico de consumo** - Detalhe do carro com gasto total, histórico de abastecimentos e gráfico de consumo km/l no tempo (completed 2026-06-17)
 
 ### Phase 8: Substrato Carro + CRUD + navegação
 
@@ -280,12 +280,13 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
   4. Um gráfico de consumo (recharts via shadcn chart) plota km/l ao longo do tempo, token-aware e com tooltip pt-BR
   5. Empty/loading/error states seguem o padrão da Phase 7 (skeletons, nunca spinner; valores em pt-BR `R$`)
 
-**Plans**: 4 plans
+**Plans**: 4/4 plans complete
 
   - [x] 11-01-PLAN.md — [Wave 1] componentes net-new: CarroConsumoChart (linha km/l no tempo, recharts via shadcn chart, token-aware --chart-1, tooltip pt-BR via kmPerLitroLabel + consumoTooltipFormatter, pontos null/0-omitidos, empty pt-BR) + CarroCategoriaBars (barras de magnitude neutras bg-muted-foreground, ordem valor desc, label formatCents mono, empty line) + Wave-0 component tests (data/empty/pt-BR/null/ordem/magnitude); suíte 729 passed, tsc limpo (CAR-05.2/CAR-05.4) ✓ 2026-06-17
   - [x] 11-02-PLAN.md — [Wave 1] lista /carros: CarroCardData += gastoTotalCents/kmPorLitroMedio + strip KPI aditivo (mono tabular-nums, '—' null) + RSC lê v_carro_resumo RLS-scoped (gasto 0 → '—', nunca R$ 0,00); identidade/ações intactas; 3 Wave-0 tests green, suíte 732 passed, tsc limpo, build exit 0 (CAR-05.2) ✓ 2026-06-17
   - [x] 11-03-PLAN.md — [Wave 2] detalhe /carros/[id] enriquecido: 3 KPI cards (km/l médio · R$/km · gasto total de v_carro_resumo) + agregação INLINE gasto-por-categoria (sem view nova — 1 consumidor, RLS-scoped; integration test sums/isolamento-userB-zero/D4 não-destrutivo) → CarroCategoriaBars + CarroConsumoChart de v_abastecimento_consumo (série cronológica, intervalos null dropados) + AbastecimentoHistory Phase-10 integrado verbatim; re-auditoria SEC-01 bundle-secret exit 0 em build fresco; WR-02 documentado como limitação conhecida (não corrigido); suíte 735 passed, tsc limpo, build exit 0 (CAR-05.1/.2/.4) ✓ 2026-06-17
-  - [ ] 11-04-PLAN.md — [Wave 3, autonomous:false] phase gate (suíte + tsc + build + secret-audit) + human-verify visual: chart/bars/KPI cards/list KPIs em light+dark+mobile (recharts SVG/cores/flip/tooltip não medíveis em jsdom)
+  - [x] 11-04-PLAN.md — [Wave 3, autonomous:false] phase gate (suíte + tsc + build + secret-audit) + human-verify visual: chart/bars/KPI cards/list KPIs em light+dark+mobile (recharts SVG/cores/flip/tooltip não medíveis em jsdom)
+
 **UI hint**: yes
 
 ## Progress
@@ -302,7 +303,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
 | 9. Etiquetar gastos da fatura ao carro | 3/3 | Complete    | 2026-06-17 |
 | 10. Abastecimento híbrido + consumo | 3/3 | Complete    | 2026-06-17 |
-| 11. Detalhe do carro + gráfico de consumo | 3/4 | In progress | - |
+| 11. Detalhe do carro + gráfico de consumo | 4/4 | Complete   | 2026-06-17 |
 
 ## Dependencies & Parallelization
 
