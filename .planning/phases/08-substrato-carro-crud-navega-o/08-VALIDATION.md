@@ -40,9 +40,9 @@ Build gate: `npm run build`. Type gate: `npx tsc --noEmit`. Types regen: `npm ru
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Status |
 |---------|------|------|-------------|-----------|-------------------|--------|
-| 08-01 T1 (migration 0027) | 08-01 | 1 | CAR-01/06 | grep gate (SQL structure) | `grep` XOR + security_invoker + carro_id SET NULL + 2 tables in `0027_carros.sql` | ⬜ pending |
-| 08-01 T2 (apply + types) | 08-01 | 1 | CAR-01/06 | type gate + no-drift grep | `grep carros/abastecimentos/carro_id/v_abastecimento_consumo` + `npx tsc --noEmit` | ⬜ pending |
-| 08-01 T3 (Wave-0 RLS + view-leak) | 08-01 | 1 | CAR-01/06 | integration (local stack) | `npm test -- tests/carro-rls.test.ts tests/carro-view-leak.test.ts` | ⬜ pending |
+| 08-01 T1 (migration 0027) | 08-01 | 1 | CAR-01/06 | grep gate (SQL structure) | `grep` XOR + security_invoker + carro_id SET NULL + 2 tables in `0027_carros.sql` | ✅ green |
+| 08-01 T2 (apply + types) | 08-01 | 1 | CAR-01/06 | type gate + no-drift grep | `grep carros/abastecimentos/carro_id/v_abastecimento_consumo` + `npx tsc --noEmit` | ✅ green |
+| 08-01 T3 (Wave-0 RLS + view-leak) | 08-01 | 1 | CAR-01/06 | integration (local stack) | `npm test -- tests/carro-rls.test.ts tests/carro-view-leak.test.ts` | ✅ green |
 | 08-02 T1 (schema + assertOwnedCarro) | 08-02 | 2 | CAR-01 | type gate + grep | `npx tsc --noEmit` + `grep assertOwnedCarro/carroSchema` | ⬜ pending |
 | 08-02 T2 (carros actions) | 08-02 | 2 | CAR-01 | action unit | `npm test -- src/actions/carros.test.ts` + `npx tsc --noEmit` | ⬜ pending |
 | 08-03 T1 (nav entries) | 08-03 | 3 | CAR-06 | grep + type gate | `grep /carros + Car` in sidebar/bottom-nav + `npx tsc --noEmit` | ⬜ pending |
@@ -55,8 +55,8 @@ Build gate: `npm run build`. Type gate: `npx tsc --noEmit`. Types regen: `npm ru
 
 ## Wave 0 Requirements
 
-- [ ] `tests/carro-rls.test.ts` — 2-user RLS isolation across `carros`, `abastecimentos`, and `transactions.carro_id` (User B reads zero), PLUS the DB-level constraint negatives: cost XOR CHECK (both/neither rejected) and the partial unique index on `transaction_id` (double-link rejected). [Plan 08-01 Task 3]
-- [ ] `tests/carro-view-leak.test.ts` — security_invoker proof for `v_abastecimento_consumo` + `v_carro_resumo` (User A sees own rows, User B reads zero). [Plan 08-01 Task 3]
+- [x] `tests/carro-rls.test.ts` — 2-user RLS isolation across `carros`, `abastecimentos`, and `transactions.carro_id` (User B reads zero), PLUS the DB-level constraint negatives: cost XOR CHECK (both/neither rejected) and the partial unique index on `transaction_id` (double-link rejected). [Plan 08-01 Task 3] ✅ green (7 tests)
+- [x] `tests/carro-view-leak.test.ts` — security_invoker proof for `v_abastecimento_consumo` + `v_carro_resumo` (User A sees own rows, User B reads zero). [Plan 08-01 Task 3] ✅ green (4 tests)
 - [ ] `src/actions/carros.test.ts` — action unit tests (Zod gate, session gate, IDOR no-write on forged id, { ok } | { error } shape). [Plan 08-02 Task 2]
 
 *Existing infra reused:* the `tests/helpers/local-supabase.ts` harness (readLocalConfig/serviceClient/userClient/createUser) covers the local-stack lifecycle; the mei-invoice-rls / mei-view-leak tests are the clone templates. The ~599 existing suite is the regression gate.
