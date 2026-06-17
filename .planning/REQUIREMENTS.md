@@ -145,17 +145,17 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | RSV-05 | Phase 3 | Complete (03-04) |
 | IMP-01 | Phase 4 | Pending |
 | IMP-02 | Phase 4 | Pending |
-| IMP-03 | Phase 4 | Pending |
-| IMP-04 | Phase 4 | Pending |
+| IMP-03 | Phase 4 | In progress (substrate 04-01) |
+| IMP-04 | Phase 4 | In progress (substrate 04-01) |
 | IMP-05 | Phase 4 | Pending |
-| CLS-01 | Phase 4 | Pending |
-| CLS-02 | Phase 4 | Pending |
+| CLS-01 | Phase 4 | In progress (substrate 04-01) |
+| CLS-02 | Phase 4 | Deferred (AI seam only — 04-01; LLM post-v1) |
 | CLS-03 | Phase 4 | Pending |
-| CLS-04 | Phase 4 | Pending |
-| CLS-05 | Phase 4 | Pending |
-| CLS-06 | Phase 4 | Pending |
-| RSV-06 | Phase 4 | Pending |
-| SEC-03 | Phase 4 | Pending |
+| CLS-04 | Phase 4 | In progress (substrate 04-01) |
+| CLS-05 | Phase 4 | In progress (substrate 04-01) |
+| CLS-06 | Phase 4 | In progress (substrate 04-01) |
+| RSV-06 | Phase 4 | In progress (substrate 04-01) |
+| SEC-03 | Phase 4 | In progress (substrate 04-01) |
 | MEI-01 | Phase 5 | Pending |
 | MEI-02 | Phase 5 | Pending |
 | MEI-03 | Phase 5 | Pending |

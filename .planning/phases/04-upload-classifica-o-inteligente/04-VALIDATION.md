@@ -2,8 +2,8 @@
 phase: 4
 slug: upload-classifica-o-inteligente
 status: draft
-nyquist_compliant: false
-wave_0_complete: false
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-16
 ---
 
@@ -38,16 +38,18 @@ created: 2026-06-16
 
 | Task ID | Wave | Requirement | Secure/Correct Behavior | Test Type | Automated Command | Status |
 |---------|------|-------------|-------------------------|-----------|-------------------|--------|
-| 4-W0-01 | 0 | IMP-03 | in-house OFX parser: STMTTRN FITID/DTPOSTED/TRNAMT/NAME→{occurred_on, amount_cents, descriptor}; latin1 + dot-decimal (NOT parseBRLToCents) | unit | `npx vitest run parse-ofx` | ⬜ |
-| 4-W0-02 | 0 | IMP-02/03 | CSV (papaparse) + column mapping → normalized rows; comma decimal via money.ts; DD/MM dates | unit | `npx vitest run parse-csv` | ⬜ |
-| 4-W0-03 | 0 | IMP-04 | dedup idempotent: re-upload same file = "0 novas" (content_hash); cross-statement dupes skipped (dedupe_key) | integration | `npx vitest run dedup` | ⬜ |
-| 4-W0-04 | 0 | CLS-01/03/04 | normalizeDescriptor deterministic; exact memory match; miss returns unclassified | unit | `npx vitest run normalize-descriptor` | ⬜ |
-| 4-W0-05 | 0 | CLS-03/04 | learn-on-confirm: confirming a row upserts merchant_patterns; next import of same descriptor auto-classifies | integration | `npx vitest run learn-on-confirm` | ⬜ |
-| 4-W0-06 | 0 | RSV-06 | confirming a Reserva-category import row saves merchant→reserva + creates the aporte ledger 'in' | integration | `npx vitest run import-aporte` | ⬜ |
-| 4-W0-07 | 0 | CLS-05 | point-in-time: renaming a category does NOT rewrite imported transactions' recorded category | integration | `npx vitest run point-in-time` | ⬜ |
-| 4-W0-08 | 0 | CLS-06 | recurring heuristic: same descriptor_norm across ≥N months flags recurring | integration | `npx vitest run recurring` | ⬜ |
-| 4-W0-09 | 0 | SEC-03 | suggestCategory seam returns null in v1 (no external call); an injection-style descriptor still yields safe handling + enum-valid output path | unit | `npx vitest run suggestion-seam` | ⬜ |
-| 4-W0-10 | 0 | IMP-01/05 | IDOR: forged statement_id / reserva_id / category_id rejected server-side before persist | integration | `npx vitest run import-idor` | ⬜ |
+| 4-W0-01 | 0 | IMP-03 | in-house OFX parser: STMTTRN FITID/DTPOSTED/TRNAMT/NAME→{occurred_on, amount_cents, descriptor}; latin1 + dot-decimal (NOT parseBRLToCents) | unit | `npx vitest run src/lib/parsers/ofx.test.ts` | ✅ |
+| 4-W0-02 | 0 | IMP-02/03 | CSV (papaparse) + column mapping → normalized rows; comma decimal via money.ts; DD/MM dates | unit | `npx vitest run src/lib/parsers/csv.test.ts` | ✅ |
+| 4-W0-03 | 0 | IMP-04 | dedup idempotent: re-upload same file = "0 novas" (content_hash); cross-statement dupes skipped (dedupe_key) | integration | `npx vitest run tests/import-dedup.test.ts` | ✅ substrate / ❌-pending actions |
+| 4-W0-04 | 0 | CLS-01/03/04 | normalizeDescriptor deterministic; exact memory match; miss returns unclassified | unit | `npx vitest run src/lib/normalize.test.ts` | ✅ |
+| 4-W0-05 | 0 | CLS-03/04 | learn-on-confirm: confirming a row upserts merchant_patterns; next import of same descriptor auto-classifies | integration | `npx vitest run tests/import-learn-on-confirm.test.ts` | ✅ substrate / ❌-pending actions |
+| 4-W0-06 | 0 | RSV-06 | confirming a Reserva-category import row saves merchant→reserva + creates the aporte ledger 'in' | integration | `npx vitest run tests/import-reserva-aporte.test.ts` | ✅ substrate / ❌-pending actions |
+| 4-W0-07 | 0 | CLS-05 | point-in-time: renaming a category does NOT rewrite imported transactions' recorded category | integration | `npx vitest run tests/import-point-in-time.test.ts` | ✅ substrate / ❌-pending actions |
+| 4-W0-08 | 0 | CLS-06 | recurring heuristic: same descriptor_norm across ≥N months flags recurring | integration | `npx vitest run tests/import-recurring.test.ts` | ✅ substrate / ❌-pending actions |
+| 4-W0-09 | 0 | SEC-03 | suggestCategory seam returns null in v1 (no external call); an injection-style descriptor still yields safe handling + enum-valid output path | unit | `npx vitest run src/lib/classifier/suggest.test.ts` | ✅ |
+| 4-W0-10 | 0 | IMP-01/05 | IDOR: forged statement_id / reserva_id / category_id rejected server-side before persist | integration | `npx vitest run tests/import-idor.test.ts tests/import-storage-rls.test.ts` | ✅ substrate / ❌-pending actions |
+
+> Filenames follow the PLAN (04-01-PLAN.md `files_modified`), which supersedes the literal names listed in the Wave 0 Requirements section below. Unit suites (OFX/CSV/normalize/dedupe/suggest) are fully GREEN now; integration suites assert the live-schema substrate GREEN and mark the not-yet-built ingestStatement/confirmImport behavior with `it.todo` naming Plan 02-03.
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
