@@ -95,7 +95,7 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 
 - [x] **UI-01**: Sistema de design navy+gold aplicado globalmente (tokens OKLCH light+dark, tipografia, marca) — coerente em todas as rotas, semântica de dinheiro/status preservada (07-01: substrato OKLCH navy+gold light+dark + Inter Tight heading + font-bug fix; marca/BrandMark e re-skin per-rota em planos seguintes)
 - [x] **UI-02**: Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica teto/alvo/income (07-01: next-themes cabeado no root, ThemeToggle 3-vias mount-guarded, suppressHydrationWarning + disableTransitionOnChange anti-FOUC)
-- [ ] **UI-03**: Logo/marca e tela de login/landing com identidade de produto (não form cru)
+- [x] **UI-03**: Logo/marca e tela de login/landing com identidade de produto (não form cru) (07-02: BrandMark + wordmark no chrome do app; 07-05: AuthShell duas colunas [painel navy + BrandMark 32px + "Financeira" gold + value prop] envolvendo o auth-form com guard inverso preservado + favicon icon.svg navy+gold)
 
 ### Data-viz
 
