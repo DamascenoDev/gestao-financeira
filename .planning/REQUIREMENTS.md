@@ -108,6 +108,19 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 - [x] **UI-07**: Refinamento mobile-first de todas as telas (tabelas densas → cards, nav adapta) — 07-02 (BottomNav nav adapta) + 07-04 (4 tabelas → cards <md)
 - [x] **UI-08**: Empty/loading/error states + micro-interações/transições consistentes em todas as telas — 07-06 (TableSkeleton/CardSkeleton/ChartSkeleton sobre shadcn skeleton + loading.tsx por segmento dashboard/extrato/mei + gramática Empty/text-destructive confirmada nas ~20 rotas, 0 spinners, foco gold --ring, reduced-motion)
 
+## v1.2 Requirements (Carro)
+
+Módulo de veículo. Design aprovado em `docs/superpowers/specs/2026-06-17-modulo-carro-design.md`.
+
+### Carro
+
+- [ ] **CAR-01**: Usuário cadastra, edita e arquiva carro(s); a lista mostra todos os carros não-arquivados (multi-car, escopado por `user_id`).
+- [ ] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
+- [ ] **CAR-03**: Usuário registra abastecimento (data, odômetro, litros, tanque-cheio?, combustível) com custo vindo de um lançamento vinculado da fatura OU manual — exatamente uma fonte (CHECK XOR), nunca ambas, nunca nenhuma.
+- [ ] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
+- [ ] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
+- [ ] **CAR-06**: Aba "Carros" na sidebar e na bottom-nav mobile; rotas sob `/carros` (lista + detalhe `[id]`).
+
 ## v2 Requirements
 
 Adiados para release futuro. Rastreados, fora do roadmap atual.
