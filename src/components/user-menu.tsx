@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useTransition } from 'react'
 
 import { signOut } from '@/actions/auth'
+import { ThemeToggle } from '@/components/theme-toggle'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -35,6 +36,13 @@ export function UserMenu({ email }: { email: string }) {
         <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
           {email}
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuLabel className="font-normal text-muted-foreground">
+          Tema
+        </DropdownMenuLabel>
+        <div className="px-1 pb-1">
+          <ThemeToggle />
+        </div>
         <DropdownMenuSeparator />
         <DropdownMenuItem
           render={

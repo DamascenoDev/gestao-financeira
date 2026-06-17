@@ -1,6 +1,7 @@
 import { redirect } from 'next/navigation'
 
 import { AppSidebar } from '@/components/app-sidebar'
+import { BottomNav } from '@/components/bottom-nav'
 import { MonthSelector } from '@/components/month-selector'
 import { UserMenu } from '@/components/user-menu'
 import {
@@ -39,7 +40,9 @@ export default async function AppLayout({
           {/* Logout lives in the shared shell → available on every (app) page (AUTH-04). */}
           <UserMenu email={email} />
         </header>
-        <main className="flex-1 p-6">{children}</main>
+        {/* pb-20 on mobile keeps content clear of the persistent BottomNav. */}
+        <main className="flex-1 p-6 pb-20 md:pb-6">{children}</main>
+        <BottomNav />
       </SidebarInset>
     </SidebarProvider>
   )
