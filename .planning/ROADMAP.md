@@ -215,7 +215,12 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
   4. As views `v_abastecimento_consumo` e `v_carro_resumo` existem como `security_invoker = true` (não vazam linha de outro usuário) e o cliente tipado regenera sem drift
   5. Toda escrita de carro re-deriva a posse no servidor (`assertOwnedCarro`) antes do write e nunca expõe a chave service-role no bundle do cliente
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+  - [ ] 08-01-PLAN.md — [BLOCKING substrate] migration 0027_carros.sql (tabelas carros/abastecimentos + coluna transactions.carro_id ON DELETE SET NULL + views v_abastecimento_consumo/v_carro_resumo security_invoker + RLS + grants + índices + CHECK XOR + índice único parcial) aplicada LOCAL + gen:types sem drift + Wave-0 (carro-rls isolation 3 objetos + XOR/partial-unique negatives + carro-view-leak)
+  - [ ] 08-02-PLAN.md — Camada server: schemas/carro.ts (Zod apelido obrigatório + opcionais + enum combustível) + actions/carros.ts (create/update/archive/unarchive, getClaims → assertOwnedCarro re-derive → write, { ok } | { error } nunca throw) + assertOwnedCarro em ownership.ts + carros.test.ts (Zod/sessão/IDOR/shape)
+  - [ ] 08-03-PLAN.md — Fatia UI: NAV_ITEMS += Carros (sidebar após Reservas + bottom-nav 6º item, lucide Car) + CarroForm dialog (create/edit) + CarroCard identidade + /carros lista (grid + Novo carro + mostrar-arquivados + empty/loading/error) + /carros/[id] detalhe mínimo (notFound em id alheio)
+
 **UI hint**: yes
 
 ### Phase 9: Etiquetar gastos da fatura ao carro
@@ -279,7 +284,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
-| 8. Substrato Carro + CRUD + navegação | 0/? | Not started | - |
+| 8. Substrato Carro + CRUD + navegação | 0/3 | Not started | - |
 | 9. Etiquetar gastos da fatura ao carro | 0/? | Not started | - |
 | 10. Abastecimento híbrido + consumo | 0/? | Not started | - |
 | 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |
