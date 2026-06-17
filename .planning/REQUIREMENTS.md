@@ -36,15 +36,15 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Importação de Faturas
 
-- [ ] **IMP-01**: Usuário faz upload de arquivo OFX direto para o Supabase Storage (bucket privado)
-- [ ] **IMP-02**: Usuário faz upload de arquivo CSV
-- [ ] **IMP-03**: Sistema faz parse de OFX/CSV em transações normalizadas (centavos inteiros, data, descritor)
-- [ ] **IMP-04**: Sistema deduplica de forma idempotente (hash do arquivo + unique de transação) — re-upload não duplica
+- [x] **IMP-01**: Usuário faz upload de arquivo OFX direto para o Supabase Storage (bucket privado)
+- [x] **IMP-02**: Usuário faz upload de arquivo CSV
+- [x] **IMP-03**: Sistema faz parse de OFX/CSV em transações normalizadas (centavos inteiros, data, descritor)
+- [x] **IMP-04**: Sistema deduplica de forma idempotente (hash do arquivo + unique de transação) — re-upload não duplica
 - [ ] **IMP-05**: Usuário revisa as transações importadas antes de persistir (tela de revisão)
 
 ### Classificação Inteligente
 
-- [ ] **CLS-01**: Na importação, sistema classifica por memória primeiro (padrão merchant→categoria já aprendido)
+- [x] **CLS-01**: Na importação, sistema classifica por memória primeiro (padrão merchant→categoria já aprendido)
 - [ ] **CLS-02**: Para estabelecimento nunca visto, IA sugere a categoria (saída restrita ao enum de categorias do usuário)
 - [ ] **CLS-03**: Usuário confirma ou corrige a sugestão; só então o padrão merchant→categoria é salvo na memória
 - [ ] **CLS-04**: Próximas faturas com aquele descritor são auto-classificadas pela memória
@@ -143,12 +143,12 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | RSV-03 | Phase 3 | Complete (03-05) |
 | RSV-04 | Phase 3 | Complete (03-04) |
 | RSV-05 | Phase 3 | Complete (03-04) |
-| IMP-01 | Phase 4 | Pending |
-| IMP-02 | Phase 4 | Pending |
-| IMP-03 | Phase 4 | In progress (substrate 04-01) |
-| IMP-04 | Phase 4 | In progress (substrate 04-01) |
+| IMP-01 | Phase 4 | Complete (04-02) |
+| IMP-02 | Phase 4 | Complete (04-02) |
+| IMP-03 | Phase 4 | Complete (04-02) |
+| IMP-04 | Phase 4 | Complete (04-02) |
 | IMP-05 | Phase 4 | Pending |
-| CLS-01 | Phase 4 | In progress (substrate 04-01) |
+| CLS-01 | Phase 4 | Complete (04-02) |
 | CLS-02 | Phase 4 | Deferred (AI seam only — 04-01; LLM post-v1) |
 | CLS-03 | Phase 4 | Pending |
 | CLS-04 | Phase 4 | In progress (substrate 04-01) |
