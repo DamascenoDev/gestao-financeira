@@ -40,16 +40,16 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 - [x] **IMP-02**: Usuário faz upload de arquivo CSV
 - [x] **IMP-03**: Sistema faz parse de OFX/CSV em transações normalizadas (centavos inteiros, data, descritor)
 - [x] **IMP-04**: Sistema deduplica de forma idempotente (hash do arquivo + unique de transação) — re-upload não duplica
-- [ ] **IMP-05**: Usuário revisa as transações importadas antes de persistir (tela de revisão)
+- [x] **IMP-05**: Usuário revisa as transações importadas antes de persistir (tela de revisão)
 
 ### Classificação Inteligente
 
 - [x] **CLS-01**: Na importação, sistema classifica por memória primeiro (padrão merchant→categoria já aprendido)
 - [ ] **CLS-02**: Para estabelecimento nunca visto, IA sugere a categoria (saída restrita ao enum de categorias do usuário)
-- [ ] **CLS-03**: Usuário confirma ou corrige a sugestão; só então o padrão merchant→categoria é salvo na memória
-- [ ] **CLS-04**: Próximas faturas com aquele descritor são auto-classificadas pela memória
-- [ ] **CLS-05**: A categoria gravada na transação é point-in-time (renomear categoria não reescreve o histórico)
-- [ ] **CLS-06**: Sistema detecta gastos recorrentes (assinaturas etc.) automaticamente
+- [x] **CLS-03**: Usuário confirma ou corrige a sugestão; só então o padrão merchant→categoria é salvo na memória
+- [x] **CLS-04**: Próximas faturas com aquele descritor são auto-classificadas pela memória
+- [x] **CLS-05**: A categoria gravada na transação é point-in-time (renomear categoria não reescreve o histórico)
+- [x] **CLS-06**: Sistema detecta gastos recorrentes (assinaturas etc.) automaticamente
 
 ### Metas & Aderência
 
@@ -65,7 +65,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 - [x] **RSV-03**: Aporte em reserva conta como alocação de investimento (entra na meta de Investimentos), não como gasto de consumo
 - [x] **RSV-04**: Usuário registra saída (retirada) de uma reserva, com histórico de entradas/saídas por reserva
 - [x] **RSV-05**: Saldo da reserva é sempre derivado (entradas − saídas) e mostra barra de progresso vs alvo quando houver
-- [ ] **RSV-06**: Sistema aprende o padrão merchant→reserva e auto-sugere a reserva nas próximas
+- [x] **RSV-06**: Sistema aprende o padrão merchant→reserva e auto-sugere a reserva nas próximas
 
 ### MEI
 
@@ -85,7 +85,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 - [ ] **SEC-01**: RLS isola dados por usuário em tabelas e Storage, validado com teste de 2 usuários
 - [x] **SEC-02**: Chaves de serviço ficam só no servidor, nunca no bundle do cliente
-- [ ] **SEC-03**: Na classificação via IA, só o descritor normalizado é enviado (sem PII) e a saída é validada contra o enum de categorias
+- [x] **SEC-03**: Na classificação via IA, só o descritor normalizado é enviado (sem PII) e a saída é validada contra o enum de categorias
 
 ## v2 Requirements
 
@@ -147,15 +147,15 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | IMP-02 | Phase 4 | Complete (04-02) |
 | IMP-03 | Phase 4 | Complete (04-02) |
 | IMP-04 | Phase 4 | Complete (04-02) |
-| IMP-05 | Phase 4 | Pending |
+| IMP-05 | Phase 4 | Complete (04-03) |
 | CLS-01 | Phase 4 | Complete (04-02) |
 | CLS-02 | Phase 4 | Deferred (AI seam only — 04-01; LLM post-v1) |
-| CLS-03 | Phase 4 | Pending |
-| CLS-04 | Phase 4 | In progress (substrate 04-01) |
-| CLS-05 | Phase 4 | In progress (substrate 04-01) |
-| CLS-06 | Phase 4 | In progress (substrate 04-01) |
-| RSV-06 | Phase 4 | In progress (substrate 04-01) |
-| SEC-03 | Phase 4 | In progress (substrate 04-01) |
+| CLS-03 | Phase 4 | Complete (04-03) |
+| CLS-04 | Phase 4 | Complete (04-03) |
+| CLS-05 | Phase 4 | Complete (04-03) |
+| CLS-06 | Phase 4 | Complete (04-03) |
+| RSV-06 | Phase 4 | Complete (04-03) |
+| SEC-03 | Phase 4 | Complete (04-03 — seam + enum wrapper; LLM call deferred per CLS-02) |
 | MEI-01 | Phase 5 | Pending |
 | MEI-02 | Phase 5 | Pending |
 | MEI-03 | Phase 5 | Pending |

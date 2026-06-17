@@ -89,7 +89,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 **Plans**: 4 plans
   - [x] 04-01-PLAN.md — Substrate [BLOCKING]: migrations 0019-0023 (statements, transactions ALTER, merchant_patterns, csv_import_profiles, v_recurring_descriptors security_invoker) applied LOCAL + types regen + papaparse-only install (NO ofx-data-extractor/ai); pure libs (normalizeDescriptor, contentHash/dedupeKey, in-house OFX SGML parser, papaparse CSV, lookupMemory + deferred-AI null seam + validateSuggestion enum wrapper) + 10 Wave-0 tests + 5 synthetic fixtures; unit suites GREEN, integration substrate GREEN + it.todo for Plan 02-03 actions; suite 347 passed/9 todo, tsc+eslint clean (IMP-03/04, CLS-01/04/05/06, RSV-06, SEC-03) ✓ 2026-06-16
   - [x] 04-02-PLAN.md — Upload slice: import.ts (createSignedStatementUpload + ingestStatement: download→decode latin1→parse→two-layer dedup→memory-classify→review rows persisted as jsonb on the statement, nothing in transactions) + saveCsvProfile; /importar screen (UploadDropzone + UploadProgress + signed-URL uploader + CsvColumnMapper + reusable profile) + Importar nav; +0024 parsed_rows/summary jsonb; 15 unit + 2 flipped integration GREEN; suite 364 passed/7 todo; build compiles /importar; "0 novas" on re-upload (IMP-01/02/03/04, CLS-01) ✓ 2026-06-16
-  - [ ] 04-03-PLAN.md — Review + confirm + learn slice: confirmImport (persist point-in-time + dedupe_key ON CONFLICT + learn merchant_patterns only-on-confirm-only-classified + reserva aporte via reused Phase-3 path + IDOR re-derive + recurring flag) + ImportReviewTable (ExtratoTable sibling) + ImportSummaryHeader + OriginBadge + RecorrenteTag + inert SuggestionSlot (IMP-05, CLS-03/04/05/06, RSV-06, SEC-03)
+  - [x] 04-03-PLAN.md — Review + confirm + learn slice: confirmImport (persist point-in-time + dedupe per-row 23505-skip [partial index → no .upsert onConflict] + learn merchant_patterns only-on-confirm-only-classified + reserva aporte via reused Phase-3 path + IDOR re-derive of statement/category/reserva + recurring from v_recurring_descriptors); src/lib/ownership.ts extracted + shared by transactions.ts AND import.ts (no drift); ImportReviewTable (ExtratoTable sibling, client-state, SelectionActionBar + ReservaPicker reused, amber memory-miss accent) + ImportSummaryHeader + OriginBadge + RecorrenteTag + inert SuggestionSlot; /importar/[statementId] review RSC; 6 it.todo flipped GREEN + 8 confirmImport unit tests; suite 380 passed/0 todo; build compiles /importar/[statementId] (IMP-05, CLS-03/04/05/06, RSV-06, SEC-03) ✓ 2026-06-16
   - [ ] 04-04-PLAN.md — [autonomous:false] Human-verify walkthrough: OFX/CSV upload + drag, CSV mapping dialog + profile reuse, inline+bulk classify + Reserva picker, Confirmar + unclassified guard, learn→auto-classify loop, "0 novas" re-upload
 **UI hint**: yes
 
@@ -127,7 +127,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 1. Fundação | 3/4 | In progress | - |
 | 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
 | 3. Metas, aderência e reservas | 5/6 | In progress | - |
-| 4. Upload + classificação inteligente | 0/4 | Planned | - |
+| 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 0/0 | Not started | - |
 | 6. Endurecimento | 0/0 | Not started | - |
 
