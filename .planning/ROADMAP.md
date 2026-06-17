@@ -296,7 +296,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
 | 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
 | 9. Etiquetar gastos da fatura ao carro | 3/3 | Complete    | 2026-06-17 |
-| 10. Abastecimento híbrido + consumo | 3/3 | Complete   | 2026-06-17 |
+| 10. Abastecimento híbrido + consumo | 3/3 | Complete    | 2026-06-17 |
 | 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |
 
 ## Dependencies & Parallelization

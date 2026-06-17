@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
-current_phase: 10
-current_phase_name: Abastecimento híbrido + consumo
-status: executing
-last_updated: "2026-06-17T18:24:00.000Z"
+current_phase: 11
+current_phase_name: Detalhe do carro + gráfico de consumo
+status: "10-02 entregue (schemas/abastecimento.ts XOR + actions/abastecimentos.ts dual IDOR carro_id+transaction_id + sync carro_id no lançamento vinculado + lib/carro/consumo.ts preco_litro derivado + Wave-0 abastecimento-action.test.ts green). Próximo: 10-03 (UI: abastecimento-form + picker de lançamento + histórico no /carros/[id] + números de consumo)."
+last_updated: "2026-06-17T18:56:26.033Z"
 last_activity: 2026-06-17
-last_activity_desc: Completed 10-02 (abastecimento server layer — schema XOR + actions dual IDOR + consumo helper)
+last_activity_desc: Phase 10 complete, transitioned to Phase 11
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 8
-  completed_plans: 8
-  percent: 66
+  completed_phases: 3
+  total_plans: 9
+  completed_plans: 9
+  percent: 75
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -29,10 +29,10 @@ progress:
 
 ## Current Position
 
-Phase: 10 — Abastecimento híbrido + consumo
-Plan: 10-02 entregue (Wave 2, camada server)
+Phase: 11 — Detalhe do carro + gráfico de consumo
+Plan: Not started
 Status: 10-02 entregue (schemas/abastecimento.ts XOR + actions/abastecimentos.ts dual IDOR carro_id+transaction_id + sync carro_id no lançamento vinculado + lib/carro/consumo.ts preco_litro derivado + Wave-0 abastecimento-action.test.ts green). Próximo: 10-03 (UI: abastecimento-form + picker de lançamento + histórico no /carros/[id] + números de consumo).
-Last activity: 2026-06-17 — Completed 10-02-PLAN.md
+Last activity: 2026-06-17 — Phase 10 complete, transitioned to Phase 11
 
 ## Performance Metrics
 
