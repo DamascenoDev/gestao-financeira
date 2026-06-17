@@ -280,7 +280,12 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
   4. Um gráfico de consumo (recharts via shadcn chart) plota km/l ao longo do tempo, token-aware e com tooltip pt-BR
   5. Empty/loading/error states seguem o padrão da Phase 7 (skeletons, nunca spinner; valores em pt-BR `R$`)
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+  - [ ] 11-01-PLAN.md — [Wave 1] componentes net-new: CarroConsumoChart (linha km/l no tempo, recharts via shadcn chart, token-aware --chart-1, tooltip pt-BR via kmPerLitroLabel, pontos null-omitidos, empty pt-BR) + CarroCategoriaBars (barras de magnitude neutras bg-muted-foreground, ordem valor desc, label formatCents mono, empty line) + Wave-0 component tests (data/empty/pt-BR/null/ordem/magnitude)
+  - [ ] 11-02-PLAN.md — [Wave 1] lista /carros: CarroCardData += gastoTotalCents/kmPorLitroMedio + strip KPI aditivo (mono tabular-nums, '—' null) + RSC lê v_carro_resumo RLS-scoped (gasto 0 → '—', nunca R$ 0,00); identidade/ações intactas (CAR-05.2)
+  - [ ] 11-03-PLAN.md — [Wave 2] detalhe /carros/[id] enriquecido: 3 KPI cards (km/l médio · R$/km · gasto total de v_carro_resumo) + agregação INLINE gasto-por-categoria (sem view nova — 1 consumidor, RLS-scoped; integration test sums/isolamento/D4 não-destrutivo) → CarroCategoriaBars + CarroConsumoChart de v_abastecimento_consumo + AbastecimentoHistory Phase-10 integrado; re-auditoria SEC-01 bundle-secret exit 0; WR-02 documentado como limitação conhecida (não corrigido)
+  - [ ] 11-04-PLAN.md — [Wave 3, autonomous:false] phase gate (suíte + tsc + build + secret-audit) + human-verify visual: chart/bars/KPI cards/list KPIs em light+dark+mobile (recharts SVG/cores/flip/tooltip não medíveis em jsdom)
 **UI hint**: yes
 
 ## Progress
