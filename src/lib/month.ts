@@ -55,6 +55,15 @@ export function currentMonthKey(): string {
   return formatInTimeZone(new Date(), TZ, 'yyyy-MM')
 }
 
+/**
+ * Today's civil date in America/Sao_Paulo as 'YYYY-MM-DD'. The single owner of
+ * "today" so a form default (e.g. a new NF's issued_on) never slips a day via UTC
+ * near midnight. Mirrors currentMonthKey/currentYear's TZ pinning.
+ */
+export function todaySP(): string {
+  return formatInTimeZone(new Date(), TZ, 'yyyy-MM-dd')
+}
+
 /** A pt-BR 'junho 2026'-style label for the MonthSelector. */
 export function monthLabel(monthKey: string): string {
   return format(parseMonthKey(monthKey), 'MMMM yyyy', { locale: ptBR })
