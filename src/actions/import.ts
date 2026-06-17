@@ -1,12 +1,11 @@
 'use server'
 
-import { createHash } from 'node:crypto'
-
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { lookupMemory } from '@/lib/classifier/memory'
 import { suggestCategory } from '@/lib/classifier/suggest'
+import { csvHeaderSignature } from '@/lib/csv-profile'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseCsv, parseCsvRaw, readCsvHeaders } from '@/lib/parsers/csv'
 import { parseOfx } from '@/lib/parsers/ofx'
@@ -78,8 +77,8 @@ const filenameSchema = z.string().min(1, 'Informe o nome do arquivo').max(255)
 /** A storage path string — re-validated against the caller's uid prefix below. */
 const pathSchema = z.string().min(1)
 
-/** The header signature a CSV profile is keyed by (sorted headers, hashed). */
-const headerSignatureSchema = z.string().min(1)
+/** The CSV header names a profile is keyed by (server derives the signature). */
+const headersSchema = z.array(z.string()).min(1, 'Cabeçalho inválido.')
 
 /**
  * Decode statement bytes (Pitfall 1). pt-BR bank exports are frequently latin1
@@ -94,15 +93,6 @@ function decodeStatement(bytes: Buffer): string {
     return new TextDecoder('latin1').decode(bytes)
   }
   return utf8
-}
-
-/**
- * Stable header signature for CSV layout reuse: the sorted, trimmed header names
- * joined and hashed. Two CSVs with the same columns (any order) reuse one profile.
- */
-export function csvHeaderSignature(headers: string[]): string {
-  const basis = headers.map((h) => h.trim().toLowerCase()).sort().join('|')
-  return createHash('sha256').update(basis).digest('hex')
 }
 
 /**
@@ -366,12 +356,13 @@ export async function ingestStatement(
  * UPSERT ON CONFLICT (user_id, header_signature).
  */
 export async function saveCsvProfile(
-  headerSignature: string,
+  headers: string[],
   mapping: CsvMapping,
   name: string,
 ): Promise<SaveCsvProfileResult> {
-  if (!headerSignatureSchema.safeParse(headerSignature).success) {
-    return { error: 'Assinatura de cabeçalho inválida.' }
+  const parsedHeaders = headersSchema.safeParse(headers)
+  if (!parsedHeaders.success) {
+    return { error: 'Cabeçalho inválido.' }
   }
   const parsedMapping = csvMappingSchema.safeParse(mapping)
   if (!parsedMapping.success) {
@@ -386,7 +377,7 @@ export async function saveCsvProfile(
   const { error } = await supabase.from('csv_import_profiles').upsert(
     {
       user_id: userId,
-      header_signature: headerSignature,
+      header_signature: csvHeaderSignature(parsedHeaders.data),
       mapping: parsedMapping.data as unknown as Json,
       name: name.trim(),
     },

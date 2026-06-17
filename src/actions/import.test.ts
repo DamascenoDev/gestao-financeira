@@ -274,8 +274,10 @@ describe('ingestStatement', () => {
 // --- saveCsvProfile (IMP-02) -----------------------------------------------
 
 describe('saveCsvProfile', () => {
+  const HEADERS = ['Data', 'Histórico', 'Valor']
+
   it('upserts a profile for a valid distinct mapping', async () => {
-    const r = await saveCsvProfile('sig-1', {
+    const r = await saveCsvProfile(HEADERS, {
       dateCol: 'Data',
       descCol: 'Histórico',
       valorCol: 'Valor',
@@ -284,7 +286,7 @@ describe('saveCsvProfile', () => {
   })
 
   it('rejects a mapping with non-distinct columns', async () => {
-    const r = await saveCsvProfile('sig-1', {
+    const r = await saveCsvProfile(HEADERS, {
       dateCol: 'Data',
       descCol: 'Data',
       valorCol: 'Valor',
@@ -292,9 +294,18 @@ describe('saveCsvProfile', () => {
     expect('error' in r).toBe(true)
   })
 
+  it('rejects an empty header list', async () => {
+    const r = await saveCsvProfile([], {
+      dateCol: 'Data',
+      descCol: 'Histórico',
+      valorCol: 'Valor',
+    }, 'Banco X')
+    expect('error' in r).toBe(true)
+  })
+
   it('gates on an absent session', async () => {
     claimsSub = null
-    const r = await saveCsvProfile('sig-1', {
+    const r = await saveCsvProfile(HEADERS, {
       dateCol: 'Data',
       descCol: 'Histórico',
       valorCol: 'Valor',
