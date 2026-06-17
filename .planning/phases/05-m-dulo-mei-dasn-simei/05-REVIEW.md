@@ -38,7 +38,13 @@ findings:
   medium: 1
   low: 3
   total: 4
-status: findings
+status: fixed
+fixed_at: 2026-06-16
+fix_commits:
+  MD-01: 2725480
+  LR-02: f7e4b3f
+  LR-03: 1f1c011
+  LR-01: 03e4323
 ---
 
 # Phase 5: Code Review Report — Módulo MEI / DASN-SIMEI
@@ -84,6 +90,7 @@ What was verified clean and is worth recording:
 
 ### MD-01: NfTable footer sums `bigint` money via raw `+ 0`, bypassing the `centsToBigInt` convention
 
+**Status:** FIXED (commit 2725480) — footer now sums via `centsToBigInt`/`0n`, `NfRow.amount_cents` widened to `number | bigint`, `notas/page.tsx` coerces at the data boundary, pinned by a string-input test.
 **File:** `src/components/nf-table.tsx:176`
 **Issue:** `const totalCents = rows.reduce((acc, r) => acc + r.amount_cents, 0)` sums a Postgres
 `bigint` column directly. The codebase has an explicit, documented MD-04 invariant — *"carry
@@ -114,6 +121,7 @@ and widen `NfRow.amount_cents` to `number | bigint` to match `AmountCell`/`cents
 
 ### LR-01: Exactly-at-limit (gross == applicable, ratio_bp == 10000) is labeled "Acima do limite"
 
+**Status:** FIXED (commit 03e4323) — REQUIRES HUMAN VERIFICATION of product intent. Applied the review's recommended fix: `ratioBp <= BP_100 → 'ambar'` so exactly-at-limit is "within" (desenquadramento triggers only when gross *exceeds* the limit). Aligned `page.tsx` `overLimit` to strictly `> 10000` and re-pinned `status.test.ts`. Confirm the at-limit semantics are intended before ship.
 **File:** `src/lib/mei/status.ts:29-32` (and pinned by `status.test.ts:24`)
 **Issue:** At exactly 100% (`ratioBp === 10000`, i.e. gross == applicable limit to the centavo),
 `meiStatus` falls past the `ratioBp < BP_100` branch into the band check and returns
@@ -133,6 +141,7 @@ consumes `ratio_bp`; the view is unaffected.)
 
 ### LR-02: `?ano` parsed with `Number(x) || currentYear` accepts non-integer / out-of-range values silently
 
+**Status:** FIXED (commit f7e4b3f) — added `toYearOrCurrent` to `month.ts` mirroring `toMonthKeyOrCurrent` and wired it into all five `?ano` sites; pinned by a fixed-clock test.
 **File:** `src/app/(app)/mei/page.tsx:45`, `notas/page.tsx:32`, `relatorio/page.tsx:24`,
 `configuracoes/page.tsx:19`, `year-selector.tsx:21`
 **Issue:** `const ano = Number(anoParam) || Number(currentYear())` coerces garbage to the current
@@ -152,6 +161,7 @@ export function toYearOrCurrent(value: unknown): number {
 
 ### LR-03: Pre-opening year with revenue renders "verde / Dentro do limite" despite recorded gross
 
+**Status:** FIXED (commit 1f1c011) — added an info line (`preOpeningWithRevenue`) explaining that notes registered before the MEI start do not count toward the year's limit. Copy only, no math change.
 **File:** `src/app/(app)/mei/page.tsx:90-97`, driven by `status.ts:27` and `0026:69`
 **Issue:** If a user sets `mei_start_date` to a future year (e.g. 2027) but has NFs dated in an
 earlier year (2026), the view computes `applicable_limit_cents = 0` → `ratio_bp = null` →
