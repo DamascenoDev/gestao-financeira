@@ -24,7 +24,11 @@ import { kmPerLitroLabel } from '@/lib/carro/consumo'
  */
 
 export type CarroConsumoDatum = {
-  /** Pre-formatted dd/MM SP-pinned X label (the RSC does the date math; this is pure data). */
+  /**
+   * Pre-formatted SP-pinned X label (the RSC does the date math; this is pure data).
+   * dd/MM for a single-year series, dd/MM/aa when the history spans >1 year so ticks
+   * never collide across year boundaries (WR-04).
+   */
   data: string
   kmPorLitro: number
 }

@@ -103,10 +103,13 @@ export default async function CarroDetailPage({
   )
 
   // Consumo (km/l) chart series (CAR-05.4): chronological, null-km/l intervals dropped
-  // (CONTEXT: never plot a gap-filled 0). The X label is dd/MM from the civil date
-  // string (SP-pinned by construction — no tz math on a yyyy-MM-dd day; same discipline
-  // as AbastecimentoHistory's ddMM, no new date lib).
-  const consumoSeries: CarroConsumoDatum[] = (consumoRows ?? [])
+  // (CONTEXT: never plot a gap-filled 0). The X label is built from the civil date
+  // string (SP-pinned by construction — no tz math on a yyyy-MM-dd day; no new date
+  // lib). WR-04: a history spanning more than one calendar year would otherwise yield
+  // colliding dd/MM ticks (e.g. 2025-03-01 and 2026-03-01 both → '01/03', ambiguous
+  // and indistinguishable on the axis). So include the 2-digit year (dd/MM/aa) when
+  // the series crosses a year boundary; keep the compact dd/MM for single-year data.
+  const consumoValidos = (consumoRows ?? [])
     .filter(
       (c): c is { id: string; occurred_on: string; km_por_litro: number } =>
         c.occurred_on != null &&
@@ -114,10 +117,17 @@ export default async function CarroDetailPage({
         c.km_por_litro > 0,
     )
     .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on))
-    .map((c) => {
-      const [, m, d] = c.occurred_on.split('-')
-      return { data: `${d}/${m}`, kmPorLitro: c.km_por_litro }
-    })
+  const multiAno =
+    new Set(consumoValidos.map((c) => c.occurred_on.slice(0, 4))).size > 1
+  const consumoSeries: CarroConsumoDatum[] = consumoValidos.map((c) => {
+    // occurred_on is a yyyy-MM-dd civil date string; slice positionally (total,
+    // no possibly-undefined destructure) so tsc strict stays happy.
+    const yy = c.occurred_on.slice(2, 4)
+    const mm = c.occurred_on.slice(5, 7)
+    const dd = c.occurred_on.slice(8, 10)
+    const data = multiAno ? `${dd}/${mm}/${yy}` : `${dd}/${mm}`
+    return { data, kmPorLitro: c.km_por_litro }
+  })
 
   // The carro averages (km/l médio + R$/km médio) + gasto total — the 3 KPI figures.
   const { data: resumo } = await supabase
