@@ -99,9 +99,9 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 
 ### Data-viz
 
-- [ ] **UI-04**: Gráfico de evolução mensal (receita vs gasto) no dashboard
-- [ ] **UI-05**: Gráfico de distribuição de gastos por categoria (mês) no dashboard
-- [ ] **UI-06**: Visual rico de aderência às metas + gauge MEI elevado
+- [x] **UI-04**: Gráfico de evolução mensal (receita vs gasto) no dashboard — ReceitaGastoChart (07-03)
+- [x] **UI-05**: Gráfico de distribuição de gastos por categoria (mês) no dashboard — CategoryDistributionChart (07-03)
+- [x] **UI-06**: Visual rico de aderência às metas + gauge MEI elevado — LimiteGauge/AdherenceBar direction-aware via token-swap 07-01 (07-03)
 
 ### Polimento & Mobile
 
@@ -188,6 +188,9 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | SEC-01 | Phase 6 | Complete (06-04) |
 | UI-01 | Phase 7 | Complete (07-01: navy+gold OKLCH substrate + typography; marca/per-route re-skin continua nos planos seguintes) |
 | UI-02 | Phase 7 | Complete (07-01: next-themes alternável + persistente, anti-FOUC) |
+| UI-04 | Phase 7 | Complete (07-03: ReceitaGastoChart recharts no dashboard, lendo views existentes) |
+| UI-05 | Phase 7 | Complete (07-03: CategoryDistributionChart donut --chart-1..5 no dashboard) |
+| UI-06 | Phase 7 | Complete (07-03: LimiteGauge/AdherenceBar direction-aware via token-swap 07-01) |
 
 **Coverage:**
 - v1 requirements: 47 total
@@ -204,4 +207,4 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-17 — UI-01 + UI-02 Complete (07-01: navy+gold OKLCH substrate light+dark + next-themes dark mode alternável/persistente + font-bug fix; suite 587 GREEN)*
+*Last updated: 2026-06-17 — UI-04 + UI-05 + UI-06 Complete (07-03: dashboard data-viz recharts ReceitaGastoChart + CategoryDistributionChart lendo views existentes + gauge/adherence direction-aware via token-swap; suite 593 GREEN, build + secret-audit limpos)*
