@@ -144,7 +144,43 @@ describe('IMP-04 transaction-level: cross-statement dedupe_key collapse', () => 
     expect(r2.error).toBeNull() // two null-dedupe_key rows coexist
   })
 
-  // GREEN in Plan 02-03 — the end-to-end counts via the actions.
-  it.todo('ingestStatement returns "0 novas" on a byte-identical re-upload [Plan 02]')
+  // Plan 02 GREEN: the "0 novas" mechanism ingestStatement uses is an upsert with
+  // onConflict (user_id, content_hash) + ignoreDuplicates — a byte-identical
+  // re-upload yields NO returned row, which the action reads as alreadyImported
+  // (the unit test src/actions/import.test.ts proves the action's branch on it).
+  it('a re-upload upsert (ignoreDuplicates) returns no row ⇒ the "0 novas" signal', async () => {
+    const a = userClient(userA.jwt, config)
+    const hash = contentHash(Buffer.from(ofx('nubank-sample.ofx'), 'latin1'))
+    const base = {
+      user_id: userA.id,
+      original_filename: 'nubank.ofx',
+      format: 'ofx' as const,
+      content_hash: hash,
+    }
+
+    const first = await a
+      .from('statements')
+      .upsert(
+        { ...base, storage_path: `${userA.id}/n1.ofx` },
+        { onConflict: 'user_id,content_hash', ignoreDuplicates: true },
+      )
+      .select('id')
+      .maybeSingle()
+    expect(first.error).toBeNull()
+    expect(first.data?.id).toBeTruthy() // fresh file ⇒ a new statement row
+
+    const second = await a
+      .from('statements')
+      .upsert(
+        { ...base, storage_path: `${userA.id}/n1-again.ofx` },
+        { onConflict: 'user_id,content_hash', ignoreDuplicates: true },
+      )
+      .select('id')
+      .maybeSingle()
+    expect(second.error).toBeNull()
+    expect(second.data).toBeNull() // re-upload ⇒ no row ⇒ "0 novas"
+  })
+
+  // GREEN in Plan 03 — the end-to-end confirm counts via confirmImport.
   it.todo('confirmImport inserts M novas and skips J duplicadas across overlapping statements [Plan 03]')
 })

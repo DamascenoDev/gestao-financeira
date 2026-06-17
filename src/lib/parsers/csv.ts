@@ -36,6 +36,21 @@ export function readCsvHeaders(text: string): string[] {
 }
 
 /**
+ * Parse CSV text into raw header-keyed records WITHOUT a mapping (drives the
+ * CsvColumnMapper preview). No date/money coercion — each cell stays as the bank
+ * wrote it so the dialog can show "this column's first value" while the user maps.
+ */
+export function parseCsvRaw(text: string): Record<string, string>[] {
+  const { data } = Papa.parse<Record<string, string>>(text, {
+    header: true,
+    skipEmptyLines: true,
+    delimiter: '', // auto-detect ';' vs ','
+    transformHeader: (h) => h.trim(),
+  })
+  return data
+}
+
+/**
  * Parse CSV text into normalized RawTransaction[] using the column mapping. Header
  * mode + delimiter auto-detect. Each row maps mapping.dateCol → brDateToCivil,
  * mapping.valorCol → parseBRLToCents (comma decimal), mapping.descCol →

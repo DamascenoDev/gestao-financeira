@@ -81,6 +81,26 @@ describe('IMP-01 Storage RLS: statements bucket scoped to {user_id}/', () => {
     expect(error !== null || data === null).toBe(true)
   })
 
-  // GREEN in Plan 02 — the signed-URL mint + uploadToSignedUrl round-trip.
-  it.todo('createSignedStatementUpload mints a {user_id}/ scoped signed upload URL [Plan 02]')
+  // Plan 02 GREEN: the signed-URL mint + uploadToSignedUrl round-trip is the
+  // mechanism createSignedStatementUpload + the client uploader use. We exercise it
+  // directly (the Server Action wraps this exact call with getClaims + ext validation,
+  // proven in src/actions/import.test.ts) to prove the {user_id}/ scoped signed
+  // upload lands the bytes in the private bucket.
+  it('a {user_id}/ scoped signed upload URL round-trips the bytes into the bucket', async () => {
+    const a = userClient(userA.jwt, config)
+    const path = `${userA.id}/${crypto.randomUUID()}.ofx`
+    const signed = await a.storage.from('statements').createSignedUploadUrl(path)
+    expect(signed.error).toBeNull()
+    expect(signed.data?.path).toBe(path) // scoped to the caller's uid folder
+
+    const up = await a.storage
+      .from('statements')
+      .uploadToSignedUrl(path, signed.data!.token, new Blob(['OFXHEADER:100']))
+    expect(up.error).toBeNull()
+
+    // The object is now readable by its owner (and only its owner — proven above).
+    const down = await a.storage.from('statements').download(path)
+    expect(down.error).toBeNull()
+    expect(down.data).not.toBeNull()
+  })
 })

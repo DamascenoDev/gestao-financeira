@@ -32,4 +32,11 @@ export interface ParsedReviewRow extends RawTransaction {
   reserva_id: string | null
   classification_source: ClassificationSource
   is_recurring: boolean
+  /**
+   * Pre-marked at ingest (Plan 02): this row's dedupe_key already exists in the
+   * user's transactions, so confirm (Plan 03) collapses it via the partial unique
+   * index — it counts into J (duplicadas ignoradas), not M (novas). Optional so the
+   * pure parsers (which don't know the DB) need not set it.
+   */
+  duplicate?: boolean
 }
