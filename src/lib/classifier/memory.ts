@@ -6,6 +6,8 @@
 
 import type { SupabaseClient } from '@supabase/supabase-js'
 
+import type { Database } from '@/types/database.types'
+
 /** The learned mapping for a known merchant (category + optional reserva). */
 export interface MemoryHit {
   category_id: string
@@ -18,7 +20,7 @@ export interface MemoryHit {
  * under the RLS-active client so it only ever sees the caller's own patterns.
  */
 export async function lookupMemory(
-  supabase: SupabaseClient,
+  supabase: SupabaseClient<Database>,
   descriptorNorm: string,
 ): Promise<MemoryHit | null> {
   const { data } = await supabase
