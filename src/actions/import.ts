@@ -17,7 +17,11 @@ import {
 } from '@/lib/ownership'
 import { parseCsv, parseCsvRaw, readCsvHeaders } from '@/lib/parsers/csv'
 import { parseOfx } from '@/lib/parsers/ofx'
-import type { ParsedReviewRow, RawTransaction } from '@/lib/parsers/types'
+import {
+  MAX_PARSED_ROWS,
+  type ParsedReviewRow,
+  type RawTransaction,
+} from '@/lib/parsers/types'
 import {
   confirmImportRowSchema,
   csvMappingSchema,
@@ -64,6 +68,12 @@ export interface IngestSummary {
   naoClassificadas: number
   /** J — pre-marked duplicates (dedupe_key already present). */
   duplicadas: number
+  /**
+   * CR-01: rows the parser SKIPPED because a field (date/amount) failed to parse.
+   * Surfaced so a file that parsed 0 usable rows (all malformed) reports honestly
+   * instead of silently importing nothing.
+   */
+  descartadas: number
 }
 
 export type IngestResult =
@@ -267,7 +277,7 @@ export async function ingestStatement(
     return {
       statementId: existing?.id ?? '',
       rows: [],
-      summary: { total: 0, novas: 0, naoClassificadas: 0, duplicadas: 0 },
+      summary: { total: 0, novas: 0, naoClassificadas: 0, duplicadas: 0, descartadas: 0 },
       alreadyImported: true,
     }
   }
@@ -277,24 +287,51 @@ export async function ingestStatement(
 
   // Parse by extension. CSV needs a mapping; resolve it from the argument, a saved
   // profile, or auto-map — else return the needsMapping branch.
+  //
+  // CR-01: the parsers skip malformed rows internally, but belt-and-suspenders we
+  // wrap the dispatch so ANY residual throw becomes the documented friendly
+  // { error } instead of escaping the 'use server' boundary as an opaque 500.
   let rawRows: RawTransaction[]
-  if (ext === 'ofx') {
-    rawRows = parseOfx(text)
-  } else {
-    const headers = readCsvHeaders(text)
-    let resolved: CsvMapping | undefined = mapping
-    if (!resolved) {
-      const signature = csvHeaderSignature(headers)
-      const profile = await lookupCsvProfile(signature)
-      if (profile) resolved = profile
+  let dropped: number
+  let capped: boolean
+  try {
+    if (ext === 'ofx') {
+      const result = parseOfx(text)
+      rawRows = result.rows
+      dropped = result.dropped
+      capped = result.capped
+    } else {
+      const headers = readCsvHeaders(text)
+      let resolved: CsvMapping | undefined = mapping
+      if (!resolved) {
+        const signature = csvHeaderSignature(headers)
+        const profile = await lookupCsvProfile(signature)
+        if (profile) resolved = profile
+      }
+      if (!resolved) {
+        resolved = autoMapCsv(headers) ?? undefined
+      }
+      if (!resolved) {
+        return { needsMapping: true, headers, sample: csvSampleRows(text, 5) }
+      }
+      const result = parseCsv(text, resolved)
+      rawRows = result.rows
+      dropped = result.dropped
+      capped = result.capped
     }
-    if (!resolved) {
-      resolved = autoMapCsv(headers) ?? undefined
+  } catch {
+    return {
+      error:
+        'Não foi possível ler este arquivo. Verifique se é um extrato OFX/CSV válido e tente de novo.',
     }
-    if (!resolved) {
-      return { needsMapping: true, headers, sample: csvSampleRows(text, 5) }
+  }
+
+  // WR-02: reject (rather than silently truncate) a statement over the row cap so a
+  // hostile/huge file cannot drive an unbounded jsonb persist + N serial queries.
+  if (capped) {
+    return {
+      error: `Arquivo muito grande (mais de ${MAX_PARSED_ROWS} lançamentos). Divida o extrato em períodos menores.`,
     }
-    rawRows = parseCsv(text, resolved)
   }
 
   // Pre-fetch the user's categories once for the (deferred) suggestion seam.
@@ -306,16 +343,26 @@ export async function ingestStatement(
   // Pre-mark cross-statement duplicates: a row whose dedupe_key already exists in
   // the user's transactions is `duplicada` (Plan 03's confirm collapses them via
   // the partial unique index; we surface the count here for the summary).
-  const rows: ParsedReviewRow[] = []
-  for (const raw of rawRows) {
-    const key = dedupeKey(userId, raw)
-
-    const { data: existingTxn } = await supabase
+  //
+  // WR-02: compute every dedupe_key up front and resolve the duplicates in ONE
+  // `.in('dedupe_key', keys)` query instead of N point-reads inside the loop.
+  const keysByRaw = rawRows.map((raw) => dedupeKey(userId, raw))
+  const dupSet = new Set<string>()
+  if (keysByRaw.length > 0) {
+    const { data: existingTxns } = await supabase
       .from('transactions')
-      .select('id')
-      .eq('dedupe_key', key)
-      .maybeSingle()
-    const isDuplicate = existingTxn !== null
+      .select('dedupe_key')
+      .in('dedupe_key', [...new Set(keysByRaw)])
+    for (const t of existingTxns ?? []) {
+      if (t.dedupe_key) dupSet.add(t.dedupe_key)
+    }
+  }
+
+  const rows: ParsedReviewRow[] = []
+  for (let i = 0; i < rawRows.length; i += 1) {
+    const raw = rawRows[i]!
+    const key = keysByRaw[i]!
+    const isDuplicate = dupSet.has(key)
 
     // Memory-first classification (CLS-01): a HIT auto-classifies with zero
     // external calls; a MISS leaves the row unclassified (suggestCategory is the
@@ -352,6 +399,7 @@ export async function ingestStatement(
     novas: rows.length - duplicadas,
     naoClassificadas: rows.filter((r) => r.category_id === null).length,
     duplicadas,
+    descartadas: dropped, // CR-01: rows skipped as malformed (surfaced honestly)
   }
 
   // Persist the review payload on the statement so the review RSC (Plan 03) reads

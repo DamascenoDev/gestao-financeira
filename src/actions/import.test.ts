@@ -174,6 +174,15 @@ function makeBuilder(from: string) {
       const id = filters.find(([c]) => c === 'id')?.[1] as string
       return resolve({ data: ownedStatementIds.has(id) ? [{ id }] : [], error: null })
     }
+    if (from === 'transactions' && inFilters.length > 0) {
+      // WR-02: ingestStatement's batched dedupe pre-check — one
+      // .select('dedupe_key').in('dedupe_key', keys) instead of N point-reads.
+      const requested = (inFilters.find(([c]) => c === 'dedupe_key')?.[1] ?? []) as string[]
+      const present = requested
+        .filter((k) => existingDedupeKeys.has(k))
+        .map((k) => ({ dedupe_key: k }))
+      return resolve({ data: present, error: null })
+    }
     if (from === 'v_recurring_descriptors') {
       return resolve({
         data: recurringNorms.map((d) => ({ descriptor_norm: d })),
