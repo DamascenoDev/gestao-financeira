@@ -141,6 +141,14 @@ This roadmap follows the research-converged build order: **foundation → manual
   4. Refinamento mobile-first: toda tela usável e bonita no celular (tabelas densas viram cards, nav adapta)
   5. Polimento: empty/loading/error states e micro-interações/transições consistentes em todas as telas
   6. Login/landing com identidade de produto (não form cru)
+**Plans**: 7 plans
+  - [ ] 07-01-PLAN.md — [BLOCKING substrate] Tokens-first navy+gold (OKLCH light+dark, NOMES preservados) + conserto do --font-sans self-ref + Inter Tight heading + ThemeProvider cabeado no root (suppressHydrationWarning) + ThemeToggle 3-vias mount-guarded + Wave-0 theme-toggle test (UI-01, UI-02)
+  - [ ] 07-02-PLAN.md — Brand + shell: BrandMark inline-SVG navy+gold na sidebar (active-gold + indicador) + ThemeToggle no UserMenu + BottomNav mobile (<md, destinos primários gold ≥48px) montada no shell (UI-03 chrome, UI-07 nav)
+  - [ ] 07-03-PLAN.md — Charts: recharts install + react-is override (gated next build + secret-bundle re-audit) + chart.tsx vendored + ReceitaGastoChart + CategoryDistributionChart (token-aware, formatCents, empty-state, Wave-0 tests) lendo views existentes no dashboard + LimiteGauge/AdherenceBar direction-aware re-skin (UI-04/05/06)
+  - [ ] 07-04-PLAN.md — Mobile table→card collapse (NET-NEW) nas 4 tabelas densas (extrato, import-review, nf, reserva-ledger) reusando AmountCell/CategoryBadge/ddMM; desktop ≥md intacto, seleção/actions congeladas (UI-07 tabelas→cards)
+  - [ ] 07-05-PLAN.md — AuthShell duas colunas (painel navy + BrandMark + "Financeira" gold + value prop) envolvendo o auth-form (guard inverso preservado) + favicon icon.svg navy+gold (UI-03 login/landing)
+  - [ ] 07-06-PLAN.md — Polish sweep (UI-08): TableSkeleton/CardSkeleton/ChartSkeleton (sobre shadcn skeleton, nunca spinner, Wave-0 test) + loading.tsx por segmento (dashboard/extrato/mei) + varredura empty/error/transição 150ms + foco gold + reduced-motion
+  - [ ] 07-07-PLAN.md — [autonomous:false] Phase gate (suíte + tsc + build + secret-bundle audit + grep de cor hardcoded) + human-verify: identidade, flip light↔dark, charts, mobile (BottomNav + cards), auth (UI-01..UI-08)
 **UI hint**: yes
 
 ## Progress
@@ -153,12 +161,14 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
+| 7. Identidade visual e polimento | 0/7 | Planned | - |
 
 ## Dependencies & Parallelization
 
 - **Linear core path:** Phase 1 → 2 → 3 → 4. Each consumes the previous: metas precisam do denominador de receita (Phase 2); reservas precisam de transações + categorias (Phase 2); o classificador por IA precisa da camada de memória, que dispara só no cache-miss (Phase 4 internamente: memória antes da IA).
 - **Phase 5 (MEI) parallelizes:** depende apenas da Fundação (Phase 1) — não toca o core de classificação. Pode ser construída em paralelo a qualquer fase ≥ 2.
 - **Phase 6 (Hardening) is last:** re-verifica os pitfalls das fases anteriores e fecha LGPD; depende de todas as superfícies existirem. Internamente: Wave 1 substrate (06-01) → Wave 2 CSV slice (06-02) ‖ SEC-01 audits (06-04) → Wave 3 LGPD export+delete (06-03) → Wave 4 human-verify (06-05).
+- **Phase 7 (Re-skin) is the visual finish:** depende de todas as superfícies das fases 1-6 existirem. Re-skin only — não toca lógica/dados/segurança. Internamente: **Wave 1** substrate tokens-first + dark mode (07-01, BLOCKING) → **Wave 2** três fatias paralelas sem overlap de arquivo (07-02 brand/shell/nav ‖ 07-03 charts ‖ 07-04 mobile tables→cards) → **Wave 3** auth shell (07-05) → **Wave 4** polish sweep (07-06) → **Wave 5** human-verify + phase gate (07-07).
 
 ## Research Flags
 
@@ -169,6 +179,7 @@ Fases que provavelmente precisam de pesquisa mais profunda durante o planejament
 Fases com padrões estabelecidos (podem pular pesquisa de fase):
 - **Phase 1 (fundação):** auth SSR Supabase + RLS + typed-client são bem documentados.
 - **Phases 2–3 (loop manual):** CRUD + agregação por SQL views + dashboards shadcn/Recharts são padrões estabelecidos; o trabalho novo são as *decisões* (denominador, contabilidade de reserva), não a implementação.
+- **Phase 7 (re-skin):** Tailwind v4 OKLCH theming, next-themes dark mode, shadcn chart/Recharts são bem documentados; o UI-SPEC já resolveu quase toda decisão. O risco real é o override react-is + a flip-integrity de contraste light↔dark (verificação humana), não tooling.
 
 ---
 *Roadmap created: 2026-06-16*
@@ -176,3 +187,4 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 *Phase 4 planned: 2026-06-16 (4 plans, AI deferred — memory-first pipeline + suggestion seam)*
 *Phase 5 planned: 2026-06-16 (4 plans, zero new npm deps — substrate + dashboard + NF/report slices + human-verify)*
 *Phase 6 planned: 2026-06-17 (5 plans, zero new npm deps — substrate + Wave-0 / CSV slice / LGPD export+delete / SEC-01 audits / human-verify; no new migration — all 14 tables already ON DELETE CASCADE)*
+*Phase 7 planned: 2026-06-17 (7 plans, ONE new npm dep recharts + react-is override; re-skin only — tokens-first substrate + dark mode / brand+shell+nav / charts / mobile tables→cards / auth shell / polish sweep / human-verify; no migration, no query, no view, no Server Action change)*
