@@ -40,6 +40,21 @@ describe('carroSchema', () => {
     expect(tooNew.success).toBe(false)
   })
 
+  it('rejects a non-integer/junk ano with the friendly "Informe um ano válido" (WR-02)', () => {
+    // Number("abc") → NaN, Number("20.5") → 20.5: both must surface the
+    // invalid-number message, NOT the out-of-range "Ano inválido".
+    const nan = carroSchema.safeParse({ apelido: 'A', ano: Number('abc') })
+    expect(nan.success).toBe(false)
+    if (!nan.success) {
+      expect(nan.error.issues[0]?.message).toBe('Informe um ano válido')
+    }
+    const decimal = carroSchema.safeParse({ apelido: 'A', ano: 20.5 })
+    expect(decimal.success).toBe(false)
+    if (!decimal.success) {
+      expect(decimal.error.issues[0]?.message).toBe('Informe um ano válido')
+    }
+  })
+
   it('accepts each valid combustivel_padrao and rejects any other string', () => {
     for (const c of ['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV'] as const) {
       expect(

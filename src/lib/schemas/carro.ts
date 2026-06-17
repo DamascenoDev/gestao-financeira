@@ -16,7 +16,17 @@ export const carroSchema = z.object({
   apelido: z.string().trim().min(1, 'Informe o apelido').max(60),
   modelo: z.string().trim().max(80).optional(),
   placa: z.string().trim().max(10).optional(),
-  ano: z.number().int().min(1900, 'Ano inválido').max(MAX_ANO, 'Ano inválido').optional(),
+  // A non-integer/junk `ano` (NaN from `Number("abc")`, or a decimal like 20.5)
+  // surfaces the friendly "Informe um ano válido" rather than Zod's default
+  // number/integer message; only a genuine out-of-range INTEGER yields
+  // "Ano inválido" (WR-02). `.int()` carries the invalid-number message because
+  // NaN fails the integer check first.
+  ano: z
+    .number({ message: 'Informe um ano válido' })
+    .int('Informe um ano válido')
+    .min(1900, 'Ano inválido')
+    .max(MAX_ANO, 'Ano inválido')
+    .optional(),
   combustivel_padrao: z
     .enum(['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV'])
     .optional(),
