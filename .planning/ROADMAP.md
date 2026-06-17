@@ -236,7 +236,12 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
   3. Etiquetar ou desetiquetar um lançamento NÃO altera sua categoria, valor, nem qualquer número de aderência às metas (mensal ou anual) — verificável comparando o dashboard antes/depois
   4. O servidor re-deriva a posse do `carro_id` antes de gravar (`assertOwnedCarro`); etiquetar com um carro de outro usuário é rejeitado e o result shape é `{ ok: true } | { error }`, nunca throw
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+  - [ ] 09-01-PLAN.md — Camada server [Wave 1]: carroId opcional/nullable no transactionSchema + carro_id write/clear em createTransactionWithReserva/updateTransaction (re-derive assertOwnedCarro tri-state, livre de categoria) + nova action bulkTagCarro (set/clear carro_id em N linhas próprias num único .update().in(), valida o carro UMA vez, IDOR no-write) + testes de ação (transactions.test.ts) + Wave-0 integração D4/IDOR (tests/carro-tag-nondestructive.test.ts: tag+untag deixa categoria/valor/metas-agg byte-idênticos, sem perturbar reserva_ledger)
+  - [ ] 09-02-PLAN.md — Fatia UI extrato [Wave 2]: CarroPicker (espelha ReservaPicker, opcional + "Nenhum", sem "+ Nova") + seletor Carro no transacao-form (incondicional, livre de categoria) + ação de linha "Vincular a carro" no extrato (dialog focado → updateTransaction só-carro, preserva categoria/valor) + "Vincular a carro" na SelectionActionBar (bulk → bulkTagCarro) + wiring do RSC /extrato (carros não-arquivados + carro_id nas linhas) + human-verify
+  - [ ] 09-03-PLAN.md — Fatia UI revisão de importação [Wave 2]: carroId opcional no confirmImportRowSchema + persist de carro_id no confirmImport (re-derive assertOwnedCarro, rejeita o payload inteiro em carro forjado, aditivo — não toca categoria/valor/reserva/dedupe) + import.test.ts + seletor "Carro" por linha no import-review-table (CarroOption local + Select inline "Nenhum", sem importar carro-picker) + wiring do RSC /importar/[statementId] + human-verify
+
 **UI hint**: yes
 
 ### Phase 10: Abastecimento híbrido + consumo
@@ -285,7 +290,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 6. Endurecimento | 1/5 | In progress | - |
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
 | 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
-| 9. Etiquetar gastos da fatura ao carro | 0/? | Not started | - |
+| 9. Etiquetar gastos da fatura ao carro | 0/3 | Planned     | - |
 | 10. Abastecimento híbrido + consumo | 0/? | Not started | - |
 | 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |
 
@@ -296,6 +301,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 - **Phase 6 (Hardening) is last:** re-verifica os pitfalls das fases anteriores e fecha LGPD; depende de todas as superfícies existirem. Internamente: Wave 1 substrate (06-01) → Wave 2 CSV slice (06-02) ‖ SEC-01 audits (06-04) → Wave 3 LGPD export+delete (06-03) → Wave 4 human-verify (06-05).
 - **Phase 7 (Re-skin) is the visual finish:** depende de todas as superfícies das fases 1-6 existirem. Re-skin only — não toca lógica/dados/segurança. Internamente: **Wave 1** substrate tokens-first + dark mode (07-01, BLOCKING) → **Wave 2** três fatias paralelas sem overlap de arquivo (07-02 brand/shell/nav ‖ 07-03 charts ‖ 07-04 mobile tables→cards) → **Wave 3** auth shell (07-05) → **Wave 4** polish sweep (07-06) → **Wave 5** human-verify + phase gate (07-07).
 - **v1.2 Carro — linear, sobre as fases 1-7 já entregues:** Phase 8 (substrato + CRUD + nav, BLOCKING) → Phase 9 (etiquetagem) → Phase 10 (abastecimento + consumo) → Phase 11 (detalhe + gráfico). Phase 8 é o substrato que todas as demais consomem (tabelas/views/`carro_id`/nav). Phases 9 e 10 poderiam paralelizar parcialmente (etiquetagem vs log de abastecimento são fatias distintas), mas Phase 10 reusa o vínculo opcional a um lançamento que a Phase 9 torna natural; manter sequencial é mais simples para dev solo. Phase 11 é capstone — depende das três anteriores existirem.
+- **Phase 9 internamente:** **Wave 1** camada server (09-01, BLOCKING — o contrato carro_id + bulkTagCarro + Wave-0 D4/IDOR que as duas fatias UI consomem) → **Wave 2** duas fatias UI paralelas sem overlap de arquivo (09-02 extrato: transacao-form + extrato-table + selection-action-bar + carro-picker ‖ 09-03 revisão de importação: import.ts + schemas/import.ts + import-review-table). 09-02 e 09-03 são file-disjuntas (09-03 define CarroOption local + Select inline, não importa o carro-picker da 09-02) — paralelizáveis com segurança.
 
 ## Research Flags
 
@@ -319,3 +325,4 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 *Phase 6 planned: 2026-06-17 (5 plans, zero new npm deps — substrate + Wave-0 / CSV slice / LGPD export+delete / SEC-01 audits / human-verify; no new migration — all 14 tables already ON DELETE CASCADE)*
 *Phase 7 planned: 2026-06-17 (7 plans, ONE new npm dep recharts + react-is override; re-skin only — tokens-first substrate + dark mode / brand+shell+nav / charts / mobile tables→cards / auth shell / polish sweep / human-verify; no migration, no query, no view, no Server Action change)*
 *Milestone v1.2 "Carro" roadmapped: 2026-06-17 (4 phases 8-11, mvp vertical slices; CAR-01..06 mapped 6/6; new migration carros/abastecimentos/carro_id + 2 security_invoker views; mirrors MEI module structure)*
+*Phase 9 planned: 2026-06-17 (3 plans, zero new npm deps — Wave 1 camada server carro_id + bulkTagCarro + Wave-0 D4/IDOR; Wave 2 duas fatias UI paralelas file-disjuntas: extrato ‖ revisão de importação; CAR-02; lente não-destrutiva D4 + IDOR re-derive em todo write)*
