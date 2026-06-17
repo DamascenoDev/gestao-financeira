@@ -1,3 +1,5 @@
+import { AccountDeleteZone } from '@/components/delete-account-form'
+import { ExportDataButton } from '@/components/export-data-button'
 import { ExportTransactionsButton } from '@/components/export-transactions-button'
 import { Card } from '@/components/ui/card'
 import { centsToBigInt } from '@/lib/money'
@@ -96,20 +98,26 @@ export default async function ContaPage({
           extrato quando precisar.
         </p>
 
-        {/* TODO(06-03): ExportDataButton ("Baixar meus dados") — the full LGPD
-            bundle. This plan only ships the transactions-CSV affordance below. */}
+        {/* The full LGPD bundle (DATA-02) — the primary export affordance. The
+            secret never reaches the client: exportMyData assembles the bundle
+            server-side via the RLS client. */}
+        <ExportDataButton />
 
+        {/* The transactions CSV is the subordinate affordance for users who want
+            just the current month's ledger. */}
         <div className="flex flex-col gap-1">
           <ExportTransactionsButton rows={csvRows} mes={mes} />
           <p className="text-xs text-muted-foreground">
-            Exporta as transações do mês selecionado.
+            Exporta apenas as transações do mês selecionado.
           </p>
         </div>
       </Card>
 
-      {/* TODO(06-03): Section B — AccountDeleteZone (danger zone): a persistent
-          border-destructive region with the type-to-confirm AccountDeleteDialog.
-          Not implemented here; 06-02 only stands up the shell + the CSV affordance. */}
+      {/* Section B — Apagar conta e dados (AccountDeleteZone). lg-separated from
+          Section A via the section's gap-8. The persistent border-destructive danger
+          zone with the type-to-confirm APAGAR dialog (confirm disabled until exact
+          match, initial focus on Cancelar, sign-out after success). */}
+      <AccountDeleteZone />
     </section>
   )
 }
