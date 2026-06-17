@@ -105,7 +105,7 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 
 ### Polimento & Mobile
 
-- [ ] **UI-07**: Refinamento mobile-first de todas as telas (tabelas densas → cards, nav adapta)
+- [x] **UI-07**: Refinamento mobile-first de todas as telas (tabelas densas → cards, nav adapta) — 07-02 (BottomNav nav adapta) + 07-04 (4 tabelas → cards <md)
 - [ ] **UI-08**: Empty/loading/error states + micro-interações/transições consistentes em todas as telas
 
 ## v2 Requirements
