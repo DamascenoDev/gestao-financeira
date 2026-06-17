@@ -49,10 +49,19 @@ export type AbastecimentoRow = {
   combustivel: string | null
   /** When linked to a fatura lançamento. */
   transaction_id: string | null
-  /** The cost in centavos — from the linked transaction's amount OR the manual value. */
-  custo_cents: number | bigint
+  /**
+   * The cost in centavos — from the linked transaction's amount OR the manual value.
+   * `null` means "linked, but the amount is unavailable" (e.g. the linked tx was
+   * deleted) and renders the sentinel instead of a misleading R$ 0,00 (WR-03).
+   */
+  custo_cents: number | bigint | null
   /** km/l do intervalo from v_abastecimento_consumo (null when invalid/open). */
   km_por_litro: number | null
+}
+
+/** Render a resolved cost, or the sentinel when a linked amount is unavailable (WR-03). */
+function custoLabel(custoCents: number | bigint | null): string {
+  return custoCents === null ? '—' : formatCents(custoCents)
 }
 
 /** "dd/MM" from a yyyy-MM-dd civil date string (no tz ambiguity). */
@@ -72,8 +81,11 @@ function toEdit(row: AbastecimentoRow): AbastecimentoEdit {
     tanqueCheio: row.tanque_cheio,
     combustivel: row.combustivel ?? '',
     transactionId: row.transaction_id ?? '',
-    // A linked row has no manual amount to seed.
-    amount: row.transaction_id ? '' : centsToEditableBRL(row.custo_cents),
+    // A linked row has no manual amount to seed; a manual row always has a non-null cost.
+    amount:
+      row.transaction_id || row.custo_cents === null
+        ? ''
+        : centsToEditableBRL(row.custo_cents),
   }
 }
 
@@ -241,7 +253,7 @@ export function AbastecimentoHistory({
                     })}
                   </TableCell>
                   <TableCell className="py-2 text-right font-mono text-sm tabular-nums">
-                    {formatCents(row.custo_cents)}
+                    {custoLabel(row.custo_cents)}
                   </TableCell>
                   <TableCell className="py-2">
                     {row.tanque_cheio ? (
@@ -312,7 +324,7 @@ export function AbastecimentoHistory({
                   <div className="flex flex-col">
                     <dt className="text-xs text-muted-foreground">Custo</dt>
                     <dd className="font-mono tabular-nums">
-                      {formatCents(row.custo_cents)}
+                      {custoLabel(row.custo_cents)}
                     </dd>
                   </div>
                   <div className="flex flex-col">

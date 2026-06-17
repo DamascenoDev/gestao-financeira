@@ -119,8 +119,13 @@ export default async function CarroDetailPage({
   // object (1:1) — guard the nullable join.
   const abastecimentoRows: AbastecimentoRow[] = (abastecimentos ?? []).map((a) => {
     const linked = a.transactions as { amount_cents: number } | null
-    const custoCents = a.transaction_id
-      ? centsToBigInt(linked?.amount_cents)
+    // WR-03: distinguish "linked but amount unavailable" (embed null — e.g. the
+    // linked tx was deleted) from a real zero. A linked row with no embedded amount
+    // renders the sentinel instead of a misleading R$ 0,00.
+    const custoCents: bigint | null = a.transaction_id
+      ? linked?.amount_cents != null
+        ? centsToBigInt(linked.amount_cents)
+        : null
       : centsToBigInt(a.amount_cents)
     return {
       id: a.id,
