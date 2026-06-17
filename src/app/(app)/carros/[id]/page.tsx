@@ -94,10 +94,15 @@ export default async function CarroDetailPage({
   const linkedTxIds = new Set(
     (linkedRows ?? []).flatMap((r) => (r.transaction_id ? [r.transaction_id] : [])),
   )
+  // WR-04: only offer expenses that are NOT already tagged to a DIFFERENT carro.
+  // Linking such an expense would silently re-stamp transactions.carro_id (the action
+  // overwrites it), moving that spend from the other carro's total to this one. We
+  // keep untagged expenses (carro_id null) OR expenses already tagged to THIS carro.
   const { data: recentTx } = await supabase
     .from('transactions')
     .select('id, description, occurred_on, amount_cents')
     .eq('kind', 'expense')
+    .or(`carro_id.is.null,carro_id.eq.${id}`)
     .order('occurred_on', { ascending: false })
     .limit(100)
   const transacoes: TransacaoOption[] = (recentTx ?? [])
