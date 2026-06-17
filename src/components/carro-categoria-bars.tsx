@@ -16,7 +16,8 @@ import { formatCents } from '@/lib/money'
 
 export type CarroCategoriaDatum = {
   categoria: string
-  valorCents: number
+  /** Soma da categoria em centavos. bigint para nunca trafegar dinheiro por float. */
+  valorCents: bigint
 }
 
 export function CarroCategoriaBars({ data }: { data: CarroCategoriaDatum[] }) {
@@ -28,13 +29,20 @@ export function CarroCategoriaBars({ data }: { data: CarroCategoriaDatum[] }) {
     )
   }
 
-  const sorted = [...data].sort((a, b) => b.valorCents - a.valorCents)
-  const maiorValor = Math.max(...sorted.map((d) => d.valorCents))
+  // valorCents is bigint money; compare/divide on bigint and convert to a ratio
+  // only for the CSS width (a presentation %, never a money value).
+  const sorted = [...data].sort((a, b) =>
+    a.valorCents < b.valorCents ? 1 : a.valorCents > b.valorCents ? -1 : 0,
+  )
+  // sorted is valor-desc and non-empty here (the length===0 early-return precedes
+  // this), so the max is simply the first row — no spread, no float on money.
+  const maiorValor = sorted[0]?.valorCents ?? 0n
 
   return (
     <div className="flex flex-col gap-2">
       {sorted.map((d) => {
-        const widthPct = maiorValor > 0 ? (d.valorCents / maiorValor) * 100 : 0
+        const widthPct =
+          maiorValor > 0n ? (Number(d.valorCents) / Number(maiorValor)) * 100 : 0
         return (
           <div
             key={d.categoria}

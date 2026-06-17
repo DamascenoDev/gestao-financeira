@@ -22,9 +22,9 @@ const EMPTY_COPY = 'Nenhum gasto vinculado a este carro.'
 
 describe('CarroCategoriaBars', () => {
   const data = [
-    { categoria: 'Combustível', valorCents: 200000 },
-    { categoria: 'Manutenção', valorCents: 100000 }, // half of the max
-    { categoria: 'Seguro', valorCents: 50000 },
+    { categoria: 'Combustível', valorCents: 200000n },
+    { categoria: 'Manutenção', valorCents: 100000n }, // half of the max
+    { categoria: 'Seguro', valorCents: 50000n },
   ]
 
   it('renders one row per categoria with name + formatCents amount', () => {

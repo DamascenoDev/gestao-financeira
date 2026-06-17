@@ -130,7 +130,7 @@ export default async function CarroDetailPage({
     .eq('carro_id', id)
   const categoriaSums = new Map<
     string,
-    { categoria: string; valorCents: number }
+    { categoria: string; valorCents: bigint }
   >()
   for (const tx of categoriaTx ?? []) {
     // Group by point-in-time category_id; null category_id → a single "Sem categoria"
@@ -143,14 +143,19 @@ export default async function CarroDetailPage({
     const nome =
       (Array.isArray(embed) ? embed[0]?.name : embed?.name) ?? 'Sem categoria'
     const prev = categoriaSums.get(key)
+    // WR-01: accumulate money as bigint centavos (via centsToBigInt) — never `+`
+    // on a JS number. Matches the rest of the money path (v_carro_resumo sums in
+    // bigint) and avoids the formatCents MAX_SAFE_INTEGER throw at the display edge.
     categoriaSums.set(key, {
       categoria: prev?.categoria ?? nome,
-      valorCents: (prev?.valorCents ?? 0) + tx.amount_cents,
+      valorCents: (prev?.valorCents ?? 0n) + centsToBigInt(tx.amount_cents),
     })
   }
   const categoriaData: CarroCategoriaDatum[] = Array.from(
     categoriaSums.values(),
-  ).sort((a, b) => b.valorCents - a.valorCents)
+  ).sort((a, b) =>
+    a.valorCents < b.valorCents ? 1 : a.valorCents > b.valorCents ? -1 : 0,
+  )
 
   // The user's recent expenses still available to link (no abastecimento points at
   // them). RLS already scopes to the caller's own rows. We exclude the ids already
