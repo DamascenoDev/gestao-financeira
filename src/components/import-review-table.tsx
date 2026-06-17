@@ -340,6 +340,12 @@ export function ImportReviewTable({
         toast.success(
           `${result.imported} ${result.imported === 1 ? 'transação importada' : 'transações importadas'}`,
         )
+        // WR-04: reset the in-flight flag BEFORE the soft navigation. router.push
+        // is a client-side push; if it is slow/intercepted or the user navigates
+        // back to this still-mounted tree, leaving isConfirming=true would leave
+        // the confirm button permanently disabled ('Importando…') with no recovery
+        // short of a full reload. The error/catch branches already reset it.
+        setIsConfirming(false)
         router.push('/extrato')
       })
       .catch(() => {
