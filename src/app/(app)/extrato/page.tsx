@@ -84,10 +84,22 @@ export default async function ExtratoPage({
     )
     .map((r) => ({ id: r.reserva_id, nome: r.nome }))
 
+  // CAR-02: non-archived carros feed the optional Carro selector (form) + the row /
+  // bulk "Vincular a carro" actions (table). Archived carros stay off the picker.
+  const { data: carrosData } = await supabase
+    .from('carros')
+    .select('id, apelido')
+    .eq('is_archived', false)
+    .order('apelido', { ascending: true })
+  const carros = (carrosData ?? []).map((c) => ({
+    id: c.id,
+    apelido: c.apelido,
+  }))
+
   // The month's transactions, optionally filtered by the selected categories.
   let txQuery = supabase
     .from('transactions')
-    .select('id, occurred_on, description, amount_cents, category_id')
+    .select('id, occurred_on, description, amount_cents, category_id, carro_id')
     .gte('occurred_on', first)
     .lte('occurred_on', last)
     .order('occurred_on', { ascending: false })
@@ -99,7 +111,12 @@ export default async function ExtratoPage({
   const rows: ExtratoRow[] = (
     (txData ?? []) as Pick<
       TransactionRow,
-      'id' | 'occurred_on' | 'description' | 'amount_cents' | 'category_id'
+      | 'id'
+      | 'occurred_on'
+      | 'description'
+      | 'amount_cents'
+      | 'category_id'
+      | 'carro_id'
     >[]
   ).map((t) => ({
     id: t.id,
@@ -108,6 +125,8 @@ export default async function ExtratoPage({
     // MD-04: carry centavos as bigint, never via a lossy Number() cast.
     amount_cents: centsToBigInt(t.amount_cents),
     category_id: t.category_id,
+    // CAR-02: the linked carro (null = untagged) — feeds the row/bulk tag actions (D4).
+    carro_id: t.carro_id,
   }))
 
   // DATA-01: the month's RLS-scoped rows resolved for the transactions CSV. Each
@@ -157,6 +176,7 @@ export default async function ExtratoPage({
         isReserva: c.is_reserva,
       }))}
       reservas={reservas}
+      carros={carros}
       defaultDate={`${mes}-15`}
     />
   )
@@ -209,6 +229,7 @@ export default async function ExtratoPage({
             isReserva: c.is_reserva,
           }))}
           reservas={reservas}
+          carros={carros}
           categoryTotals={categoryTotals}
           grandTotalCents={grandTotalCents}
         />
