@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
 current_phase: 11
-current_phase_name: Detalhe do carro + gráfico de consumo
-status: "11-03 entregue (/carros/[id] enriquecido = capstone CAR-05: header + 3 KPI cards km/l médio·R$/km·gasto total de v_carro_resumo + agregação INLINE gasto-por-categoria RLS-scoped por category_id point-in-time [sem view nova — integration test sums/isolamento-userB-zero/D4 não-destrutivo] → CarroCategoriaBars + CarroConsumoChart de v_abastecimento_consumo [série cronológica, intervalos null dropados] + AbastecimentoHistory Phase-10 integrado verbatim, na ordem do UI-SPEC; SEC-01 re-auditoria bundle-secret exit 0 em build fresco; WR-02 documentado como limitação conhecida; suíte 735 passed; tsc limpo; build exit 0). Próximo: 11-04 (human-verify do detalhe enriquecido)."
-last_updated: "2026-06-17T19:47:00.000Z"
+status: verifying
+last_updated: "2026-06-17T20:10:33.193Z"
 last_activity: 2026-06-17
-last_activity_desc: 11-03 entregue (/carros/[id] enriquecido — KPIs + gasto por categoria inline + gráfico consumo + AbastecimentoHistory integrado; SEC-01 re-auditoria green)
+last_activity_desc: Phase 11 complete
 progress:
   total_phases: 4
-  completed_phases: 3
+  completed_phases: 4
   total_plans: 13
-  completed_plans: 12
-  percent: 92
+  completed_plans: 13
+  percent: 100
+current_phase_name: Detalhe do carro + gráfico de consumo
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -29,10 +29,10 @@ progress:
 
 ## Current Position
 
-Phase: 11 — Detalhe do carro + gráfico de consumo
-Plan: 11-03 complete (Wave 2, 3/4)
+Phase: 11
+Plan: Not started
 Status: 11-03 entregue (/carros/[id] enriquecido — capstone CAR-05: 3 KPI cards + agregação inline gasto-por-categoria + CarroConsumoChart + AbastecimentoHistory integrado; SEC-01 re-auditoria exit 0; suíte 735). Próximo: 11-04 (human-verify do detalhe enriquecido).
-Last activity: 2026-06-17 — 11-03 entregue (detalhe /carros/[id] enriquecido + SEC-01 re-auditoria green)
+Last activity: 2026-06-17 — Phase 11 complete
 
 ## Performance Metrics
 

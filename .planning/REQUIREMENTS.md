@@ -118,7 +118,7 @@ Módulo de veículo. Design aprovado em `docs/superpowers/specs/2026-06-17-modul
 - [x] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
 - [x] **CAR-03**: Usuário registra abastecimento (data, odômetro, litros, tanque-cheio?, combustível) com custo vindo de um lançamento vinculado da fatura OU manual — exatamente uma fonte (CHECK XOR), nunca ambas, nunca nenhuma.
 - [x] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
-- [ ] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
+- [x] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
 - [x] **CAR-06**: Aba "Carros" na sidebar e na bottom-nav mobile; rotas sob `/carros` (lista + detalhe `[id]`).
 
 ## v2 Requirements
