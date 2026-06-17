@@ -212,7 +212,14 @@ function ChartTooltipContent({
                   indicator === "dot" && "items-center"
                 )}
               >
-                {formatter && item?.value !== undefined && item.name ? (
+                {/* WR-06: do NOT require item.name to be truthy here. When a
+                    consumer supplies a `formatter` (our charts pass a
+                    formatCents currency formatter), it must run for every value
+                    so money is never silently rendered as raw integer cents via
+                    the default item.value.toLocaleString() fallback below. The
+                    formatter receives item.name (may be "") as a later arg; our
+                    consumers only read the value. */}
+                {formatter && item?.value !== undefined ? (
                   formatter(item.value, item.name, item, index, item.payload)
                 ) : (
                   <>
