@@ -258,7 +258,12 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
   4. O sistema calcula, via `v_abastecimento_consumo` (`security_invoker`), o km/l de cada intervalo tanque-cheio (Δodômetro ÷ Σlitros desde o último tanque cheio) e o R$/km do intervalo, e `v_carro_resumo` expõe as médias por carro
   5. Todo dinheiro é centavos inteiros (helpers `money.ts`), litros é `numeric` (não dinheiro), e o servidor re-deriva a posse de `carro_id`/`transaction_id` antes de cada FK write
 
-**Plans**: TBD
+**Plans**: 3 plans
+
+  - [ ] 10-01-PLAN.md — [Wave 1, BLOCKING substrate] migração 0028_carros_fix.sql (WR-05/06: v_abastecimento_consumo guarda km_rodados ≤ 0 → null + exclui das médias + desempate determinístico; WR-01: CHECK ano 1900..2100 + combustivel_padrao enum; security_invoker mantido) aplicada LOCAL + gen:types sem drift + Wave-0 carro-consumo.test.ts (km/l tanque-cheio, guarda km negativo, R$/km, preco_litro derivado)
+  - [ ] 10-02-PLAN.md — [Wave 2] camada server: schemas/abastecimento.ts (Zod XOR fonte de custo) + actions/abastecimentos.ts (create/update/delete, dual IDOR carro_id + transaction_id, seta carro_id no lançamento vinculado, { ok } | { error }) + lib/carro/consumo.ts (preco_litro/km-l/R$-km derivados, '—' para inválido) + testes + Wave-0 abastecimento-action.test.ts (XOR ambos/nenhum, IDOR sem-write, 1:1 já-vinculado, sync carro_id)
+  - [ ] 10-03-PLAN.md — [Wave 3] fatia UI: abastecimento-form.tsx (dialog, toggle segmentado Da fatura | Manual, tanque-cheio default ON, combustível default do carro) + transacao-picker.tsx (picker buscável de lançamentos não-vinculados) + abastecimento-history.tsx (histórico tabela→card + médias km/l + R$/km em números) + /carros/[id] (seção Abastecimentos) — gráfico DIFERIDO p/ Phase 11
+
 **UI hint**: yes
 
 ### Phase 11: Detalhe do carro + gráfico de consumo
