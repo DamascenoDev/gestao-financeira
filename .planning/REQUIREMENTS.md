@@ -212,7 +212,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | UI-03 | Phase 7 | Complete (07-02 chrome/brand + 07-05 AuthShell login/landing + favicon) |
 | UI-07 | Phase 7 | Complete (07-02 BottomNav nav adapta + 07-04 4 tabelas → cards <md) |
 | UI-08 | Phase 7 | Complete (07-06: skeletons sobre shadcn skeleton + loading.tsx por segmento + gramática empty/error confirmada, 0 spinners) |
-| CAR-01 | Phase 8 | Pending |
+| CAR-01 | Phase 8 | In progress (08-01 substrato: tabelas+RLS+tipos) |
 | CAR-06 | Phase 8 | Pending |
 | CAR-02 | Phase 9 | Pending |
 | CAR-03 | Phase 10 | Pending |

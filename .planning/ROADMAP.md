@@ -217,7 +217,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 
 **Plans**: 3 plans
 
-  - [ ] 08-01-PLAN.md — [BLOCKING substrate] migration 0027_carros.sql (tabelas carros/abastecimentos + coluna transactions.carro_id ON DELETE SET NULL + views v_abastecimento_consumo/v_carro_resumo security_invoker + RLS + grants + índices + CHECK XOR + índice único parcial) aplicada LOCAL + gen:types sem drift + Wave-0 (carro-rls isolation 3 objetos + XOR/partial-unique negatives + carro-view-leak)
+  - [x] 08-01-PLAN.md — [BLOCKING substrate] migration 0027_carros.sql (tabelas carros/abastecimentos + coluna transactions.carro_id ON DELETE SET NULL + views v_abastecimento_consumo/v_carro_resumo security_invoker + RLS + grants + índices + CHECK XOR + índice único parcial) aplicada LOCAL + gen:types sem drift (162 inserções/0 deleções) + Wave-0 (carro-rls isolation 3 objetos + XOR/partial-unique negatives + carro-view-leak); 11 testes green, suíte 610 passed, tsc limpo. **[Rule 1]** lag() FILTER inválido em Postgres → reescrito via CTE full_fills (3 commits: 482272b, 07ea0c0, 2cf1e69) ✓ 2026-06-17
   - [ ] 08-02-PLAN.md — Camada server: schemas/carro.ts (Zod apelido obrigatório + opcionais + enum combustível) + actions/carros.ts (create/update/archive/unarchive, getClaims → assertOwnedCarro re-derive → write, { ok } | { error } nunca throw) + assertOwnedCarro em ownership.ts + carros.test.ts (Zod/sessão/IDOR/shape)
   - [ ] 08-03-PLAN.md — Fatia UI: NAV_ITEMS += Carros (sidebar após Reservas + bottom-nav 6º item, lucide Car) + CarroForm dialog (create/edit) + CarroCard identidade + /carros lista (grid + Novo carro + mostrar-arquivados + empty/loading/error) + /carros/[id] detalhe mínimo (notFound em id alheio)
 
