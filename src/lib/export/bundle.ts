@@ -106,8 +106,11 @@ function buildMeiCsv(
     const cents = BigInt((inv.amount_cents as number | bigint) ?? 0)
     const agg = byYear.get(year) ?? { gross: 0n, comercio: 0n, servicos: 0n }
     agg.gross += cents
+    // Bucket ONLY the two known DASN activity types explicitly (LO-01). A null,
+    // malformed, or future third value must NOT silently inflate serviços — it is
+    // counted in gross (the obligatory total) but in neither split column.
     if (inv.activity_type === 'comercio_industria') agg.comercio += cents
-    else agg.servicos += cents
+    else if (inv.activity_type === 'servicos') agg.servicos += cents
     byYear.set(year, agg)
   }
 
