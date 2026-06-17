@@ -284,7 +284,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
-| 8. Substrato Carro + CRUD + navegação | 0/3 | Not started | - |
+| 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
 | 9. Etiquetar gastos da fatura ao carro | 0/? | Not started | - |
 | 10. Abastecimento híbrido + consumo | 0/? | Not started | - |
 | 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |

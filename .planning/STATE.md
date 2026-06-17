@@ -2,15 +2,15 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
-status: executing
-last_updated: "2026-06-17T16:12:12.000Z"
+status: completed
+last_updated: "2026-06-17T16:31:11.689Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 3
   completed_plans: 3
-  percent: 100
+  percent: 25
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,10 +26,10 @@ progress:
 
 ## Current Position
 
-Phase: 8 — Substrato Carro + CRUD + navegação (COMPLETA 3/3)
-Plan: 08-01 + 08-02 + 08-03 completos — Phase 8 fechada (CAR-01 + CAR-06 Complete)
+Phase: 9
+Plan: Not started
 Status: 08-03 entregue (nav Carros sidebar+bottom-nav + CarroForm/CarroCard + /carros lista CRUD + /carros/[id] detalhe mínimo + arquivar/desarquivar); CAR-01 e CAR-06 Complete. Próximo: Phase 9 (CAR-02 etiquetar gastos→carro)
-Last activity: 2026-06-17 — 08-03 executado (fatia UI Carro: nav + form + card + lista + detalhe, identity-only sem dinheiro/KPIs, suíte 632 passed, tsc + build limpos)
+Last activity: 2026-06-17
 
 ## Performance Metrics
 
