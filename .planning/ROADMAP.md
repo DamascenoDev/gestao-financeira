@@ -122,7 +122,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   3. Um teste de isolamento com 2 usuários comprova que o usuário B não lê/insere/atualiza/exclui nenhuma linha do usuário A — nos quatro verbos, em tabelas e no Storage
   4. Auditoria confirma que segredos (service-role) não estão no bundle do cliente, que faturas só são acessíveis por signed URL, e que nenhum dado/valor com PII é enviado ao provedor de IA
 **Plans**: 5 plans
-  - [ ] 06-01-PLAN.md — Substrate [BLOCKING] + Wave-0: src/lib/data/owned-tables.ts (the central 14-table list + isolation INSERT shapes) + src/lib/supabase/admin.ts (server-only service-role client, DELETE ONLY) + src/lib/transactions/csv.ts (transactionsToCsv mirroring mei/csv.ts) + the 8 Wave-0 tests (extend rls-isolation 8→14 + bundle-secret; create isolation-matrix/storage-isolation/lgpd-export/lgpd-delete/lgpd-delete-isolation/pii-guard) RED where impl is deferred (DATA-01/02, SEC-01)
+  - [x] 06-01-PLAN.md — Substrate [BLOCKING] + Wave-0: src/lib/data/owned-tables.ts (OWNED_TABLES 14 + ISOLATION_INSERT_SHAPES — single source for export bundle + isolation matrix; csv_import_profiles included) + src/lib/supabase/admin.ts (server-only service-role createAdminClient, DELETE ONLY, UNWIRED — 06-03 sole importer) + src/lib/transactions/csv.ts (transactionsToCsv mirroring mei/csv.ts: BOM/;/CRLF/formatCents/RFC-4180, GREEN) + 8 Wave-0 tests (rls-isolation promoted 8→14 data-driven + isolation-matrix + storage-isolation + pii-guard GREEN; lgpd-export/lgpd-delete/lgpd-delete-isolation it.todo RED for 06-03; bundle-secret-grep extended); full suite 558 passed/13 todo, tsc clean, 06-VALIDATION wave_0_complete+nyquist_compliant (DATA-01/02 + SEC-01 substrate) ✓ 2026-06-17
   - [ ] 06-02-PLAN.md — CSV export slice (DATA-01): ExportTransactionsButton (reuses the ExportCsvButton shape, transactionsToCsv → transacoes-{yyyy-MM}.csv) + Extrato header wiring (resolve category name + Consumo/Alocação) + /conta screen shell + Conta nav item + UserMenu "Privacidade e conta" link
   - [ ] 06-03-PLAN.md — LGPD export+delete slice (DATA-02): bundle.ts (iterate OWNED_TABLES, RLS select('*') + embedded transactions/MEI CSVs) + exportMyData (RLS client — only my rows) + deleteMyAccount (Storage-remove first, auth.admin.deleteUser last, cascade) + ExportDataButton + type-to-confirm DeleteAccountForm (APAGAR → signOut) + completed Conta screen; flips lgpd-export/lgpd-delete/lgpd-delete-isolation GREEN
   - [ ] 06-04-PLAN.md — SEC-01 audits closure: 4-verb × 14-table isolation matrix GREEN (data-driven over OWNED_TABLES) + Storage 2-user + private-bucket + no-getPublicUrl + secret-bundle audit against a real build + PII-egress guard (no AI dep, suggestCategory null) — the 2-user isolation proof
@@ -138,7 +138,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 3. Metas, aderência e reservas | 5/6 | In progress | - |
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
-| 6. Endurecimento | 0/5 | Not started | - |
+| 6. Endurecimento | 1/5 | In progress | - |
 
 ## Dependencies & Parallelization
 
