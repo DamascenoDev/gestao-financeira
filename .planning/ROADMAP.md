@@ -121,7 +121,12 @@ This roadmap follows the research-converged build order: **foundation → manual
   2. Usuário exporta todos os seus dados e apaga a conta + dados (caminho LGPD de direitos do titular)
   3. Um teste de isolamento com 2 usuários comprova que o usuário B não lê/insere/atualiza/exclui nenhuma linha do usuário A — nos quatro verbos, em tabelas e no Storage
   4. Auditoria confirma que segredos (service-role) não estão no bundle do cliente, que faturas só são acessíveis por signed URL, e que nenhum dado/valor com PII é enviado ao provedor de IA
-**Plans**: TBD
+**Plans**: 5 plans
+  - [ ] 06-01-PLAN.md — Substrate [BLOCKING] + Wave-0: src/lib/data/owned-tables.ts (the central 14-table list + isolation INSERT shapes) + src/lib/supabase/admin.ts (server-only service-role client, DELETE ONLY) + src/lib/transactions/csv.ts (transactionsToCsv mirroring mei/csv.ts) + the 8 Wave-0 tests (extend rls-isolation 8→14 + bundle-secret; create isolation-matrix/storage-isolation/lgpd-export/lgpd-delete/lgpd-delete-isolation/pii-guard) RED where impl is deferred (DATA-01/02, SEC-01)
+  - [ ] 06-02-PLAN.md — CSV export slice (DATA-01): ExportTransactionsButton (reuses the ExportCsvButton shape, transactionsToCsv → transacoes-{yyyy-MM}.csv) + Extrato header wiring (resolve category name + Consumo/Alocação) + /conta screen shell + Conta nav item + UserMenu "Privacidade e conta" link
+  - [ ] 06-03-PLAN.md — LGPD export+delete slice (DATA-02): bundle.ts (iterate OWNED_TABLES, RLS select('*') + embedded transactions/MEI CSVs) + exportMyData (RLS client — only my rows) + deleteMyAccount (Storage-remove first, auth.admin.deleteUser last, cascade) + ExportDataButton + type-to-confirm DeleteAccountForm (APAGAR → signOut) + completed Conta screen; flips lgpd-export/lgpd-delete/lgpd-delete-isolation GREEN
+  - [ ] 06-04-PLAN.md — SEC-01 audits closure: 4-verb × 14-table isolation matrix GREEN (data-driven over OWNED_TABLES) + Storage 2-user + private-bucket + no-getPublicUrl + secret-bundle audit against a real build + PII-egress guard (no AI dep, suggestCategory null) — the 2-user isolation proof
+  - [ ] 06-05-PLAN.md — [autonomous:false] Human-verify walkthrough: phase gate (full suite + tsc + build + secret audit) then browser checks — transactions CSV download (pt-BR), LGPD bundle download, type-to-confirm APAGAR delete + sign-out (throwaway LOCAL user only)
 **UI hint**: yes
 
 ## Progress
@@ -133,13 +138,13 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 3. Metas, aderência e reservas | 5/6 | In progress | - |
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
-| 6. Endurecimento | 0/0 | Not started | - |
+| 6. Endurecimento | 0/5 | Not started | - |
 
 ## Dependencies & Parallelization
 
 - **Linear core path:** Phase 1 → 2 → 3 → 4. Each consumes the previous: metas precisam do denominador de receita (Phase 2); reservas precisam de transações + categorias (Phase 2); o classificador por IA precisa da camada de memória, que dispara só no cache-miss (Phase 4 internamente: memória antes da IA).
 - **Phase 5 (MEI) parallelizes:** depende apenas da Fundação (Phase 1) — não toca o core de classificação. Pode ser construída em paralelo a qualquer fase ≥ 2.
-- **Phase 6 (Hardening) is last:** re-verifica os pitfalls das fases anteriores e fecha LGPD; depende de todas as superfícies existirem.
+- **Phase 6 (Hardening) is last:** re-verifica os pitfalls das fases anteriores e fecha LGPD; depende de todas as superfícies existirem. Internamente: Wave 1 substrate (06-01) → Wave 2 CSV slice (06-02) ‖ SEC-01 audits (06-04) → Wave 3 LGPD export+delete (06-03) → Wave 4 human-verify (06-05).
 
 ## Research Flags
 
@@ -156,3 +161,4 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 *Coverage: 47/47 v1 requirements mapped*
 *Phase 4 planned: 2026-06-16 (4 plans, AI deferred — memory-first pipeline + suggestion seam)*
 *Phase 5 planned: 2026-06-16 (4 plans, zero new npm deps — substrate + dashboard + NF/report slices + human-verify)*
+*Phase 6 planned: 2026-06-17 (5 plans, zero new npm deps — substrate + Wave-0 / CSV slice / LGPD export+delete / SEC-01 audits / human-verify; no new migration — all 14 tables already ON DELETE CASCADE)*
