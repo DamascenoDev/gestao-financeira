@@ -48,7 +48,13 @@ export function normalizeDescriptor(raw: string): string {
     .replace(/\*+/g, ' ') // card-network `*` noise
     .replace(/\d{4,}/g, ' ') // long digit runs (terminal/store #)
     .replace(/[^a-z0-9 ]/g, ' ') // any remaining punctuation → space
-    .replace(/\s+[a-z]{2}\s*$/g, ' ') // trailing 2-letter UF code
+    // IN-02: strip ONLY a real trailing UF state code, not any 2-letter word — a
+    // merchant ending in a legitimate 2-letter token ("bar xv" → "bar") must not be
+    // over-stripped into a different/empty key (a false-merge vector).
+    .replace(
+      /\s(?:ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\s*$/,
+      ' ',
+    )
     .replace(/\s+/g, ' ')
     .trim()
 }

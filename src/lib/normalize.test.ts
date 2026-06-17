@@ -64,6 +64,11 @@ describe('normalizeDescriptor — noise-strip rules', () => {
   it('strips a trailing 2-letter UF code', () => {
     expect(normalizeDescriptor('RESTAURANTE BOM SP')).toBe('restaurante bom')
   })
+  it('IN-02: keeps a trailing 2-letter token that is NOT a UF code (no false merge)', () => {
+    // "xv" is not a UF — must be kept so "BAR XV" and "BAR" do not collapse.
+    expect(normalizeDescriptor('BAR XV')).toBe('bar xv')
+    expect(normalizeDescriptor('BAR XV')).not.toBe(normalizeDescriptor('BAR'))
+  })
   it('collapses single-space-separated tokens and trims', () => {
     // NB: 2+ spaces is the merchant|location separator (only the first segment is
     // kept); single spaces inside the merchant segment are collapsed + trimmed.
