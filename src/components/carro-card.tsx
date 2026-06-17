@@ -11,6 +11,8 @@ import { CarroForm, type CarroEdit } from '@/components/carro-form'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
+import { kmPerLitroLabel } from '@/lib/carro/consumo'
+import { formatCents } from '@/lib/money'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -26,6 +28,21 @@ export type CarroCardData = {
   ano: number | null
   combustivelPadrao: string | null
   isArchived: boolean
+  /** Gasto total em centavos (v_carro_resumo). null = sem dados → '—' (nunca R$ 0,00). */
+  gastoTotalCents: number | null
+  /** Consumo médio km/l (v_carro_resumo). null = sem intervalo fechado → '—' (nunca 0 km/l). */
+  kmPorLitroMedio: number | null
+}
+
+/**
+ * Render the km/l médio value for the list KPI strip: the frozen kmPerLitroLabel
+ * returns just the number ("12,4") or the '—' sentinel; for a standalone KPI the
+ * unit travels with the value. Append " km/l" only when there is a real number —
+ * the sentinel stays bare (never "— km/l", never "0 km/l").
+ */
+function kmPorLitroKpiLabel(kmPorLitro: number | null): string {
+  const label = kmPerLitroLabel(kmPorLitro)
+  return label === '—' ? label : `${label} km/l`
 }
 
 /** Join the non-null identity fields with a middot (omit empties). */
@@ -48,10 +65,11 @@ export function toCarroEdit(carro: CarroCardData): CarroEdit {
 }
 
 /**
- * CarroCard (CAR-01) — a --card surface showing car IDENTITY ONLY: apelido (links to
- * /carros/[id]) · modelo · placa · ano · combustível badge · "Arquivado" badge. No
- * KPIs, no money (gasto total / km/l are deferred to Phases 9-11 — do NOT render
- * placeholder zeros). Per-card actions via a DropdownMenu (mirrors ReservaCard):
+ * CarroCard (CAR-01 / CAR-05.2) — a --card surface showing car identity: apelido
+ * (links to /carros/[id]) · modelo · placa · ano · combustível badge · "Arquivado"
+ * badge, plus an additive two-up KPI strip (gasto total + km/l médio from
+ * v_carro_resumo). KPIs are neutral foreground; missing data shows '—' (NEVER a
+ * placeholder zero). Per-card actions via a DropdownMenu (mirrors ReservaCard):
  * Editar (controlled CarroForm) + Arquivar/Desarquivar (soft reversible toggle +
  * toast, no AlertDialog, no destructive styling).
  */
@@ -123,6 +141,30 @@ export function CarroCard({ carro }: { carro: CarroCardData }) {
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
+
+        {/*
+          Additive KPI strip (CAR-05.2) — gasto total + km/l médio from
+          v_carro_resumo. Mirrors ReceitaGastoChart's labeled-total grammar
+          (text-muted-foreground label over a mono tabular-nums value). Neutral
+          foreground (no gold, never red). Always renders both labels; null data
+          shows the '—' sentinel — NEVER "R$ 0,00", NEVER "0 km/l" (D4 null rule).
+        */}
+        <dl className="flex flex-wrap gap-x-6 gap-y-1">
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">Gasto total</dt>
+            <dd className="font-mono text-sm font-semibold tabular-nums">
+              {carro.gastoTotalCents === null
+                ? '—'
+                : formatCents(carro.gastoTotalCents)}
+            </dd>
+          </div>
+          <div className="flex flex-col gap-0.5">
+            <dt className="text-xs text-muted-foreground">km/l médio</dt>
+            <dd className="font-mono text-sm font-semibold tabular-nums">
+              {kmPorLitroKpiLabel(carro.kmPorLitroMedio)}
+            </dd>
+          </div>
+        </dl>
       </CardContent>
 
       <CarroForm

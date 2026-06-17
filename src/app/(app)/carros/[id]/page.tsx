@@ -51,6 +51,10 @@ export default async function CarroDetailPage({
     ano: row.ano,
     combustivelPadrao: row.combustivel_padrao,
     isArchived: row.is_archived,
+    // Detail-page KPIs (km/l · R$/km · gasto total) are wired from v_carro_resumo
+    // in Plan 03's enriched layout; the header carro shape carries nulls until then.
+    gastoTotalCents: null,
+    kmPorLitroMedio: null,
   }
 
   // ── Abastecimentos section data (RLS-scoped; security_invoker views) ──────────
