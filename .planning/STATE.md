@@ -4,16 +4,16 @@ milestone: v1.2
 milestone_name: Carro
 current_phase: 11
 current_phase_name: Detalhe do carro + gráfico de consumo
-status: "11-02 entregue (CarroCard estendido com KPI strip aditivo gasto total + km/l médio de v_carro_resumo, mono tabular-nums, '—' para sem-dados — nunca R$ 0,00/0 km/l; /carros RSC lê v_carro_resumo RLS-scoped e remapeia gasto coalescido 0→null→'—'; identidade/ações intactas; 3 Wave-0 tests green; suíte 732 passed; tsc limpo; build exit 0). Próximo: 11-03 (página /carros/[id] enriquecida — KPIs + gasto por categoria + gráfico de consumo + AbastecimentoHistory)."
-last_updated: "2026-06-17T19:32:00.000Z"
+status: "11-03 entregue (/carros/[id] enriquecido = capstone CAR-05: header + 3 KPI cards km/l médio·R$/km·gasto total de v_carro_resumo + agregação INLINE gasto-por-categoria RLS-scoped por category_id point-in-time [sem view nova — integration test sums/isolamento-userB-zero/D4 não-destrutivo] → CarroCategoriaBars + CarroConsumoChart de v_abastecimento_consumo [série cronológica, intervalos null dropados] + AbastecimentoHistory Phase-10 integrado verbatim, na ordem do UI-SPEC; SEC-01 re-auditoria bundle-secret exit 0 em build fresco; WR-02 documentado como limitação conhecida; suíte 735 passed; tsc limpo; build exit 0). Próximo: 11-04 (human-verify do detalhe enriquecido)."
+last_updated: "2026-06-17T19:47:00.000Z"
 last_activity: 2026-06-17
-last_activity_desc: 11-02 entregue (CarroCard KPIs gasto total + km/l médio de v_carro_resumo + /carros RSC wiring)
+last_activity_desc: 11-03 entregue (/carros/[id] enriquecido — KPIs + gasto por categoria inline + gráfico consumo + AbastecimentoHistory integrado; SEC-01 re-auditoria green)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 13
-  completed_plans: 11
-  percent: 85
+  completed_plans: 12
+  percent: 92
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,9 +30,9 @@ progress:
 ## Current Position
 
 Phase: 11 — Detalhe do carro + gráfico de consumo
-Plan: 11-02 complete (Wave 1, 2/4)
-Status: 11-02 entregue (CarroCard com KPI strip gasto total + km/l médio de v_carro_resumo, '—' para sem-dados; /carros RSC RLS-scoped). Próximo: 11-03 (página /carros/[id] enriquecida — KPIs + gasto por categoria + gráfico de consumo + AbastecimentoHistory).
-Last activity: 2026-06-17 — 11-02 entregue (KPIs no CarroCard da lista + /carros RSC wiring)
+Plan: 11-03 complete (Wave 2, 3/4)
+Status: 11-03 entregue (/carros/[id] enriquecido — capstone CAR-05: 3 KPI cards + agregação inline gasto-por-categoria + CarroConsumoChart + AbastecimentoHistory integrado; SEC-01 re-auditoria exit 0; suíte 735). Próximo: 11-04 (human-verify do detalhe enriquecido).
+Last activity: 2026-06-17 — 11-03 entregue (detalhe /carros/[id] enriquecido + SEC-01 re-auditoria green)
 
 ## Performance Metrics
 
@@ -41,8 +41,8 @@ Last activity: 2026-06-17 — 11-02 entregue (KPIs no CarroCard da lista + /carr
 | Phases total | 11 (7 entregues v1.0/v1.1 + 4 novas v1.2) |
 | Phases complete | 8 (Phase 7 + Phase 8 fechadas; 1-6 com human-verify/deploy adiados) |
 | v1 requirements | 47 (todos mapeados/Complete exceto CLS-02 deferred) |
-| v1.2 requirements | 6 (CAR-01 + CAR-02 + CAR-04 + CAR-06 Complete; CAR-03 In progress server contract; CAR-05 In progress — lista /carros entregue (11-02), detalhe pendente (11-03/04); mapeados 6/6) |
-| Plans complete | 32 |
+| v1.2 requirements | 6 (CAR-01 + CAR-02 + CAR-04 + CAR-06 Complete; CAR-03 In progress server contract; CAR-05 In progress — lista /carros (11-02) + detalhe /carros/[id] enriquecido (11-03) entregues, falta só o human-verify (11-04); mapeados 6/6) |
+| Plans complete | 33 |
 
 ### Plan Execution Log
 
@@ -83,6 +83,7 @@ Last activity: 2026-06-17 — 11-02 entregue (KPIs no CarroCard da lista + /carr
 | 10 | 02 | ~6 min | 3 | 7 created / 2 modified | 2026-06-17 |
 | 11 | 01 | ~12 min | 2 | 4 created / 0 modified | 2026-06-17 |
 | 11 | 02 | ~6 min | 2 | 1 created / 3 modified | 2026-06-17 |
+| 11 | 03 | ~9 min | 3 | 1 created / 1 modified | 2026-06-17 |
 
 ## Accumulated Context
 
