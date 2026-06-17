@@ -106,7 +106,7 @@ function InlineCategoryCell({
   categories: ExtratoCategory[]
   reservas: ReservaOption[]
 }) {
-  const [, startTransition] = React.useTransition()
+  const [isPending, startTransition] = React.useTransition()
   const current = categories.find((c) => c.id === row.category_id)
 
   // Focused re-tag dialog: holds the pending Reserva category + the chosen reserva.
@@ -115,7 +115,6 @@ function InlineCategoryCell({
   )
   const [reservaId, setReservaId] = React.useState('')
   const [reservaError, setReservaError] = React.useState<string | undefined>()
-  const [isSaving, setIsSaving] = React.useState(false)
 
   function apply(categoryId: string, reservaIdToSend?: string) {
     const fd = new FormData()
@@ -150,9 +149,12 @@ function InlineCategoryCell({
       return
     }
     if (pendingCategoryId) {
-      setIsSaving(true)
+      // WR-03: apply() only SCHEDULES the transition and returns immediately,
+      // so the previous synchronous setIsSaving(true/false) never actually
+      // disabled the button. Drive the disabled state off the transition's
+      // pending flag (isPending) instead; close the dialog once the write is
+      // dispatched. The underlying Server Action behavior is unchanged.
       apply(pendingCategoryId, reservaId)
-      setIsSaving(false)
       setPendingCategoryId(null)
     }
   }
@@ -213,7 +215,7 @@ function InlineCategoryCell({
                 </Button>
               }
             />
-            <Button type="button" onClick={confirmReserva} disabled={isSaving}>
+            <Button type="button" onClick={confirmReserva} disabled={isPending}>
               Confirmar aporte
             </Button>
           </DialogFooter>
