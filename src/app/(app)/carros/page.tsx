@@ -31,13 +31,17 @@ export default async function CarrosPage({
 
   const supabase = await createClient()
 
-  const { data, error } = await supabase
+  // Push the archived predicate into Postgres so the default view never reads
+  // archived rows (WR-03): RLS scopes WHICH rows are visible (the caller's own),
+  // and `.eq('is_archived', false)` keeps archived identity data off the wire
+  // entirely when "mostrar arquivados" is OFF.
+  let query = supabase
     .from('carros')
     .select('id, apelido, modelo, placa, ano, combustivel_padrao, is_archived')
-    .order('apelido', { ascending: true })
+  if (!showArchived) query = query.eq('is_archived', false)
+  const { data, error } = await query.order('apelido', { ascending: true })
 
   const carros: CarroCardData[] = (data ?? [])
-    .filter((c) => showArchived || !c.is_archived)
     .map((c) => ({
       id: c.id,
       apelido: c.apelido,
