@@ -196,7 +196,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 
 ### Phases (v1.2)
 
-- [ ] **Phase 8: Substrato Carro + CRUD + navegação** - Tabelas/views/RLS do carro + coluna `carro_id`; usuário cadastra/edita/arquiva carros e navega para `/carros`
+- [x] **Phase 8: Substrato Carro + CRUD + navegação** - Tabelas/views/RLS do carro + coluna `carro_id`; usuário cadastra/edita/arquiva carros e navega para `/carros` (3/3 plans ✓ 2026-06-17)
 - [ ] **Phase 9: Etiquetar gastos da fatura ao carro** - Usuário etiqueta lançamentos a um carro via form e via ação no extrato, sem alterar categoria/metas (lente não-destrutiva)
 - [ ] **Phase 10: Abastecimento híbrido + consumo** - Usuário registra abastecimento (custo da fatura OU manual, XOR) com odômetro/litros/tanque-cheio; sistema calcula km/l e R$/km
 - [ ] **Phase 11: Detalhe do carro + gráfico de consumo** - Detalhe do carro com gasto total, histórico de abastecimentos e gráfico de consumo km/l no tempo
@@ -219,7 +219,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 
   - [x] 08-01-PLAN.md — [BLOCKING substrate] migration 0027_carros.sql (tabelas carros/abastecimentos + coluna transactions.carro_id ON DELETE SET NULL + views v_abastecimento_consumo/v_carro_resumo security_invoker + RLS + grants + índices + CHECK XOR + índice único parcial) aplicada LOCAL + gen:types sem drift (162 inserções/0 deleções) + Wave-0 (carro-rls isolation 3 objetos + XOR/partial-unique negatives + carro-view-leak); 11 testes green, suíte 610 passed, tsc limpo. **[Rule 1]** lag() FILTER inválido em Postgres → reescrito via CTE full_fills (3 commits: 482272b, 07ea0c0, 2cf1e69) ✓ 2026-06-17
   - [x] 08-02-PLAN.md — Camada server: schemas/carro.ts (carroSchema — apelido obrigatório + modelo/placa/ano opcionais + enum combustível Flex/Gasolina/Etanol/Diesel/GNV + ano 1900..anoAtual+1) + actions/carros.ts (create/update/archive/unarchive, Zod → getClaims sub-gate → assertOwnedCarro re-derive → write → revalidatePath('/carros'), { ok } | { error } nunca throw) + assertOwnedCarro em ownership.ts (exactly-1-row IDOR re-derive) + carro.test.ts/carros.test.ts (6+16 casos: Zod/sessão/IDOR no-write/shape). Sem desvios; suíte 632 passed, tsc limpo (4 commits: 250139a, 57e4fa0, 940f3e7, 486d5a7) ✓ 2026-06-17
-  - [ ] 08-03-PLAN.md — Fatia UI: NAV_ITEMS += Carros (sidebar após Reservas + bottom-nav 6º item, lucide Car) + CarroForm dialog (create/edit) + CarroCard identidade + /carros lista (grid + Novo carro + mostrar-arquivados + empty/loading/error) + /carros/[id] detalhe mínimo (notFound em id alheio)
+  - [x] 08-03-PLAN.md — Fatia UI: NAV_ITEMS += Carros (sidebar após Reservas + bottom-nav 6º item, lucide Car) + CarroForm dialog (create/edit, clone reserva-form, client carroSchema + sonner) + CarroCard identidade (apelido link + modelo·placa·ano + badges combustível/Arquivado + dropdown Editar/Arquivar, sem dinheiro/KPIs) + /carros lista RSC (RLS read + grid + Novo carro + filtro ?arquivados=1 Switch + empty Car-icon/loading CardSkeleton/error inline) + /carros/[id] detalhe mínimo (definition list + ações Editar/Arquivar, notFound em id alheio). Sem desvios; tsc + build limpos (compila /carros + /carros/[id]), suíte 632 passed, grep gates OK (3 commits: af3fd65, 3918e34, 15b1434) ✓ 2026-06-17
 
 **UI hint**: yes
 

@@ -3,14 +3,14 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
 status: executing
-last_updated: "2026-06-17T16:04:48.000Z"
+last_updated: "2026-06-17T16:12:12.000Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 3
-  completed_plans: 2
-  percent: 0
+  completed_plans: 3
+  percent: 100
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -22,24 +22,24 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Milestone v1.2 Carro — Phase 8 (substrato-carro-crud-navegacao) próxima a planejar
+- **Current focus:** Milestone v1.2 Carro — Phase 8 COMPLETA (3/3); próxima: Phase 9 (etiquetar gastos da fatura ao carro)
 
 ## Current Position
 
-Phase: 8 — Substrato Carro + CRUD + navegação (em execução)
-Plan: 08-01 + 08-02 completos (substrato + camada server) — próximo: 08-03 (nav + CRUD UI)
-Status: 08-02 entregue (carroSchema + assertOwnedCarro + 4 server actions + testes); a fatia de UI (nav/lista/form/detalhe) que fecha CAR-01 fica em 08-03
-Last activity: 2026-06-17 — 08-02 executado (camada server Carro: Zod + IDOR re-derive + actions, suíte 632 passed, tsc limpo)
+Phase: 8 — Substrato Carro + CRUD + navegação (COMPLETA 3/3)
+Plan: 08-01 + 08-02 + 08-03 completos — Phase 8 fechada (CAR-01 + CAR-06 Complete)
+Status: 08-03 entregue (nav Carros sidebar+bottom-nav + CarroForm/CarroCard + /carros lista CRUD + /carros/[id] detalhe mínimo + arquivar/desarquivar); CAR-01 e CAR-06 Complete. Próximo: Phase 9 (CAR-02 etiquetar gastos→carro)
+Last activity: 2026-06-17 — 08-03 executado (fatia UI Carro: nav + form + card + lista + detalhe, identity-only sem dinheiro/KPIs, suíte 632 passed, tsc + build limpos)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
 | Phases total | 11 (7 entregues v1.0/v1.1 + 4 novas v1.2) |
-| Phases complete | 7 (Phase 7 fechada; 1-6 com human-verify/deploy adiados) |
+| Phases complete | 8 (Phase 7 + Phase 8 fechadas; 1-6 com human-verify/deploy adiados) |
 | v1 requirements | 47 (todos mapeados/Complete exceto CLS-02 deferred) |
-| v1.2 requirements | 6 (CAR-01..06 — Pending, mapeados 6/6) |
-| Plans complete | 25 |
+| v1.2 requirements | 6 (CAR-01 + CAR-06 Complete; CAR-02..05 Pending; mapeados 6/6) |
+| Plans complete | 28 |
 
 ### Plan Execution Log
 
@@ -74,6 +74,7 @@ Last activity: 2026-06-17 — 08-02 executado (camada server Carro: Zod + IDOR r
 | 7 | 07 | ~3 min | 2 | 0 created / 0 modified (production) | 2026-06-17 |
 | 8 | 01 | ~4 min | 3 | 3 created / 2 modified | 2026-06-17 |
 | 8 | 02 | ~4 min | 2 | 4 created / 1 modified | 2026-06-17 |
+| 8 | 03 | ~4 min | 3 | 7 created / 2 modified | 2026-06-17 |
 
 ## Accumulated Context
 

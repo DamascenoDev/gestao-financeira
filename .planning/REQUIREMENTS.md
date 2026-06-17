@@ -114,12 +114,12 @@ Módulo de veículo. Design aprovado em `docs/superpowers/specs/2026-06-17-modul
 
 ### Carro
 
-- [ ] **CAR-01**: Usuário cadastra, edita e arquiva carro(s); a lista mostra todos os carros não-arquivados (multi-car, escopado por `user_id`).
+- [x] **CAR-01**: Usuário cadastra, edita e arquiva carro(s); a lista mostra todos os carros não-arquivados (multi-car, escopado por `user_id`).
 - [ ] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
 - [ ] **CAR-03**: Usuário registra abastecimento (data, odômetro, litros, tanque-cheio?, combustível) com custo vindo de um lançamento vinculado da fatura OU manual — exatamente uma fonte (CHECK XOR), nunca ambas, nunca nenhuma.
 - [ ] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
 - [ ] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
-- [ ] **CAR-06**: Aba "Carros" na sidebar e na bottom-nav mobile; rotas sob `/carros` (lista + detalhe `[id]`).
+- [x] **CAR-06**: Aba "Carros" na sidebar e na bottom-nav mobile; rotas sob `/carros` (lista + detalhe `[id]`).
 
 ## v2 Requirements
 
@@ -212,8 +212,8 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | UI-03 | Phase 7 | Complete (07-02 chrome/brand + 07-05 AuthShell login/landing + favicon) |
 | UI-07 | Phase 7 | Complete (07-02 BottomNav nav adapta + 07-04 4 tabelas → cards <md) |
 | UI-08 | Phase 7 | Complete (07-06: skeletons sobre shadcn skeleton + loading.tsx por segmento + gramática empty/error confirmada, 0 spinners) |
-| CAR-01 | Phase 8 | In progress (08-01 substrato: tabelas+RLS+tipos; 08-02 camada server: carroSchema + assertOwnedCarro + create/update/archive/unarchive actions; falta a UI /carros em 08-03) |
-| CAR-06 | Phase 8 | Pending |
+| CAR-01 | Phase 8 | Complete (08-01 substrato + 08-02 camada server + 08-03 UI: CarroForm/CarroCard + /carros lista CRUD + arquivar/desarquivar) |
+| CAR-06 | Phase 8 | Complete (08-03: nav Carros sidebar+bottom-nav + rotas /carros + /carros/[id] sob auth guard) |
 | CAR-02 | Phase 9 | Pending |
 | CAR-03 | Phase 10 | Pending |
 | CAR-04 | Phase 10 | Pending |
