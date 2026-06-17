@@ -15,8 +15,12 @@ import { createClient } from '@/lib/supabase/server'
  *
  * Guards:
  *   - confirm must equal the literal 'APAGAR' (zod) — else reject, perform NO delete.
- *   - userId derives from the SESSION (getClaims), NEVER from input — a forged input
- *     userId cannot delete another account (T-06-09 / Pitfall 2).
+ *   - userId derives from the SESSION, NEVER from input — a forged input userId cannot
+ *     delete another account (T-06-09 / Pitfall 2). For THIS (the single most dangerous)
+ *     operation we use auth.getUser(), which makes an authenticated round-trip to the
+ *     Auth server and rejects a forged/expired access-token cookie (MD-01). getClaims()
+ *     only verifies the JWT signature when asymmetric signing keys are configured and
+ *     can otherwise trust the cookie's token, so it is NOT used on this path.
  *
  * Order (NON-NEGOTIABLE — T-06-10 / Pattern 2):
  *   1. Storage `{userId}/` objects FIRST — Storage is NOT FK-cascaded, so it must be
@@ -62,11 +66,16 @@ export async function deleteMyAccount(input: {
   const parsed = ConfirmSchema.safeParse(input)
   if (!parsed.success) return { ok: false, error: 'confirmacao_invalida' }
 
-  // 2. userId from the SESSION, never from client input.
+  // 2. userId from the SESSION, never from client input. getUser() hits the Auth
+  // server, so a forged/expired access-token cookie is rejected here (MD-01) BEFORE
+  // any irreversible delete.
   const supabase = await createClient()
-  const { data: claims } = await supabase.auth.getClaims()
-  const userId = claims?.claims.sub
-  if (!userId) return { ok: false, error: 'nao_autenticado' }
+  const {
+    data: { user },
+    error: authErr,
+  } = await supabase.auth.getUser()
+  if (authErr || !user) return { ok: false, error: 'nao_autenticado' }
+  const userId = user.id
 
   const admin = createAdminClient()
 

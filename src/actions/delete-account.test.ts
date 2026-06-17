@@ -7,12 +7,15 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // real erasure + isolation against the stack; THIS test asserts the action wrapper's
 // contract in isolation (mocked clients):
 //   - the type-to-confirm gate (confirm must equal the literal 'APAGAR');
-//   - userId derives from getClaims (the session), never from input;
+//   - userId derives from the authenticated session (auth.getUser — an authenticated
+//     round-trip, MD-01), never from input;
 //   - the NON-NEGOTIABLE call order: Storage list+remove FIRST, auth.admin.deleteUser
 //     LAST (a forged input userId cannot redirect the delete).
 
-// The session userId the RLS server client reports via getClaims.
+// The session userId the RLS server client reports via getUser; null + an authErr
+// models a forged/expired access-token cookie the Auth server rejects (MD-01).
 let claimsSub: string | null = 'session-user'
+let getUserError: unknown = null
 
 // Ordered log of admin-side operations so we can assert Storage-then-auth.
 const opLog: string[] = []
@@ -41,8 +44,11 @@ const deleteUserSpy = vi.fn((id: string) => {
 vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => ({
     auth: {
-      getClaims: vi.fn(async () => ({
-        data: claimsSub ? { claims: { sub: claimsSub } } : null,
+      // getUser() makes an authenticated round-trip; model the rejected case with a
+      // null user + an error (a forged/expired cookie token, MD-01).
+      getUser: vi.fn(async () => ({
+        data: { user: claimsSub ? { id: claimsSub } : null },
+        error: getUserError,
       })),
     },
   })),
@@ -68,6 +74,7 @@ import { deleteMyAccount } from './delete-account'
 
 beforeEach(() => {
   claimsSub = 'session-user'
+  getUserError = null
   opLog.length = 0
   listResult = { data: [{ name: 'a.ofx' }, { name: 'b.ofx' }], error: null }
   removeResult = { error: null }
@@ -103,8 +110,8 @@ describe('deleteMyAccount — confirm gate', () => {
   })
 })
 
-describe('deleteMyAccount — userId from session, never input', () => {
-  it('deletes the SESSION user id (getClaims), ignoring any forged input', async () => {
+describe('deleteMyAccount — userId from authenticated session, never input', () => {
+  it('deletes the SESSION user id (auth.getUser), ignoring any forged input', async () => {
     claimsSub = 'real-session-user'
     await deleteMyAccount({
       confirm: 'APAGAR',
@@ -115,10 +122,21 @@ describe('deleteMyAccount — userId from session, never input', () => {
     expect(deleteUserSpy).not.toHaveBeenCalledWith('victim-user')
   })
 
-  it('rejects when there is no session (getClaims returns no sub)', async () => {
+  it('rejects when there is no session (getUser returns no user)', async () => {
     claimsSub = null
     const result = await deleteMyAccount({ confirm: 'APAGAR' })
     expect(result).toEqual({ ok: false, error: 'nao_autenticado' })
+    expect(deleteUserSpy).not.toHaveBeenCalled()
+  })
+
+  it('rejects a forged/expired token (getUser returns an error) — zero admin calls (MD-01)', async () => {
+    // The Auth server round-trip fails: a tampered/expired access-token cookie must
+    // NOT reach any irreversible delete.
+    getUserError = { message: 'invalid JWT' }
+    const result = await deleteMyAccount({ confirm: 'APAGAR' })
+    expect(result).toEqual({ ok: false, error: 'nao_autenticado' })
+    expect(listSpy).not.toHaveBeenCalled()
+    expect(removeSpy).not.toHaveBeenCalled()
     expect(deleteUserSpy).not.toHaveBeenCalled()
   })
 })
