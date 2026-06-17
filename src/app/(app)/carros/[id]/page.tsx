@@ -1,4 +1,5 @@
 import { notFound } from 'next/navigation'
+import { z } from 'zod'
 
 import {
   AbastecimentoForm,
@@ -40,6 +41,14 @@ export default async function CarroDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = await params
+  // WR-02: validate the route param as a uuid BEFORE it reaches any query —
+  // notably the `.or('carro_id.eq.' + id)` filter string below, which interpolates
+  // id into a PostgREST expression. A malformed id is treated as not-found rather
+  // than relying on the positional `.eq('id', id)` guard for input sanitization
+  // (defense-in-depth for a financial app). Mirrors actions/carros.ts idSchema.
+  if (!z.string().uuid().safeParse(id).success) {
+    notFound()
+  }
   const supabase = await createClient()
 
   const { data: row } = await supabase
@@ -175,6 +184,9 @@ export default async function CarroDetailPage({
     .from('transactions')
     .select('id, description, occurred_on, amount_cents')
     .eq('kind', 'expense')
+    // id is uuid-validated at the top of the handler (WR-02), so this filter
+    // string carries no untrusted input — the interpolation cannot inject a
+    // PostgREST predicate.
     .or(`carro_id.is.null,carro_id.eq.${id}`)
     .order('occurred_on', { ascending: false })
     .limit(100)
