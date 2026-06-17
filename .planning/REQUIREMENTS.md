@@ -117,7 +117,7 @@ Módulo de veículo. Design aprovado em `docs/superpowers/specs/2026-06-17-modul
 - [x] **CAR-01**: Usuário cadastra, edita e arquiva carro(s); a lista mostra todos os carros não-arquivados (multi-car, escopado por `user_id`).
 - [x] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
 - [ ] **CAR-03**: Usuário registra abastecimento (data, odômetro, litros, tanque-cheio?, combustível) com custo vindo de um lançamento vinculado da fatura OU manual — exatamente uma fonte (CHECK XOR), nunca ambas, nunca nenhuma.
-- [ ] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
+- [x] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
 - [ ] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
 - [x] **CAR-06**: Aba "Carros" na sidebar e na bottom-nav mobile; rotas sob `/carros` (lista + detalhe `[id]`).
 
@@ -216,7 +216,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | CAR-06 | Phase 8 | Complete (08-03: nav Carros sidebar+bottom-nav + rotas /carros + /carros/[id] sob auth guard) |
 | CAR-02 | Phase 9 | In progress (09-01: contrato server — carroId no transactionSchema + carro_id write/clear + bulkTagCarro + Wave-0 D4/IDOR; UI seletor/extrato/import-review em 09-02/09-03) |
 | CAR-03 | Phase 10 | Pending |
-| CAR-04 | Phase 10 | Pending |
+| CAR-04 | Phase 10 | Complete |
 | CAR-05 | Phase 11 | Pending |
 
 **Coverage:**

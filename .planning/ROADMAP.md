@@ -260,7 +260,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 
 **Plans**: 3 plans
 
-  - [ ] 10-01-PLAN.md — [Wave 1, BLOCKING substrate] migração 0028_carros_fix.sql (WR-05/06: v_abastecimento_consumo guarda km_rodados ≤ 0 → null + exclui das médias + desempate determinístico; WR-01: CHECK ano 1900..2100 + combustivel_padrao enum; security_invoker mantido) aplicada LOCAL + gen:types sem drift + Wave-0 carro-consumo.test.ts (km/l tanque-cheio, guarda km negativo, R$/km, preco_litro derivado)
+  - [x] 10-01-PLAN.md — [Wave 1, BLOCKING substrate] migração 0028_carros_fix.sql (WR-05/06: v_abastecimento_consumo guarda km_rodados ≤ 0 → null + exclui das médias + desempate determinístico; WR-01: CHECK ano 1900..2100 + combustivel_padrao enum; security_invoker mantido) aplicada LOCAL + gen:types sem drift + Wave-0 carro-consumo.test.ts (km/l tanque-cheio, guarda km negativo, R$/km, preco_litro derivado); suite 670 passed / build GREEN; CAR-04 Complete ✓ 2026-06-17
   - [ ] 10-02-PLAN.md — [Wave 2] camada server: schemas/abastecimento.ts (Zod XOR fonte de custo) + actions/abastecimentos.ts (create/update/delete, dual IDOR carro_id + transaction_id, seta carro_id no lançamento vinculado, { ok } | { error }) + lib/carro/consumo.ts (preco_litro/km-l/R$-km derivados, '—' para inválido) + testes + Wave-0 abastecimento-action.test.ts (XOR ambos/nenhum, IDOR sem-write, 1:1 já-vinculado, sync carro_id)
   - [ ] 10-03-PLAN.md — [Wave 3] fatia UI: abastecimento-form.tsx (dialog, toggle segmentado Da fatura | Manual, tanque-cheio default ON, combustível default do carro) + transacao-picker.tsx (picker buscável de lançamentos não-vinculados) + abastecimento-history.tsx (histórico tabela→card + médias km/l + R$/km em números) + /carros/[id] (seção Abastecimentos) — gráfico DIFERIDO p/ Phase 11
 
@@ -296,7 +296,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
 | 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
 | 9. Etiquetar gastos da fatura ao carro | 3/3 | Complete    | 2026-06-17 |
-| 10. Abastecimento híbrido + consumo | 0/? | Not started | - |
+| 10. Abastecimento híbrido + consumo | 1/3 | In progress | - |
 | 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |
 
 ## Dependencies & Parallelization
