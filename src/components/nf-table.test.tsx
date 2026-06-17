@@ -56,7 +56,10 @@ describe('NfTable', () => {
       (_, el) => norm(el?.textContent ?? '') === expected,
     )
     expect(matches.length).toBeGreaterThan(0)
-    expect(screen.getByText('Receita bruta no ano')).toBeInTheDocument()
+    // Dual render (desktop table `hidden md:table` + mobile cards `md:hidden`) both
+    // emit the footer label in jsdom — assert presence, not uniqueness (UI-07 card
+    // collapse; behavior unchanged).
+    expect(screen.getAllByText('Receita bruta no ano').length).toBeGreaterThan(0)
   })
 
   it('sums the gross total bigint-safe when supabase surfaces amount_cents as strings (MD-01)', () => {
@@ -91,9 +94,12 @@ describe('NfTable', () => {
 
   it('renders one row per NF with its tomador + activity badge', () => {
     render(<NfTable rows={rows} defaultDate="2026-06-16" />)
-    expect(screen.getByText('Cliente A')).toBeInTheDocument()
-    expect(screen.getByText('Cliente B')).toBeInTheDocument()
-    expect(screen.getByText('Serviços')).toBeInTheDocument()
-    expect(screen.getByText('Comércio/Indústria')).toBeInTheDocument()
+    // Dual render (desktop `hidden md:table` + mobile `md:hidden` cards) emits each
+    // value in both branches under jsdom — assert presence, not single-match
+    // (UI-07 card collapse; row/badge behavior unchanged).
+    expect(screen.getAllByText('Cliente A').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Cliente B').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Serviços').length).toBeGreaterThan(0)
+    expect(screen.getAllByText('Comércio/Indústria').length).toBeGreaterThan(0)
   })
 })

@@ -185,7 +185,9 @@ export function NfTable({
   )
 
   return (
-    <Table>
+    <>
+      {/* Desktop (≥md): the dense NF table — actions/total frozen. */}
+      <Table className="hidden md:table">
       <TableHeader>
         <TableRow>
           <TableHead className="w-16">Data</TableHead>
@@ -234,5 +236,42 @@ export function NfTable({
         </TableRow>
       </TableFooter>
     </Table>
+
+      {/* Mobile (<md): one card per NF — same cells, only the wrapper changes.
+          Tomador/descrição + AtividadeBadge on top, Data + AmountCell (income mono)
+          below; per-row Editar/Excluir stay accessible via NfRowActions. The year
+          total collapses to a compact footer. No prop/action change (frozen). */}
+      <ul className="flex flex-col gap-2 md:hidden">
+        {rows.map((row) => (
+          <li
+            key={row.id}
+            className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3"
+          >
+            <div className="flex items-start justify-between gap-2">
+              <div className="flex min-w-0 flex-1 flex-col gap-1">
+                <TruncCell text={row.tomador} />
+                <span className="truncate text-sm text-muted-foreground">
+                  {row.descricao || '—'}
+                </span>
+                <AtividadeBadge activityType={row.activity_type} />
+              </div>
+              <NfRowActions row={row} defaultDate={defaultDate} />
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                {ddMM(row.issued_on)}
+              </span>
+              <AmountCell cents={row.amount_cents} kind="income" />
+            </div>
+          </li>
+        ))}
+        <li className="flex items-center justify-between gap-2 rounded-lg border border-border bg-card p-3">
+          <span className="text-sm font-semibold">Receita bruta no ano</span>
+          <span className="font-mono text-sm font-semibold tabular-nums">
+            {formatCents(totalCents)}
+          </span>
+        </li>
+      </ul>
+    </>
   )
 }
