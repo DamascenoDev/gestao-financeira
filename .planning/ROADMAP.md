@@ -19,129 +19,162 @@ This roadmap follows the research-converged build order: **foundation → manual
 ## Phase Details
 
 ### Phase 1: Fundação (auth, RLS, dinheiro, schema)
+
 **Goal**: Usuário entra na própria conta e o sistema garante, desde o primeiro byte gravado, que cada dado é isolado por `user_id` e que dinheiro é exato — front-loading dos dois erros irreversíveis (float e vazamento RLS).
 **Mode:** mvp
 **Depends on**: Nothing (first phase)
 **Requirements**: AUTH-01, AUTH-02, AUTH-03, AUTH-04, CAT-01, SEC-02
 **Success Criteria** (what must be TRUE):
+
   1. Usuário faz login com email/senha e a sessão persiste entre refreshes do browser (SSR + middleware), com logout disponível em qualquer página
   2. Toda tabela tem `user_id` com RLS habilitada (`(select auth.uid()) = user_id` + `WITH CHECK`) e o bucket privado `statements` aplica RLS por pasta `{user_id}/`; uma query negada retorna vazio, nunca dado de outro usuário
   3. Todo valor monetário é gravado em centavos inteiros (`bigint`), nunca float — `R$ 0,10 + R$ 0,20` soma exatamente `R$ 0,30`
   4. O conjunto padrão BR de categorias é semeado para o usuário ao criar a conta
   5. A chave service-role existe só no servidor (`import 'server-only'`, nunca `NEXT_PUBLIC_`) e não aparece no bundle do cliente
+
 **Plans**: 4 plans
+
   - [x] 01-01-PLAN.md — Scaffold (Next 16 / TS strict) + tooling + Wave-0 Nyquist tests (money/RLS/seed/bundle) + money.ts centavos helper
   - [x] 01-02-PLAN.md — SQL migrations (profiles, categories+seed trigger, private storage bucket) + RLS + role grants + apply to local stack + typed schema (RLS/seed tests GREEN)
   - [x] 01-03-PLAN.md — @supabase/ssr auth wiring + middleware + Zod-validated actions + login/signup/logout UI + dashboard reading isolated categories
   - [ ] 01-04-PLAN.md — [autonomous:false] wire personal Supabase creds + email-confirm off + remote db push + Vercel deploy + live auth-flow verify
 
 ### Phase 2: Receitas, categorias e lançamentos manuais
+
 **Goal**: Usuário registra de onde vem o dinheiro e para onde vai, à mão — receitas (recorrentes + avulsas), categorias editáveis e transações com extrato — provando o loop de dados antes de qualquer upload.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: INC-01, INC-02, INC-03, INC-04, CAT-02, CAT-03, TXN-01, TXN-02, TXN-03, TXN-04
 **Success Criteria** (what must be TRUE):
+
   1. Usuário cadastra receita recorrente fixa (salário, pensão), ajusta o valor dela em um mês específico, lança receita avulsa, e vê a receita líquida recebida do mês (a base de cálculo das metas %)
   2. Usuário cria, renomeia e remove categorias, e marca cada uma como consumo (gasto) ou alocação (investimento/poupança)
   3. Usuário lança transação manual (data, valor, descrição, categoria) e edita/exclui transações próprias
   4. Usuário vê o extrato/lista de transações filtrável por mês e categoria
   5. Usuário reclassifica a categoria de várias transações de uma vez (bulk re-classify)
+
 **Plans**: 5 plans
+
   - [x] 02-01-PLAN.md — Foundation slice: migrations (incomes/transactions/color/views/RPC) applied to local stack + typed client, civil-month + Zod schemas, app shell (sidebar + global MonthSelector), Wave-0 tests (suite 72/72 GREEN, view-leak leak-free, build+tsc clean)
   - [x] 02-02-PLAN.md — Receitas slice: income actions (template/occurrence/avulsa, materialize-on-read) + Receitas page with receita-líquida hero (INC-01/02/03/04); 12 action tests + Wave-0 income tests GREEN, suite 84/84, build+tsc clean
   - [x] 02-03-PLAN.md — Categorias slice: category actions (CRUD + consumo/alocação + color + delete-block/archive/atomic reassign) + Categorias page (CAT-02/03); 19 action tests + Wave-0 category tests GREEN, suite 103/103, build+tsc clean
   - [x] 02-04-PLAN.md — Extrato slice: transaction actions (CRUD + bulkReclassify) + dense TanStack table (getRowId=tx.id, selection, sort, inline category edit), ?mes+?cat URL filters, per-category/grand totals from v_category_totals, self-contained SelectionActionBar (TXN-01/02/03/04); 14 action tests + Wave-0 transactions-rls/bulk-reclassify GREEN, suite 117/117, build+tsc clean
   - [ ] 02-05-PLAN.md — [autonomous:false] Human-verify walkthrough: INC-02 edit-choice, TXN-03 filter URL round-trip, TXN-04 bulk re-classify + design-contract sanity
+
 **UI hint**: yes
 
 ### Phase 3: Metas, aderência e reservas
+
 **Goal**: Usuário vê, em dados inseridos à mão, o quanto está aderente às metas (mensal e anual) e gerencia reservas de oportunidade com saldo sempre derivado — entregando a "visão de metas" do core value e resolvendo as decisões de modelagem (denominador %, contabilidade de reserva) antes de o dashboard depender delas.
 **Mode:** mvp
 **Depends on**: Phase 2
 **Requirements**: BUD-01, BUD-02, BUD-03, BUD-04, RSV-01, RSV-02, RSV-03, RSV-04, RSV-05
 **Success Criteria** (what must be TRUE):
+
   1. Usuário define meta por categoria em % da receita líquida recebida, com direção teto (consumo, não exceder) ou alvo (investimento/poupança, atingir)
   2. Dashboard mostra aderência mensal (gasto/alocado X% vs meta Y% por categoria) e a visão acumulada do ano vs metas anuais, ambas computadas do mesmo ledger e consistentes entre si
   3. Usuário recebe alerta ao se aproximar ou estourar a meta de uma categoria
   4. Usuário cria reserva nomeada (ex: Apê, Carro) com alvo opcional; uma transação classificada como "Reserva" dispara "qual reserva?" e cria uma entrada no ledger daquela reserva
   5. Aporte em reserva conta como alocação de investimento (entra na meta de Investimentos), nunca como gasto de consumo; o saldo é sempre derivado (entradas − saídas), a saída nunca deixa o saldo negativo, e a barra de progresso aparece quando há alvo
+
 **Plans**: 6 plans
+
   - [x] 03-01-PLAN.md — Substrate: migrations 0011-0016 (budget_targets, reservas+ledger, adherence views, balance view, saída RPC, is_reserva flag) applied LOCAL + types regen + month/adherence helpers + Zod schemas + progress component + Reservas nav [BLOCKING] ✓ 2026-06-16
   - [x] 03-02-PLAN.md — Wave-0 tests (9 integration + adherence unit) + extended view-leak/rls-isolation; pins aporte-grouping, derived balance, never-negative saída (concurrent TOCTOU caught + fixed via migration 0017), IDOR, monthly↔YTD consistency; suite 221 passed / 1 skipped, tsc clean ✓ 2026-06-16
   - [x] 03-03-PLAN.md — Metas + Dashboard slice: upsertBudgetTarget (IDOR-checked) + deleteBudgetTarget + MetaDialog (% + Teto/Alvo switch + live R$ preview) + AdherenceBar/Row/SummaryStrip + real /dashboard reading v_adherence_month/_ytd (Mensal/Anual tabs, combined alocação line, 80/100 alerts); budget-target-direction now GREEN; suite 235 passed / 0 skipped (BUD-01/02/03/04) ✓ 2026-06-16
   - [x] 03-04-PLAN.md — Reservas slice: reservas action (CRUD + registerSaida via atomic RPC + assertOwnedReserva IDOR) + ReservaCard/Progress/Form/SaidaForm/LedgerTable + /reservas list + /reservas/[id] ledger detail; saldo always v_reserva_balance-derived, progress only with alvo, saída ≤ saldo client+server; suite 260 passed / 0 skipped, build GREEN (RSV-01/04/05) ✓ 2026-06-16
   - [x] 03-05-PLAN.md — Aporte sub-flow: createTransactionWithReserva + syncReservaLedgerForTransaction + isReservaCategory/assertOwnedReserva + aporte-undo in update/delete; ReservaPicker ("Qual reserva?" + "+ Nova reserva") conditional in transacao-form (progressive disclosure) + Extrato inline re-tag focused dialog; aporte = linked 'in' entry, alocação only (never consumo, keyed off is_reserva flag); suite 269 passed / 0 skipped, build GREEN (RSV-02/03) ✓ 2026-06-16
   - [ ] 03-06-PLAN.md — [autonomous:false] Human-verify walkthrough: direction-aware dashboard color, qual-reserva sub-flow, alvo-only progress bar
+
 **UI hint**: yes
 
 ### Phase 4: Upload + classificação inteligente
+
 **Goal**: Usuário sobe uma fatura OFX/CSV e vê os gastos extraídos, deduplicados e pré-classificados — memória primeiro, IA só no que é novo — revisa e confirma, e o sistema aprende o padrão merchant→categoria para as próximas. Esta é a fase de maior risco, construída por último entre o loop central, sobre uma fundação já provada.
 **Mode:** mvp
 **Depends on**: Phase 3
 **Requirements**: IMP-01, IMP-02, IMP-03, IMP-04, IMP-05, CLS-01, CLS-02, CLS-03, CLS-04, CLS-05, CLS-06, RSV-06, SEC-03
 **Scope note (AI deferred — user decision 2026-06-16):** Phase 4 ships the full ingestion + memory-first pipeline; the LLM-suggestion step is DEFERRED. On a memory miss the row stays unclassified for manual pick; a clean, pluggable suggestion seam (returns null in v1, enum-validated) ships so AI slots in later. **CLS-02** stays Pending/deferred (only the seam ships); **SEC-03** holds by construction (no external call ⇒ no PII egress) + the enum-validation wrapper. **Supply chain:** OFX is parsed by a small in-house parser (`src/lib/parsers/ofx.ts`) — `ofx-data-extractor` (flagged low-trust) is NOT installed; CSV uses `papaparse` (the only new npm dep). No AI/@ai-sdk packages.
 **Success Criteria** (what must be TRUE):
+
   1. Usuário faz upload de OFX e de CSV direto para o Storage privado (signed URL, sem passar pela função); o sistema faz parse em transações normalizadas (centavos inteiros, data, descritor) e deduplica idempotentemente (hash do arquivo + unique de transação) — re-upload mostra "0 novas" e não duplica
   2. Na importação, o sistema classifica por memória primeiro (padrão merchant→categoria já aprendido) e só chama a IA para estabelecimento nunca visto, com a saída restrita ao enum de categorias do usuário; para um extrato de merchants conhecidos a contagem de chamadas à IA é ~0 (no v1: zero — IA deferida; merchant novo fica não-classificado para escolha manual)
   3. Usuário revisa as transações importadas antes de persistir; ao confirmar ou corrigir uma sugestão, só então o padrão merchant→categoria (e merchant→reserva) é salvo na memória e auto-classifica as próximas faturas
   4. A categoria gravada na transação é point-in-time — renomear uma categoria não reescreve o histórico (regras chaveadas por `category_id`, não por nome) — e o sistema detecta gastos recorrentes (assinaturas) automaticamente
   5. Na classificação via IA só o descritor normalizado é enviado (sem PII, sem valores) e a saída é validada contra o enum antes de virar sugestão; um descritor com tentativa de injeção ainda retorna uma categoria válida (no v1: o seam retorna null com segurança; a normalização + enum-validation já existem)
+
 **Plans**: 4 plans
+
   - [x] 04-01-PLAN.md — Substrate [BLOCKING]: migrations 0019-0023 (statements, transactions ALTER, merchant_patterns, csv_import_profiles, v_recurring_descriptors security_invoker) applied LOCAL + types regen + papaparse-only install (NO ofx-data-extractor/ai); pure libs (normalizeDescriptor, contentHash/dedupeKey, in-house OFX SGML parser, papaparse CSV, lookupMemory + deferred-AI null seam + validateSuggestion enum wrapper) + 10 Wave-0 tests + 5 synthetic fixtures; unit suites GREEN, integration substrate GREEN + it.todo for Plan 02-03 actions; suite 347 passed/9 todo, tsc+eslint clean (IMP-03/04, CLS-01/04/05/06, RSV-06, SEC-03) ✓ 2026-06-16
   - [x] 04-02-PLAN.md — Upload slice: import.ts (createSignedStatementUpload + ingestStatement: download→decode latin1→parse→two-layer dedup→memory-classify→review rows persisted as jsonb on the statement, nothing in transactions) + saveCsvProfile; /importar screen (UploadDropzone + UploadProgress + signed-URL uploader + CsvColumnMapper + reusable profile) + Importar nav; +0024 parsed_rows/summary jsonb; 15 unit + 2 flipped integration GREEN; suite 364 passed/7 todo; build compiles /importar; "0 novas" on re-upload (IMP-01/02/03/04, CLS-01) ✓ 2026-06-16
   - [x] 04-03-PLAN.md — Review + confirm + learn slice: confirmImport (persist point-in-time + dedupe per-row 23505-skip [partial index → no .upsert onConflict] + learn merchant_patterns only-on-confirm-only-classified + reserva aporte via reused Phase-3 path + IDOR re-derive of statement/category/reserva + recurring from v_recurring_descriptors); src/lib/ownership.ts extracted + shared by transactions.ts AND import.ts (no drift); ImportReviewTable (ExtratoTable sibling, client-state, SelectionActionBar + ReservaPicker reused, amber memory-miss accent) + ImportSummaryHeader + OriginBadge + RecorrenteTag + inert SuggestionSlot; /importar/[statementId] review RSC; 6 it.todo flipped GREEN + 8 confirmImport unit tests; suite 380 passed/0 todo; build compiles /importar/[statementId] (IMP-05, CLS-03/04/05/06, RSV-06, SEC-03) ✓ 2026-06-16
   - [ ] 04-04-PLAN.md — [autonomous:false] Human-verify walkthrough: OFX/CSV upload + drag, CSV mapping dialog + profile reuse, inline+bulk classify + Reserva picker, Confirmar + unclassified guard, learn→auto-classify loop, "0 novas" re-upload
+
 **UI hint**: yes
 
 ### Phase 5: Módulo MEI / DASN-SIMEI
+
 **Goal**: Usuário registra as NFs de serviço emitidas e acompanha o faturamento anual contra o limite aplicável (proporcional no 1º ano, R$81k cheio, banda de 20%), gerando o relatório que facilita a declaração DASN-SIMEI — um módulo independente do core de classificação.
 **Mode:** mvp
 **Depends on**: Phase 1
 **Requirements**: MEI-01, MEI-02, MEI-03, MEI-04, MEI-05, MEI-06
 **Success Criteria** (what must be TRUE):
+
   1. Usuário registra NF de serviço emitida (data, valor, tomador, descrição), com tipo de atividade (comércio/indústria vs serviços) e flag de funcionário capturados desde o registro
   2. O sistema acompanha o faturamento bruto anual contra o limite *aplicável* — cap proporcional (R$6.750 × meses ativos) no 1º ano, R$81k em ano cheio, com banda de tolerância de 20% — e mostra status em níveis (verde/âmbar/vermelho), nunca um "81k" hardcoded
   3. Usuário recebe alerta ao se aproximar do limite aplicável
   4. O sistema gera relatório anual consolidado com total de receita bruta, split comércio/serviços e flag de funcionário — exatamente os campos da DASN-SIMEI
   5. A interface deixa claro, em texto visível, que o módulo é informativo e não consultoria fiscal
+
 **Plans**: 4 plans
+
   - [x] 05-01-PLAN.md — Substrate [BLOCKING]: migrations 0025/0026 (mei_settings, mei_year_flags, mei_invoices + v_mei_year_summary security_invoker) applied LOCAL + types regen; pure libs rules.ts (the single source of the 4 verified 2026 numbers) + limit.ts + status.ts + csv.ts with SQL↔TS parity guard + never-hardcode grep gate clean; assertOwnedMeiInvoice; 4 local-DB Wave-0 tests (RLS isolation, report split+employee+limit parity, view-leak, IDOR); full suite 430 GREEN, tsc + build clean (MEI-01/02/03/04/05/06 substrate) ✓ 2026-06-17
   - [x] 05-02-PLAN.md — Actions + dashboard slice: actions/mei.ts (NF CRUD + settings + year-flag, IDOR-checked) + schemas/mei.ts + 16 action tests + MEI nav/segment layout + YearSelector + MeiDisclaimer + presentation.ts (meiStatusTokens) + /mei dashboard (LimiteGauge reusing AdherenceBar + status badge + 80%/100% alert, computed limit never hardcoded teto) — full suite 446 GREEN, tsc + build (/mei compiles) clean, grep gate clean (MEI-02/05/06 complete; MEI-01/03 action contract, UI in 05-03) ✓ 2026-06-17
   - [x] 05-03-PLAN.md — NF list + settings + report slice: NfForm/NfTable (register/edit/delete + comércio/serviços split + year total via deleteMeiInvoice) + AtividadeBadge + MeiSettingsForm (start date + per-year employee flag) + DasnReportView (total + split summing to total + employee + deadline from rules.ts + disclaimer in print header) + ExportCsvButton (meiReportToCsv Blob download — the Phase-6 DATA-01 pattern) + PrintButton + @media print + 3 MEI sub-pages reading mei_invoices/v_mei_year_summary RLS-scoped; full suite 455 GREEN (+9), tsc + build (all 4 MEI routes compile) clean, grep gate clean (MEI-01/03/04 complete, MEI-06 reinforced) ✓ 2026-06-17
   - [ ] 05-04-PLAN.md — [autonomous:false] Human-verify walkthrough: register NF → list + year total + dashboard gauge/status; proportional limit copy; ≥80% alert; report split + employee + CSV + print; disclaimer on every screen; year isolation
+
 **UI hint**: yes
 
 ### Phase 6: Endurecimento (LGPD, isolamento, auditoria)
+
 **Goal**: Usuário pode exportar e apagar seus dados (LGPD), exportar transações/relatório em CSV, e o sistema comprova — com testes — o isolamento por usuário e o tratamento mínimo de dados sensíveis, transformando "parece pronto" em "está pronto" antes da esposa entrar como segundo titular.
 **Mode:** mvp
 **Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5
 **Requirements**: DATA-01, DATA-02, SEC-01
 **Success Criteria** (what must be TRUE):
+
   1. Usuário exporta transações e o relatório MEI em CSV
   2. Usuário exporta todos os seus dados e apaga a conta + dados (caminho LGPD de direitos do titular)
   3. Um teste de isolamento com 2 usuários comprova que o usuário B não lê/insere/atualiza/exclui nenhuma linha do usuário A — nos quatro verbos, em tabelas e no Storage
   4. Auditoria confirma que segredos (service-role) não estão no bundle do cliente, que faturas só são acessíveis por signed URL, e que nenhum dado/valor com PII é enviado ao provedor de IA
+
 **Plans**: 5 plans
+
   - [x] 06-01-PLAN.md — Substrate [BLOCKING] + Wave-0: src/lib/data/owned-tables.ts (OWNED_TABLES 14 + ISOLATION_INSERT_SHAPES — single source for export bundle + isolation matrix; csv_import_profiles included) + src/lib/supabase/admin.ts (server-only service-role createAdminClient, DELETE ONLY, UNWIRED — 06-03 sole importer) + src/lib/transactions/csv.ts (transactionsToCsv mirroring mei/csv.ts: BOM/;/CRLF/formatCents/RFC-4180, GREEN) + 8 Wave-0 tests (rls-isolation promoted 8→14 data-driven + isolation-matrix + storage-isolation + pii-guard GREEN; lgpd-export/lgpd-delete/lgpd-delete-isolation it.todo RED for 06-03; bundle-secret-grep extended); full suite 558 passed/13 todo, tsc clean, 06-VALIDATION wave_0_complete+nyquist_compliant (DATA-01/02 + SEC-01 substrate) ✓ 2026-06-17
   - [x] 06-02-PLAN.md — CSV export slice (DATA-01): ExportTransactionsButton (reuses the ExportCsvButton shape, transactionsToCsv → transacoes-{yyyy-MM}.csv) + Extrato header wiring (resolve category name + Consumo/Alocação) + /conta screen shell + Conta nav item + UserMenu "Privacidade e conta" link; tsc clean, build compiles /extrato + /conta, suite GREEN (551/7 skip/13 todo), DATA-01 Complete ✓ 2026-06-17
   - [x] 06-03-PLAN.md — LGPD export+delete slice (DATA-02): bundle.ts (iterates OWNED_TABLES, RLS select('*') + embedded transactions/MEI CSVs, single JSON, zero new packages) + exportMyData (RLS client, getClaims userId — only my rows; never imports admin.ts) + deleteMyAccount (sole importer of server-only service-role admin.ts; APAGAR gate, userId from session, Storage-remove FIRST → auth.admin.deleteUser LAST → ON DELETE CASCADE empties all 14 tables; no manual DELETE loop) + ExportDataButton ("Baixar meus dados" → meus-dados-{date}.json) + type-to-confirm AccountDeleteZone (border-destructive zone, irreversibility <ul>, APAGAR exact, initialFocus Cancelar, signOut after) + completed Conta screen; flipped lgpd-export (5/5) + lgpd-delete + lgpd-delete-isolation + delete unit GREEN (18 assertions); tsc clean, build compiles /conta (17 routes), bundle-secret audit green; DATA-02 Complete ✓ 2026-06-17
   - [x] 06-04-PLAN.md — SEC-01 audits closure: 4-verb × 14-table isolation matrix GREEN (data-driven over OWNED_TABLES, 118 tests vs the LOCAL stack — no gap, no test loosened) + Storage 2-user + private-bucket + no-getPublicUrl GREEN + secret-bundle audit made REAL against a fresh `next build` (service-role key absent from .next/static despite admin.ts using SUPABASE_SECRET_KEY server-side — the it.todo retired into a gated passing assertion) + PII-egress guard GREEN (no ai/@ai-sdk dep, suggestCategory null incl. injection descriptor, no fetch); full suite 559 passed/12 todo, tsc clean, build clean (17 routes), SEC-01 Complete ✓ 2026-06-17
   - [ ] 06-05-PLAN.md — [autonomous:false] Human-verify walkthrough: phase gate (full suite + tsc + build + secret audit) then browser checks — transactions CSV download (pt-BR), LGPD bundle download, type-to-confirm APAGAR delete + sign-out (throwaway LOCAL user only)
+
 **UI hint**: yes
 
 ### Phase 7: Identidade visual e polimento (navy+gold, dark mode, gráficos, mobile)
+
 **Goal**: Re-skin completo do app numa identidade private-banking — azul marinho profundo + dourado (vibe BTG/Mercury) — com dark mode, gráficos de data-viz no dashboard e MEI, refinamento mobile-first, e polimento de todas as telas (empty/loading/error states, micro-interações), elevando de "esqueleto funcional" para produto premium e coeso. Re-skin only: não muda lógica de negócio, dados ou segurança das fases 1-6.
 **Mode:** mvp
 **Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
 **Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06, UI-07, UI-08
 **Success Criteria** (what must be TRUE):
+
   1. Sistema de design navy+gold aplicado globalmente (tokens OKLCH, tipografia, marca) — coerente e premium em todas as ~20 rotas; semântica de dinheiro/status preservada
   2. Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica de dinheiro/teto-alvo
   3. Data-viz: evolução mensal receita vs gasto + distribuição por categoria no dashboard; visual rico de aderência às metas e gauge MEI
   4. Refinamento mobile-first: toda tela usável e bonita no celular (tabelas densas viram cards, nav adapta)
   5. Polimento: empty/loading/error states e micro-interações/transições consistentes em todas as telas
   6. Login/landing com identidade de produto (não form cru)
+
 **Plans**: 7 plans
+
   - [x] 07-01-PLAN.md — [BLOCKING substrate] Tokens-first navy+gold (OKLCH light+dark, NOMES preservados) + conserto do --font-sans self-ref + Inter Tight heading + ThemeProvider cabeado no root (suppressHydrationWarning) + ThemeToggle 3-vias mount-guarded + Wave-0 theme-toggle test; suite 587 passed GREEN, tsc + build limpos, grep gates (teal 195=0, font self-ref=0) OK (UI-01, UI-02) ✓ 2026-06-17
   - [x] 07-02-PLAN.md — Brand + shell: BrandMark inline-SVG navy+gold na sidebar (active-gold + indicador) + ThemeToggle no UserMenu + BottomNav mobile (<md, destinos primários gold ≥48px) montada no shell (UI-03 chrome, UI-07 nav) — suite 587 passed GREEN, tsc + build limpos, grep gates OK ✓ 2026-06-17
   - [x] 07-03-PLAN.md — Charts: recharts@3.8.0 install + react-is 19.2.4 override (gated next build + secret-bundle re-audit exit 0) + chart.tsx vendored + ReceitaGastoChart (receita=--income/gasto=--consumption) + CategoryDistributionChart (donut --chart-1..5 ramp) token-aware, formatCents, empty-state pt-BR, Wave-0 tests 6/6 GREEN — lendo SÓ views existentes (v_income_month + v_category_totals, janela 12m SP-pinned) no dashboard, sem query/view/migration/.rpc nova; gauge/adherence direction-aware via token-swap 07-01 (fill/clamp/aria intactos) — suite 593 passed GREEN, tsc + build limpos (UI-04/05/06) ✓ 2026-06-17
@@ -149,6 +182,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   - [x] 07-05-PLAN.md — AuthShell duas colunas (painel navy + BrandMark + "Financeira" gold + value prop) envolvendo o auth-form (guard inverso preservado) + favicon icon.svg navy+gold (UI-03 login/landing) — suite 593 passed GREEN, tsc + build limpos, auth-form/actions/guard intactos, grep gates OK ✓ 2026-06-17
   - [x] 07-06-PLAN.md — Polish sweep (UI-08): TableSkeleton/CardSkeleton/ChartSkeleton (sobre shadcn skeleton, nunca spinner, Wave-0 test 6/6 GREEN) + loading.tsx por segmento (dashboard/extrato/mei — RSC streama com a chrome do layout visível) + varredura empty/error/transição confirmada (8 rotas Empty, erro text-destructive, 0 spinners; Button foco gold --ring; Desvio Rule 2: copy de recuperação no erro do Extrato) — suite 599 passed GREEN, tsc + build limpos, grep gates OK ✓ 2026-06-17
   - [x] 07-07-PLAN.md — [autonomous:false] Phase gate (suíte 599 passed + tsc + build + secret-bundle audit exit 0 + grep de cor hardcoded limpo) + human-verify "aprovado": identidade, flip light↔dark, charts, mobile (BottomNav + cards), auth confirmados em light E dark; nenhum arquivo de produção alterado (UI-01..UI-08 todos Complete) ✓ 2026-06-17
+
 **UI hint**: yes
 
 ## Progress
@@ -161,7 +195,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
-| 7. Identidade visual e polimento | 7/7 | Complete | 2026-06-17 |
+| 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
 
 ## Dependencies & Parallelization
 
@@ -173,10 +207,12 @@ This roadmap follows the research-converged build order: **foundation → manual
 ## Research Flags
 
 Fases que provavelmente precisam de pesquisa mais profunda durante o planejamento:
+
 - **Phase 4 (upload + IA):** parse de PDF foi adiado para v2, mas mesmo OFX/CSV variam por banco — coletar amostras reais antes; confirmar provedor de IA final + comportamento de structured-output (A/B Gemini 2.5 Flash-Lite vs GPT-5-nano em descritores BR reais).
 - **Phase 5 (MEI/DASN):** verificar os campos exatos do formulário DASN-SIMEI + as figuras de proporcionalidade/tolerância de 2026 contra o manual atual da Receita no momento do build (regras fiscais mudam).
 
 Fases com padrões estabelecidos (podem pular pesquisa de fase):
+
 - **Phase 1 (fundação):** auth SSR Supabase + RLS + typed-client são bem documentados.
 - **Phases 2–3 (loop manual):** CRUD + agregação por SQL views + dashboards shadcn/Recharts são padrões estabelecidos; o trabalho novo são as *decisões* (denominador, contabilidade de reserva), não a implementação.
 - **Phase 7 (re-skin):** Tailwind v4 OKLCH theming, next-themes dark mode, shadcn chart/Recharts são bem documentados; o UI-SPEC já resolveu quase toda decisão. O risco real é o override react-is + a flip-integrity de contraste light↔dark (verificação humana), não tooling.

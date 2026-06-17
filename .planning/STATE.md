@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
-status: executing
-last_updated: "2026-06-17T13:40:00.000Z"
+status: completed
+last_updated: "2026-06-17T13:21:53.653Z"
 progress:
   total_phases: 7
   completed_phases: 6
   total_plans: 35
   completed_plans: 34
-  percent: 83
+  percent: 86
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -28,8 +28,8 @@ progress:
 Phase: 07 (identidade-visual-e-polimento) — COMPLETE (7/7 plans)
 Plan: 7 of 7 complete — Phase 7 fechada
 
-- **Phase:** 7 — identidade-visual-e-polimento
-- **Plan:** 07-01 complete (navy+gold token substrate + dark mode wiring + font-bug fix: `src/app/globals.css` :root/.dark reescritos para OKLCH navy chrome [hue ≈255-258] + gold accent [`--primary` oklch(0.76 0.13 88) light / oklch(0.82 0.13 88) dark, foreground navy-ink], semânticos de dinheiro re-tunados [income 152, expense=foreground neutro nunca vermelho, allocation 250, consumption 70, destructive 27/25 + novo `--destructive-foreground`], ramp de charts grayscale→navy+gold, sidebar navy [dark mais fundo que o canvas]; NOMES de token preservados [re-skin, não rename — todo `var(--token)` continua funcionando]; linhas 1-5 + print stylesheet preservadas verbatim; font-bug consertado [`@theme inline` `--font-sans` agora `var(--font-geist-sans)`, `--font-heading` agora `var(--font-inter-tight)`]; `src/app/layout.tsx` registra Inter_Tight 600 + envolve children+Toaster em ThemeProvider [attribute=class, defaultTheme=system, enableSystem, disableTransitionOnChange] + suppressHydrationWarning no `<html>`; `theme-provider.tsx` [next-themes passthrough, analog sonner.tsx] + `theme-toggle.tsx` [3-vias mount-guarded Claro/Escuro/Sistema → setTheme]; **Desvio Rule 3:** teste reescrito de `@testing-library/user-event` [não instalado] para `fireEvent` [convenção do projeto] — sem novo pacote; full suite 587 passed/69 files GREEN, tsc limpo, build compila ~20 rotas, grep gates [195 teal=0, font self-ref=0, gold present] OK; UI-01+UI-02 entregues ponta-a-ponta — dark mode alternável + persistente. Commits c5807e6 (test RED), e3480c7 (feat GREEN)); next is 07-02
+- **Phase:** 07
+- **Plan:** Not started
 - **(arquivo anterior) Phase:** 6 — Endurecimento
 - **Plan:** 06-02 complete (CSV export slice DATA-01 — ExportTransactionsButton + conta/page.tsx shell; DATA-01 Complete)
 - **(arquivo anterior) Phase:** 5 — Módulo MEI / DASN-SIMEI
@@ -41,7 +41,7 @@ Plan: 7 of 7 complete — Phase 7 fechada
 - **Plan:** 07-06 complete (loading/empty/error polish UI-08: três skeletons sobre o primitivo shadcn `Skeleton` (skeletons, NUNCA spinners) — `TableSkeleton({rows=8})` [header + N linhas espelhando as colunas do extrato: `w-10` select / `w-16` Data / `flex-1` Descrição / `w-28` pill Categoria / `w-20` Valor], `CardSkeleton({count=3})` [grid responsivo de cards], `ChartSkeleton()` [caixa de plot `h-[240px]` + faixa de legenda]; os três envolvem `<Skeleton>` de `ui/skeleton.tsx`, carregam `motion-reduce:animate-none` [opacity-only sob prefers-reduced-motion] + `aria-hidden`; TDD Wave-0 6/6 GREEN [`table-skeleton.test.tsx`]; `loading.tsx` por segmento nas 3 rotas pesadas [App Router streama o RSC com a chrome do `(app)/layout.tsx` (sidebar/header/bottom-nav) visível, cada loading reproduz só o h1 da página + esqueleta o corpo]: `dashboard/loading.tsx` [ChartSkeleton ×2 no grid de Cards + TableSkeleton rows=6], `extrato/loading.tsx` [TableSkeleton rows=10], `mei/loading.tsx` [CardSkeleton count=1]; **varredura empty/error/micro-interações = confirmação, não mudança:** as 8 rotas com Empty já adotam a gramática `Empty > Title + Description + CTA gold (--primary)`, todo bloco de erro já é `text-destructive` inline, ZERO spinners em `(app)`, Button já tem `transition-all`+`focus-visible:ring-ring` (foco gold `--ring`) e o default do Tailwind v4 é 150ms — primitivos vendados intencionalmente congelados; **Desvio Rule 2:** o bloco de erro do Extrato ganhou a frase de recuperação genérica da UI-SPEC §Copywriting (`Tente recarregar a página.`) que faltava; tsc limpo, full suite **599 passed/72 files** GREEN [593 baseline + 6 novos], build exit 0 [18 rotas, dashboard/extrato/mei compilam], grep gates OK [3 loading.tsx referenciam os skeletons; animate-spin em `(app)`=0 e nos 3 skeletons=0; os 3 importam `ui/skeleton`]. UI-08 completo. Commits 932e7ee (test RED), faf9b4a (feat GREEN skeletons), f33e4a2 (loading.tsx + error copy)); next is 07-07 (human-verify)
 - **Plan:** 07-07 complete (Phase 7 closing sign-off — verification + human-verify, NENHUM arquivo de produção alterado). **Task 1 (verificação, sem commit):** phase gate verde — `npm test` 599 passed/72 files (≥559 baseline), `npx tsc --noEmit` limpo, `npm run build` exit 0 (recharts + react-is 19.x override + Inter Tight), `bash scripts/check-bundle-secrets.sh .next/static` exit 0 (SEC-01 do Phase 6 não regrediu mesmo com o chart client component — T-07-SC mitigado); grep de flip-integrity (RESEARCH A3): zero hue teal `195` + zero `oklch(`/`#` literal em `src/components` fora das exceções sancionadas (swatch fixo do `category-badge.tsx` + os `#hex` selector-remaps do recharts em `ui/chart.tsx`, benignos) — tudo load-bearing é `var(--token)`, a semântica navy+gold flipa por construção (T-07-15 mitigado). **Task 2 (human-verify BLOQUEANTE — RESOLVIDO "aprovado"):** o usuário assinou as dimensões visuais que o jsdom não mede em AMBOS os modos — UI-01 identidade navy+gold, UI-02 flip-integrity + persistência sem FOUC (income verde, expense neutro, teto vermelho, alvo verde, gold só marca/ação), UI-04/05/06 charts do dashboard + gauge MEI, UI-07 BottomNav mobile + tabelas→cards <768px, UI-03 auth two-panel + favicon, UI-08 skeletons/empty/transições. Sem gaps levantados. **Sem desvios** — plan de verificação+sign-off, `files_modified: []`. UI-01..UI-08 todos Complete ponta-a-ponta em light E dark. **Phase 7 FECHADA (7/7).** Sem commit de produção (só o SUMMARY/STATE/ROADMAP/REQUIREMENTS docs). Sem push remoto.
 - **(arquivo anterior) Plan:** 07-01 complete (navy+gold token substrate + dark mode wiring — UI-01/UI-02 entregues; commits c5807e6, e3480c7)
-- **Status:** Phase 07 COMPLETE (7/7 — 07-01..07-07 todos done; sign-off humano "aprovado" + phase gate verde). Próximo trabalho: os human-verify walkthroughs adiados das fases anteriores (01-04 deploy, 02-05, 03-06, 04-04, 05-04, 06-05) quando o usuário tiver credenciais/stack à mão.
+- **Status:** Milestone complete
 - **Progress:** Phase 7 FECHADA (07-01 substrato navy+gold + dark mode; 07-02 brand/shell/nav; 07-03 data-viz — recharts + charts + gauge/adherence via token-swap; 07-04 tabelas→cards mobile UI-07; 07-05 auth identity — AuthShell + favicon UI-03; 07-06 loading/empty/error polish + skeletons UI-08; 07-07 phase gate + human-verify "aprovado" — UI-01..UI-08 todos Complete em light E dark). Phase 6 complete through 06-04 (06-05 human-verify remaining).
 - **Requirements:** UI-01 Complete (07-01); UI-02 Complete (07-01); UI-03 Complete (07-02 chrome/brand + 07-05 AuthShell login/landing + favicon); UI-04 Complete (07-03); UI-05 Complete (07-03); UI-06 Complete (07-03); UI-07 Complete (07-02 nav adapta via BottomNav + 07-04 tabelas→cards); UI-08 Complete (07-06 skeletons + loading.tsx + empty/error grammar); SEC-01 Complete (06-04); DATA-01 Complete (06-02); DATA-02 Complete (06-03)
 
