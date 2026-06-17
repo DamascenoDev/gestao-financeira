@@ -110,6 +110,25 @@ export async function assertOwnedMeiInvoice(
   return data.length === 1
 }
 
+/**
+ * IDOR (Pitfall 6/7, T-10-05): verify the transaction id belongs to the caller
+ * before linking it to an abastecimento and writing `transactions.carro_id` on it.
+ * Postgres FKs are NOT RLS-aware — a forged transaction_id pointing at another
+ * user's lançamento satisfies the abastecimentos.transaction_id FK globally and,
+ * worse, would let the caller stamp THEIR carro_id onto a foreign transaction. The
+ * RLS-active client only returns the caller's own transactions, so a `select id
+ * where id = $1` returning exactly 1 row means owned; 0 ⇒ reject (no write).
+ * Verbatim clone of assertOwnedStatement applied to transactions. (CAR-03)
+ */
+export async function assertOwnedTransaction(
+  supabase: Client,
+  id: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.from('transactions').select('id').eq('id', id)
+  if (error || !data) return false
+  return data.length === 1
+}
+
 /** Tri-state ownership result: distinguishes a transient query failure from a
  * genuine zero-rows not-owned result so the caller can surface the right message
  * (WR-04). Both `'error'` and `'not-owned'` are fail-safe — neither path issues a
