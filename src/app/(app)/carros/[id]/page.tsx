@@ -8,6 +8,11 @@ import {
   type AbastecimentoRow,
 } from '@/components/abastecimento-history'
 import { type CarroCardData } from '@/components/carro-card'
+import {
+  CarroCategoriaBars,
+  type CarroCategoriaDatum,
+} from '@/components/carro-categoria-bars'
+import { CarroConsumoChart } from '@/components/carro-consumo-chart'
 import { CarroDetailActions } from '@/components/carro-detail-actions'
 import { type TransacaoOption } from '@/components/transacao-picker'
 import { Badge } from '@/components/ui/badge'
@@ -81,12 +86,48 @@ export default async function CarroDetailPage({
     ),
   )
 
-  // The carro averages (km/l médio + R$/km médio).
+  // The carro averages (km/l médio + R$/km médio) + gasto total — the 3 KPI figures.
   const { data: resumo } = await supabase
     .from('v_carro_resumo')
-    .select('km_por_litro_medio, reais_por_km_medio')
+    .select('km_por_litro_medio, reais_por_km_medio, gasto_total_cents')
     .eq('carro_id', id)
     .maybeSingle()
+
+  // ── Gasto por categoria (CAR-05.2) — inline RLS-scoped aggregation ────────────
+  // Sum the caller's own carro_id-tagged transactions, grouped by the POINT-IN-TIME
+  // category_id on each row (CLAUDE.md locked decision — never group by name). RLS
+  // scopes the read to the owner; `.eq('carro_id', id)` on the already-notFound-guarded
+  // owned carro keeps it to this car's tagged lançamentos. Untagged transactions
+  // (carro_id null) are excluded by the filter. This read is D4-non-destructive: it
+  // touches only `transactions` (never budget_targets / adherence views) and writes
+  // nothing. Money stays in integer cents until the formatCents display edge.
+  const { data: categoriaTx } = await supabase
+    .from('transactions')
+    .select('amount_cents, category_id, categories(name)')
+    .eq('carro_id', id)
+  const categoriaSums = new Map<
+    string,
+    { categoria: string; valorCents: number }
+  >()
+  for (const tx of categoriaTx ?? []) {
+    // Group by point-in-time category_id; null category_id → a single "Sem categoria"
+    // bucket. The embedded categories(name) supplies the display label.
+    const key = tx.category_id ?? '__sem_categoria__'
+    const embed = tx.categories as unknown as
+      | { name: string }
+      | { name: string }[]
+      | null
+    const nome =
+      (Array.isArray(embed) ? embed[0]?.name : embed?.name) ?? 'Sem categoria'
+    const prev = categoriaSums.get(key)
+    categoriaSums.set(key, {
+      categoria: prev?.categoria ?? nome,
+      valorCents: (prev?.valorCents ?? 0) + tx.amount_cents,
+    })
+  }
+  const categoriaData: CarroCategoriaDatum[] = Array.from(
+    categoriaSums.values(),
+  ).sort((a, b) => b.valorCents - a.valorCents)
 
   // The user's recent expenses still available to link (no abastecimento points at
   // them). RLS already scopes to the caller's own rows. We exclude the ids already
