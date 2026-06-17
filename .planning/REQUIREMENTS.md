@@ -78,7 +78,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Dados & Privacidade
 
-- [ ] **DATA-01**: Usuário exporta transações e relatório MEI em CSV
+- [x] **DATA-01**: Usuário exporta transações e relatório MEI em CSV
 - [ ] **DATA-02**: Usuário exporta e apaga todos os seus dados (LGPD)
 
 ### Segurança
@@ -162,7 +162,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | MEI-04 | Phase 5 | Complete (05-03) |
 | MEI-05 | Phase 5 | Complete (05-02) |
 | MEI-06 | Phase 5 | Complete (05-02, 05-03) |
-| DATA-01 | Phase 6 | Pending |
+| DATA-01 | Phase 6 | Complete (06-02; MEI CSV half from Phase 5) |
 | DATA-02 | Phase 6 | Pending |
 | SEC-01 | Phase 6 | Pending |
 
