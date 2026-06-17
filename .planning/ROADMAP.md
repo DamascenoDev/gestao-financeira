@@ -185,6 +185,89 @@ This roadmap follows the research-converged build order: **foundation → manual
 
 **UI hint**: yes
 
+## Milestone v1.2: Carro
+
+**Created:** 2026-06-17
+**Mode:** mvp (vertical slices — cada fase entrega uma capacidade ponta-a-ponta visível)
+**Granularity:** standard
+**Design seed:** `docs/superpowers/specs/2026-06-17-modulo-carro-design.md` (aprovado — D1-D5, modelo de dados, lógica de consumo tanque-cheio, seam de etiquetagem, UI/rotas espelhando MEI)
+
+Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatias segue o spec aprovado: **substrato/schema + CRUD de carro + nav → seam de etiquetagem → log de abastecimento + consumo → detalhe do carro com gráfico**. Os dois invariantes irreversíveis do projeto (dinheiro em centavos inteiros, RLS `auth.uid()=user_id`) e a regra não-destrutiva da etiqueta `carro_id` (D4) são honrados em toda fase; a regra XOR de custo do abastecimento (D2) é um CHECK no banco + validação no server. Re-skin/identidade da Phase 7 (navy+gold, dark mode, recharts) já se aplica — nenhuma decisão visual nova.
+
+### Phases (v1.2)
+
+- [ ] **Phase 8: Substrato Carro + CRUD + navegação** - Tabelas/views/RLS do carro + coluna `carro_id`; usuário cadastra/edita/arquiva carros e navega para `/carros`
+- [ ] **Phase 9: Etiquetar gastos da fatura ao carro** - Usuário etiqueta lançamentos a um carro via form e via ação no extrato, sem alterar categoria/metas (lente não-destrutiva)
+- [ ] **Phase 10: Abastecimento híbrido + consumo** - Usuário registra abastecimento (custo da fatura OU manual, XOR) com odômetro/litros/tanque-cheio; sistema calcula km/l e R$/km
+- [ ] **Phase 11: Detalhe do carro + gráfico de consumo** - Detalhe do carro com gasto total, histórico de abastecimentos e gráfico de consumo km/l no tempo
+
+### Phase 8: Substrato Carro + CRUD + navegação
+
+**Goal**: Usuário cria, edita e arquiva o(s) seu(s) carro(s) numa aba dedicada, e o sistema fica com todo o substrato de dados do módulo (tabelas `carros`/`abastecimentos`, coluna `transactions.carro_id`, views de consumo, RLS e ownership re-derivado) em pé desde o primeiro byte — front-loading do schema irreversível antes de qualquer fatia depender dele.
+**Mode:** mvp
+**Depends on**: Phase 1 (auth/RLS/dinheiro), Phase 2 (transactions existem para `carro_id` referenciar)
+**Requirements**: CAR-01, CAR-06
+**Success Criteria** (what must be TRUE):
+
+  1. Usuário cadastra um carro (apelido obrigatório; modelo/placa/ano/combustível-padrão opcionais), edita seus campos e arquiva/desarquiva — a lista `/carros` mostra todos os carros não-arquivados, com badge nos arquivados
+  2. Existe uma aba "Carros" (ícone Car) na sidebar e na bottom-nav mobile; as rotas `/carros` (lista) e `/carros/[id]` (detalhe, ainda que mínimo) resolvem e respeitam o guard de auth
+  3. As tabelas `carros` e `abastecimentos` e a coluna nullable `transactions.carro_id` (`ON DELETE SET NULL`) existem com RLS `(select auth.uid()) = user_id` + `WITH CHECK`; uma query de outro usuário retorna vazio, nunca dado alheio
+  4. As views `v_abastecimento_consumo` e `v_carro_resumo` existem como `security_invoker = true` (não vazam linha de outro usuário) e o cliente tipado regenera sem drift
+  5. Toda escrita de carro re-deriva a posse no servidor (`assertOwnedCarro`) antes do write e nunca expõe a chave service-role no bundle do cliente
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 9: Etiquetar gastos da fatura ao carro
+
+**Goal**: Usuário liga um gasto já lançado (manutenção, óleo) a um carro como uma lente puramente aditiva — o lançamento continua contando exatamente na mesma categoria e meta de antes (D4) — reusando o padrão "qual reserva?" já provado, tanto no formulário de transação quanto numa ação de linha no extrato.
+**Mode:** mvp
+**Depends on**: Phase 8 (carros existem para etiquetar), Phase 2 (transacao-form + extrato-table existem)
+**Requirements**: CAR-02
+**Success Criteria** (what must be TRUE):
+
+  1. No formulário de transação há um seletor opcional "Carro" que grava/limpa `carro_id`, livre de categoria (qualquer gasto pode ser etiquetado)
+  2. Na linha do extrato (e na revisão de importação) há uma ação "vincular a carro" que etiqueta um lançamento já importado da fatura
+  3. Etiquetar ou desetiquetar um lançamento NÃO altera sua categoria, valor, nem qualquer número de aderência às metas (mensal ou anual) — verificável comparando o dashboard antes/depois
+  4. O servidor re-deriva a posse do `carro_id` antes de gravar (`assertOwnedCarro`); etiquetar com um carro de outro usuário é rejeitado e o result shape é `{ ok: true } | { error }`, nunca throw
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 10: Abastecimento híbrido + consumo
+
+**Goal**: Usuário registra cada abastecimento — com odômetro, litros, flag tanque-cheio e tipo de combustível — e o custo vem OU de um lançamento da fatura vinculado OU de um valor manual (dinheiro/pix), exatamente uma fonte (D2, CHECK XOR); a partir desses registros o sistema calcula consumo km/l pelo método tanque-cheio (D3) e R$/km por intervalo, expondo médias por carro.
+**Mode:** mvp
+**Depends on**: Phase 8 (tabela `abastecimentos` + views), Phase 9 (vínculo opcional a um lançamento já etiquetável)
+**Requirements**: CAR-03, CAR-04
+**Success Criteria** (what must be TRUE):
+
+  1. Usuário registra um abastecimento com data (pinada America/Sao_Paulo), odômetro (>0), litros (>0), flag tanque-cheio e combustível, escolhendo a fonte de custo: um lançamento vinculado da fatura OU um valor manual em centavos
+  2. O custo tem exatamente uma fonte — `transaction_id` XOR `amount_cents` — garantido por CHECK no banco e por validação no servidor; nunca ambos, nunca nenhum, e um lançamento vincula no máximo um abastecimento (índice único parcial)
+  3. Ao vincular um abastecimento a um lançamento, o servidor seta `carro_id` nesse lançamento para que o combustível apareça no gasto do carro; `preco_litro` é sempre derivado (custo ÷ litros), nunca armazenado
+  4. O sistema calcula, via `v_abastecimento_consumo` (`security_invoker`), o km/l de cada intervalo tanque-cheio (Δodômetro ÷ Σlitros desde o último tanque cheio) e o R$/km do intervalo, e `v_carro_resumo` expõe as médias por carro
+  5. Todo dinheiro é centavos inteiros (helpers `money.ts`), litros é `numeric` (não dinheiro), e o servidor re-deriva a posse de `carro_id`/`transaction_id` antes de cada FK write
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 11: Detalhe do carro + gráfico de consumo
+
+**Goal**: Usuário abre o detalhe de um carro e vê, num só lugar, quanto gastou com ele (manutenção + combustível via `carro_id`), o histórico de abastecimentos e a curva de consumo (km/l ao longo do tempo) — a fatia-capstone de apresentação que torna o módulo visível e útil, reusando a infra recharts e a gramática empty/loading/error da Phase 7.
+**Mode:** mvp
+**Depends on**: Phase 8 (rota `/carros/[id]` + `v_carro_resumo`), Phase 9 (gasto por `carro_id`), Phase 10 (abastecimentos + consumo)
+**Requirements**: CAR-05
+**Success Criteria** (what must be TRUE):
+
+  1. `/carros/[id]` mostra o cabeçalho do carro (apelido/modelo/placa/ano) e os KPIs km/l médio, R$/km e gasto total (manutenção + combustível)
+  2. O detalhe mostra o gasto por categoria dos lançamentos etiquetados com este `carro_id` e a lista `/carros` mostra gasto total + km/l médio por carro
+  3. O histórico de abastecimentos aparece numa tabela (data, odômetro, litros, R$, km/l do intervalo, vínculo à fatura), com colapso table→card no mobile (padrão Phase 7)
+  4. Um gráfico de consumo (recharts via shadcn chart) plota km/l ao longo do tempo, token-aware e com tooltip pt-BR
+  5. Empty/loading/error states seguem o padrão da Phase 7 (skeletons, nunca spinner; valores em pt-BR `R$`)
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
@@ -196,6 +279,10 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
 | 7. Identidade visual e polimento | 7/7 | Complete    | 2026-06-17 |
+| 8. Substrato Carro + CRUD + navegação | 0/? | Not started | - |
+| 9. Etiquetar gastos da fatura ao carro | 0/? | Not started | - |
+| 10. Abastecimento híbrido + consumo | 0/? | Not started | - |
+| 11. Detalhe do carro + gráfico de consumo | 0/? | Not started | - |
 
 ## Dependencies & Parallelization
 
@@ -203,6 +290,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 - **Phase 5 (MEI) parallelizes:** depende apenas da Fundação (Phase 1) — não toca o core de classificação. Pode ser construída em paralelo a qualquer fase ≥ 2.
 - **Phase 6 (Hardening) is last:** re-verifica os pitfalls das fases anteriores e fecha LGPD; depende de todas as superfícies existirem. Internamente: Wave 1 substrate (06-01) → Wave 2 CSV slice (06-02) ‖ SEC-01 audits (06-04) → Wave 3 LGPD export+delete (06-03) → Wave 4 human-verify (06-05).
 - **Phase 7 (Re-skin) is the visual finish:** depende de todas as superfícies das fases 1-6 existirem. Re-skin only — não toca lógica/dados/segurança. Internamente: **Wave 1** substrate tokens-first + dark mode (07-01, BLOCKING) → **Wave 2** três fatias paralelas sem overlap de arquivo (07-02 brand/shell/nav ‖ 07-03 charts ‖ 07-04 mobile tables→cards) → **Wave 3** auth shell (07-05) → **Wave 4** polish sweep (07-06) → **Wave 5** human-verify + phase gate (07-07).
+- **v1.2 Carro — linear, sobre as fases 1-7 já entregues:** Phase 8 (substrato + CRUD + nav, BLOCKING) → Phase 9 (etiquetagem) → Phase 10 (abastecimento + consumo) → Phase 11 (detalhe + gráfico). Phase 8 é o substrato que todas as demais consomem (tabelas/views/`carro_id`/nav). Phases 9 e 10 poderiam paralelizar parcialmente (etiquetagem vs log de abastecimento são fatias distintas), mas Phase 10 reusa o vínculo opcional a um lançamento que a Phase 9 torna natural; manter sequencial é mais simples para dev solo. Phase 11 é capstone — depende das três anteriores existirem.
 
 ## Research Flags
 
@@ -216,6 +304,7 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 - **Phase 1 (fundação):** auth SSR Supabase + RLS + typed-client são bem documentados.
 - **Phases 2–3 (loop manual):** CRUD + agregação por SQL views + dashboards shadcn/Recharts são padrões estabelecidos; o trabalho novo são as *decisões* (denominador, contabilidade de reserva), não a implementação.
 - **Phase 7 (re-skin):** Tailwind v4 OKLCH theming, next-themes dark mode, shadcn chart/Recharts são bem documentados; o UI-SPEC já resolveu quase toda decisão. O risco real é o override react-is + a flip-integrity de contraste light↔dark (verificação humana), não tooling.
+- **Phases 8-11 (v1.2 Carro):** padrões estabelecidos — o design spec aprovado já resolveu modelo de dados (tabelas/`carro_id`/views), regra XOR de custo, método de consumo tanque-cheio e UI/rotas espelhando o MEI já construído; recharts/empty-states já vieram na Phase 7. O risco real está na lógica da view `v_abastecimento_consumo` (window `lag()` por intervalo tanque-cheio) e no CHECK XOR + índice único parcial — verificáveis com testes, não pesquisa.
 
 ---
 *Roadmap created: 2026-06-16*
@@ -224,3 +313,4 @@ Fases com padrões estabelecidos (podem pular pesquisa de fase):
 *Phase 5 planned: 2026-06-16 (4 plans, zero new npm deps — substrate + dashboard + NF/report slices + human-verify)*
 *Phase 6 planned: 2026-06-17 (5 plans, zero new npm deps — substrate + Wave-0 / CSV slice / LGPD export+delete / SEC-01 audits / human-verify; no new migration — all 14 tables already ON DELETE CASCADE)*
 *Phase 7 planned: 2026-06-17 (7 plans, ONE new npm dep recharts + react-is override; re-skin only — tokens-first substrate + dark mode / brand+shell+nav / charts / mobile tables→cards / auth shell / polish sweep / human-verify; no migration, no query, no view, no Server Action change)*
+*Milestone v1.2 "Carro" roadmapped: 2026-06-17 (4 phases 8-11, mvp vertical slices; CAR-01..06 mapped 6/6; new migration carros/abastecimentos/carro_id + 2 security_invoker views; mirrors MEI module structure)*

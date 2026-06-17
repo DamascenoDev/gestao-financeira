@@ -145,6 +145,11 @@ Explicitamente excluído. Documentado para evitar scope creep.
 | App mobile nativo | Web app responsivo cobre o uso; nativo adiciona complexidade sem ganho no v1 |
 | SaaS público / multi-tenant | Uso pessoal, não será exposto publicamente |
 | Consultoria/cálculo de impostos além do MEI/DASN | Escopo fiscal limitado ao MEI; módulo é informativo |
+| (v1.2) Lembretes/alertas de manutenção (revisão por km/data) | Futuro — fora do escopo do módulo Carro v1.2 |
+| (v1.2) Multi-usuário compartilhando o mesmo carro | Só o modelo fica pronto (user_id-scoped); UI compartilhada fora de escopo (igual ao resto do app) |
+| (v1.2) OCR/parse de nota de abastecimento | Entrada manual no v1.2 |
+| (v1.2) Categoria "Carro" dedicada / auto-classificação merchant→carro | Etiquetagem é manual/explícita no v1.2 |
+| (v1.2) Depreciação, seguro, IPVA como módulo fiscal | Não no v1.2 |
 
 ## Traceability
 
@@ -207,11 +212,18 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | UI-03 | Phase 7 | Complete (07-02 chrome/brand + 07-05 AuthShell login/landing + favicon) |
 | UI-07 | Phase 7 | Complete (07-02 BottomNav nav adapta + 07-04 4 tabelas → cards <md) |
 | UI-08 | Phase 7 | Complete (07-06: skeletons sobre shadcn skeleton + loading.tsx por segmento + gramática empty/error confirmada, 0 spinners) |
+| CAR-01 | Phase 8 | Pending |
+| CAR-06 | Phase 8 | Pending |
+| CAR-02 | Phase 9 | Pending |
+| CAR-03 | Phase 10 | Pending |
+| CAR-04 | Phase 10 | Pending |
+| CAR-05 | Phase 11 | Pending |
 
 **Coverage:**
 - v1 requirements: 47 total
 - Mapped to phases: 47 ✓
 - Unmapped: 0 ✓
+- v1.2 (Carro) requirements: 6 total — CAR-01..06 mapeados 6/6 ✓; órfãos 0 ✓
 
 **Por fase:**
 - Phase 1 (Fundação): 6 — AUTH-01/02/03/04, CAT-01, SEC-02
@@ -220,7 +232,13 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 - Phase 4 (Upload + classificação): 13 — IMP-01/02/03/04/05, CLS-01/02/03/04/05/06, RSV-06, SEC-03
 - Phase 5 (MEI/DASN): 6 — MEI-01/02/03/04/05/06
 - Phase 6 (Endurecimento): 3 — DATA-01/02, SEC-01
+- Phase 7 (Identidade visual): 8 — UI-01/02/03/04/05/06/07/08
+- Phase 8 (Substrato Carro + CRUD + nav): 2 — CAR-01, CAR-06
+- Phase 9 (Etiquetar gastos ao carro): 1 — CAR-02
+- Phase 10 (Abastecimento + consumo): 2 — CAR-03, CAR-04
+- Phase 11 (Detalhe do carro + gráfico): 1 — CAR-05
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-17 — Phase 7 fechada (07-07 sign-off): UI-01..UI-08 todos Complete e verificados ponta-a-ponta em light E dark. Phase gate verde (suíte 599 passed/72 files + tsc limpo + build exit 0 + check-bundle-secrets exit 0, SEC-01 mantido), grep de cor hardcoded limpo fora do swatch sancionado, e sign-off humano "aprovado" (identidade navy+gold, flip light↔dark, charts, mobile BottomNav + tabelas→cards, auth). Nenhum arquivo de produção alterado por 07-07.*
+*Last updated: 2026-06-17 — Milestone v1.2 "Carro" roteado: CAR-01..06 adicionados à traceability (CAR-01/06→Phase 8, CAR-02→Phase 9, CAR-03/04→Phase 10, CAR-05→Phase 11; 6/6 mapeados, 0 órfãos). Fora-de-escopo do módulo Carro documentado. Linhas de traceability das fases 1-7 inalteradas.*
+*(anterior) 2026-06-17 — Phase 7 fechada (07-07 sign-off): UI-01..UI-08 todos Complete e verificados ponta-a-ponta em light E dark. Phase gate verde (suíte 599 passed/72 files + tsc limpo + build exit 0 + check-bundle-secrets exit 0, SEC-01 mantido), grep de cor hardcoded limpo fora do swatch sancionado, e sign-off humano "aprovado" (identidade navy+gold, flip light↔dark, charts, mobile BottomNav + tabelas→cards, auth). Nenhum arquivo de produção alterado por 07-07.*

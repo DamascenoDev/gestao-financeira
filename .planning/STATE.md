@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
 status: planning
-last_updated: "2026-06-17T15:12:01.651Z"
+last_updated: "2026-06-17T16:00:00.000Z"
 last_activity: 2026-06-17
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,23 +22,23 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 07 — identidade-visual-e-polimento
+- **Current focus:** Milestone v1.2 Carro — Phase 8 (substrato-carro-crud-navegacao) próxima a planejar
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 8 — Substrato Carro + CRUD + navegação (não iniciada)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-17 — Milestone v1.2 started
+Status: Roadmap v1.2 criado — aguardando planejamento da Phase 8
+Last activity: 2026-06-17 — Milestone v1.2 roteado (4 fases 8-11, CAR-01..06 mapeados 6/6)
 
 ## Performance Metrics
 
 | Metric | Value |
 |--------|-------|
-| Phases total | 6 |
-| Phases complete | 3 |
-| v1 requirements | 47 |
-| Requirements mapped | 47 |
+| Phases total | 11 (7 entregues v1.0/v1.1 + 4 novas v1.2) |
+| Phases complete | 7 (Phase 7 fechada; 1-6 com human-verify/deploy adiados) |
+| v1 requirements | 47 (todos mapeados/Complete exceto CLS-02 deferred) |
+| v1.2 requirements | 6 (CAR-01..06 — Pending, mapeados 6/6) |
 | Plans complete | 25 |
 
 ### Plan Execution Log
@@ -105,6 +105,8 @@ Last activity: 2026-06-17 — Milestone v1.2 started
 - **01-04 ADIADO (decisão do usuário, 2026-06-16):** plano `autonomous:false` de deploy — credenciais do Supabase remoto + Vercel + verificação no browser. Código da Fase 1 está provado no stack LOCAL. Fases 2-5 serão construídas/testadas contra o Supabase local; todo o wiring remoto + deploy fica para o fim, quando o usuário tiver as credenciais à mão. NÃO é gap de implementação — é etapa de credencial/deploy pendente.
 
 ## Session Continuity
+
+**Última sessão (2026-06-17) — Roadmap do milestone v1.2 "Carro" criado.** Derivei 4 fases novas (8-11, modo `mvp`, vertical slices) das 6 requirements CAR-01..CAR-06, ancoradas no design spec aprovado (`docs/superpowers/specs/2026-06-17-modulo-carro-design.md`, decisões D1-D5). Numeração CONTINUA das fases 1-7 já executadas (nada renumerado/alterado). **Mapeamento (6/6, 0 órfãos):** **Phase 8 — Substrato Carro + CRUD + navegação** (CAR-01, CAR-06): tabelas `carros`/`abastecimentos` + coluna nullable `transactions.carro_id` (ON DELETE SET NULL) + views `v_abastecimento_consumo`/`v_carro_resumo` (`security_invoker`) + RLS `auth.uid()=user_id` + CRUD/arquivar carro + aba "Carros" na sidebar e bottom-nav + rotas `/carros` e `/carros/[id]` — front-loading do schema irreversível. **Phase 9 — Etiquetar gastos ao carro** (CAR-02): seletor "Carro" no transacao-form + ação de linha "vincular a carro" no extrato/import-review, lente NÃO-destrutiva (D4 — não muda categoria/metas), reusando o padrão "qual reserva?". **Phase 10 — Abastecimento híbrido + consumo** (CAR-03, CAR-04): log de abastecimento (odômetro/litros/tanque-cheio/combustível) com custo da fatura OU manual via CHECK XOR (D2) + índice único parcial no transaction_id + cálculo km/l tanque-cheio (D3) + R$/km via as views. **Phase 11 — Detalhe do carro + gráfico** (CAR-05): `/carros/[id]` com KPIs (km/l, R$/km, gasto total) + gasto por categoria do `carro_id` + histórico de abastecimentos (table→card no mobile) + gráfico de consumo recharts, tudo no padrão visual da Phase 7. **Escritos:** ROADMAP.md (anexada a seção `## Milestone v1.2: Carro` — fases 1-7 preservadas verbatim; Progress/Dependencies/Research Flags estendidos), REQUIREMENTS.md (6 linhas de traceability CAR-01..06 Pending + coverage v1.2 6/6 + fora-de-escopo do módulo; linhas das fases 1-7 inalteradas), STATE.md. **Invariantes honrados em toda fase:** dinheiro centavos inteiros, RLS por user_id, ownership re-derivado antes de FK writes, litros como numeric (não dinheiro). **Próxima ação:** `/gsd-plan-phase 8` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 
 **Last session (2026-06-17):** Completed 07-07-PLAN.md — Phase 7 closing sign-off (não-worktree, sequencial em `main`, Wave 5, depends_on 07-01..07-06). Plan de VERIFICAÇÃO + sign-off — **nenhum arquivo de produção alterado** (`files_modified: []`). **Task 1 (verificação, sem commit):** rodei o phase gate completo como check read-only — `npm test` **599 passed/72 files** (≥559 baseline), `npx tsc --noEmit` limpo, `npm run build` exit 0 (recharts + react-is 19.x override + Inter Tight heading), `bash scripts/check-bundle-secrets.sh .next/static` exit 0 (**SEC-01 do Phase 6 NÃO regrediu** mesmo com o chart client component — T-07-SC mitigado); grep de flip-integrity (RESEARCH A3): zero hue teal `195` + zero cor literal `oklch(`/`#` em `src/components` fora das exceções sancionadas (swatch fixo do `category-badge.tsx` + os `#hex` selector-remaps do recharts em `ui/chart.tsx`, benignos) — todo token load-bearing é `var(--token)`, a semântica navy+gold flipa light↔dark por construção (T-07-15 mitigado). **Task 2 (human-verify BLOQUEANTE — RESOLVIDO "aprovado"):** o usuário assinou as dimensões que o jsdom não mede em AMBOS os modos: UI-01 identidade navy+gold (sidebar navy, ativo gold + indicador esquerdo, CTAs gold, BrandMark), UI-02 flip-integrity + persistência sem FOUC (income verde, expense neutro nunca vermelho, teto estourado vermelho, alvo atingido verde, gold só marca/ação/nav-ativo/foco, contraste legível sobre navy), UI-04/05/06 charts do dashboard (receita vs gasto + distribuição, tooltips R$ pt-BR, cores que flipam, totais rotulados) + gauge MEI por tier, UI-07 BottomNav mobile + as 4 tabelas densas → um card/linha <768px com seleção/bulk do Extrato funcionando, UI-03 auth two-panel (painel navy + BrandMark + "Financeira" gold + value prop, faixa-cabeçalho no mobile) + favicon navy+gold, UI-08 skeletons (não spinners) + empty-state + transições 150ms + reduced-motion. **Sem gaps levantados, sem desvios.** **UI-01..UI-08 todos Complete ponta-a-ponta em light E dark.** **Phase 7 FECHADA (7/7).** Commit de docs (SUMMARY/STATE/ROADMAP/REQUIREMENTS) — nenhum commit de produção. Sem push remoto.
 
