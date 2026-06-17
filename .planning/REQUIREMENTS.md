@@ -93,8 +93,8 @@ Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógic
 
 ### Identidade & Tema
 
-- [ ] **UI-01**: Sistema de design navy+gold aplicado globalmente (tokens OKLCH light+dark, tipografia, marca) — coerente em todas as rotas, semântica de dinheiro/status preservada
-- [ ] **UI-02**: Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica teto/alvo/income
+- [x] **UI-01**: Sistema de design navy+gold aplicado globalmente (tokens OKLCH light+dark, tipografia, marca) — coerente em todas as rotas, semântica de dinheiro/status preservada (07-01: substrato OKLCH navy+gold light+dark + Inter Tight heading + font-bug fix; marca/BrandMark e re-skin per-rota em planos seguintes)
+- [x] **UI-02**: Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica teto/alvo/income (07-01: next-themes cabeado no root, ThemeToggle 3-vias mount-guarded, suppressHydrationWarning + disableTransitionOnChange anti-FOUC)
 - [ ] **UI-03**: Logo/marca e tela de login/landing com identidade de produto (não form cru)
 
 ### Data-viz
@@ -186,6 +186,8 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | DATA-01 | Phase 6 | Complete (06-02; MEI CSV half from Phase 5) |
 | DATA-02 | Phase 6 | Complete (06-03) |
 | SEC-01 | Phase 6 | Complete (06-04) |
+| UI-01 | Phase 7 | Complete (07-01: navy+gold OKLCH substrate + typography; marca/per-route re-skin continua nos planos seguintes) |
+| UI-02 | Phase 7 | Complete (07-01: next-themes alternável + persistente, anti-FOUC) |
 
 **Coverage:**
 - v1 requirements: 47 total
@@ -202,4 +204,4 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-17 — SEC-01 Complete (06-04: 4×14 isolation matrix + Storage + secret-bundle real-build audit + PII guard all GREEN)*
+*Last updated: 2026-06-17 — UI-01 + UI-02 Complete (07-01: navy+gold OKLCH substrate light+dark + next-themes dark mode alternável/persistente + font-bug fix; suite 587 GREEN)*

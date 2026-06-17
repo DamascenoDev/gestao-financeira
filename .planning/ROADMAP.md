@@ -142,7 +142,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   5. Polimento: empty/loading/error states e micro-interações/transições consistentes em todas as telas
   6. Login/landing com identidade de produto (não form cru)
 **Plans**: 7 plans
-  - [ ] 07-01-PLAN.md — [BLOCKING substrate] Tokens-first navy+gold (OKLCH light+dark, NOMES preservados) + conserto do --font-sans self-ref + Inter Tight heading + ThemeProvider cabeado no root (suppressHydrationWarning) + ThemeToggle 3-vias mount-guarded + Wave-0 theme-toggle test (UI-01, UI-02)
+  - [x] 07-01-PLAN.md — [BLOCKING substrate] Tokens-first navy+gold (OKLCH light+dark, NOMES preservados) + conserto do --font-sans self-ref + Inter Tight heading + ThemeProvider cabeado no root (suppressHydrationWarning) + ThemeToggle 3-vias mount-guarded + Wave-0 theme-toggle test; suite 587 passed GREEN, tsc + build limpos, grep gates (teal 195=0, font self-ref=0) OK (UI-01, UI-02) ✓ 2026-06-17
   - [ ] 07-02-PLAN.md — Brand + shell: BrandMark inline-SVG navy+gold na sidebar (active-gold + indicador) + ThemeToggle no UserMenu + BottomNav mobile (<md, destinos primários gold ≥48px) montada no shell (UI-03 chrome, UI-07 nav)
   - [ ] 07-03-PLAN.md — Charts: recharts install + react-is override (gated next build + secret-bundle re-audit) + chart.tsx vendored + ReceitaGastoChart + CategoryDistributionChart (token-aware, formatCents, empty-state, Wave-0 tests) lendo views existentes no dashboard + LimiteGauge/AdherenceBar direction-aware re-skin (UI-04/05/06)
   - [ ] 07-04-PLAN.md — Mobile table→card collapse (NET-NEW) nas 4 tabelas densas (extrato, import-review, nf, reserva-ledger) reusando AmountCell/CategoryBadge/ddMM; desktop ≥md intacto, seleção/actions congeladas (UI-07 tabelas→cards)
@@ -161,7 +161,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
-| 7. Identidade visual e polimento | 0/7 | Planned | - |
+| 7. Identidade visual e polimento | 1/7 | In progress | - |
 
 ## Dependencies & Parallelization
 
