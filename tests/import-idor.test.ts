@@ -94,6 +94,58 @@ describe('IDOR: a forged foreign FK is invisible under the caller RLS (re-derive
     expect(data ?? []).toHaveLength(0)
   })
 
-  // GREEN in Plan 03 — confirmImport rejects the whole payload on any forged FK.
-  it.todo('confirmImport rejects a payload carrying a forged category_id/reserva_id/statement_id [Plan 03]')
+  // GREEN (Plan 03): confirmImport's ownership re-derive — a forged statement_id,
+  // category_id, OR reserva_id yields 0 owned rows under the caller's RLS, so the
+  // action rejects the WHOLE payload before any FK write. This asserts the exact
+  // assertOwned* re-derives (select under A's RLS) confirmImport runs.
+  it('confirmImport rejects a payload carrying a forged statement/category/reserva (whole-payload reject)', async () => {
+    const a = userClient(userA.jwt, config)
+    const b = userClient(userB.jwt, config)
+
+    // B owns a category, a reserva, and a statement; A forges all three on confirm.
+    const { data: bCat } = await b
+      .from('categories')
+      .select('id')
+      .eq('user_id', userB.id)
+      .limit(1)
+      .single()
+    const { data: bReserva } = await b
+      .from('reservas')
+      .insert({ user_id: userB.id, nome: 'B forge reserva' })
+      .select('id')
+      .single()
+    const { data: bStatement } = await b
+      .from('statements')
+      .insert({
+        user_id: userB.id,
+        storage_path: `${userB.id}/forge.ofx`,
+        format: 'ofx',
+        content_hash: crypto.randomUUID(),
+      })
+      .select('id')
+      .single()
+
+    // assertOwnedStatement(A, bStatement) — 0 rows ⇒ "Importação inválida." reject.
+    const { data: stmtOwn } = await a
+      .from('statements')
+      .select('id')
+      .eq('id', bStatement!.id)
+    expect(stmtOwn ?? []).toHaveLength(0)
+
+    // assertOwnedCategories(A, [bCat]) — fewer rows than requested ⇒ reject.
+    const { data: catOwn } = await a
+      .from('categories')
+      .select('id')
+      .in('id', [bCat!.id])
+    expect(catOwn ?? []).toHaveLength(0)
+
+    // assertOwnedReserva(A, bReserva) — 0 rows ⇒ "Reserva inválida." reject.
+    const { data: resOwn } = await a
+      .from('reservas')
+      .select('id')
+      .eq('id', bReserva!.id)
+    expect(resOwn ?? []).toHaveLength(0)
+
+    // Any one of these missing rejects the whole confirmImport payload (no partial write).
+  })
 })

@@ -181,6 +181,66 @@ describe('IMP-04 transaction-level: cross-statement dedupe_key collapse', () => 
     expect(second.data).toBeNull() // re-upload ⇒ no row ⇒ "0 novas"
   })
 
-  // GREEN in Plan 03 — the end-to-end confirm counts via confirmImport.
-  it.todo('confirmImport inserts M novas and skips J duplicadas across overlapping statements [Plan 03]')
+  // GREEN (Plan 03): confirmImport persists with ON CONFLICT (user_id, dedupe_key)
+  // DO NOTHING semantics. The dedupe constraint is a PARTIAL unique index (where
+  // dedupe_key is not null), which PostgREST's .upsert({ onConflict }) cannot target
+  // (42P10), so confirmImport INSERTs per-row and SWALLOWS the 23505 unique-violation:
+  // a fresh key inserts (M novas), an already-present one is skipped (J duplicadas) —
+  // re-confirming or an overlapping statement never duplicates. This asserts that
+  // exact per-row insert + 23505-skip mechanic against the live partial index.
+  it('confirmImport inserts M novas and skips J duplicadas across overlapping statements', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat } = await a
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .limit(1)
+      .single()
+
+    const mk = (key: string, desc: string) => ({
+      user_id: userA.id,
+      category_id: cat!.id,
+      amount_cents: 4200,
+      kind: 'expense' as const,
+      occurred_on: '2026-01-20',
+      description: desc,
+      descriptor_norm: desc,
+      dedupe_key: key,
+    })
+
+    // The per-row persist confirmImport runs: insert, swallow 23505, count inserted.
+    async function persist(rows: { key: string; desc: string }[]) {
+      let imported = 0
+      let duplicated = 0
+      for (const r of rows) {
+        const { data, error } = await a
+          .from('transactions')
+          .insert(mk(r.key, r.desc))
+          .select('id, dedupe_key')
+          .maybeSingle()
+        if (error?.code === '23505') duplicated++
+        else if (data) imported++
+        else throw new Error(`unexpected insert error: ${error?.message}`)
+      }
+      return { imported, duplicated }
+    }
+
+    const keyA = `confirm-dedup-a-${crypto.randomUUID()}`
+    const keyB = `confirm-dedup-b-${crypto.randomUUID()}`
+    const keyC = `confirm-dedup-c-${crypto.randomUUID()}`
+
+    // First confirm: both rows new ⇒ M = 2, J = 0.
+    const first = await persist([
+      { key: keyA, desc: 'row a' },
+      { key: keyB, desc: 'row b' },
+    ])
+    expect(first).toEqual({ imported: 2, duplicated: 0 })
+
+    // Overlapping re-confirm: keyA already present, keyC new ⇒ M = 1, J = 1.
+    const second = await persist([
+      { key: keyA, desc: 'row a again' },
+      { key: keyC, desc: 'row c' },
+    ])
+    expect(second).toEqual({ imported: 1, duplicated: 1 })
+  })
 })

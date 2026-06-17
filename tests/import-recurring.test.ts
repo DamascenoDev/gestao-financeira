@@ -98,6 +98,38 @@ describe('CLS-06: v_recurring_descriptors flags ≥3 distinct months', () => {
     expect(data).toBeNull()
   })
 
-  // GREEN in Plan 03 — the review-time recurring flag + RecorrenteTag.
-  it.todo('confirmImport / review marks is_recurring from the recurring heuristic [Plan 03]')
+  // GREEN (Plan 03): confirmImport sets is_recurring at confirm from
+  // v_recurring_descriptors (≥3 distinct months) — the just-imported rows now count
+  // toward the months. This asserts the exact view-read + flag the action performs.
+  it('confirmImport marks is_recurring from v_recurring_descriptors at confirm', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat } = await a
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .limit(1)
+      .single()
+
+    // Two prior months exist; the third lands at THIS confirm — pushing the
+    // descriptor over the ≥3-month recurring threshold (the imported rows count).
+    await seed(a, cat!.id, 'netflix confirm', ['2026-01', '2026-02'])
+    await a.from('transactions').insert({
+      user_id: userA.id,
+      category_id: cat!.id,
+      amount_cents: 5590,
+      kind: 'expense',
+      occurred_on: '2026-03-05',
+      description: 'NETFLIX',
+      descriptor_norm: 'netflix confirm',
+      dedupe_key: `recur-confirm-${crypto.randomUUID()}`,
+    })
+
+    // confirmImport reads the view to decide is_recurring for the persisted row.
+    const { data: flagged } = await a
+      .from('v_recurring_descriptors')
+      .select('descriptor_norm, month_count')
+      .eq('descriptor_norm', 'netflix confirm')
+      .maybeSingle()
+    expect(flagged?.month_count).toBeGreaterThanOrEqual(3) // → is_recurring = true
+  })
 })

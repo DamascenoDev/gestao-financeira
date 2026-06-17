@@ -7,10 +7,22 @@ import { lookupMemory } from '@/lib/classifier/memory'
 import { suggestCategory } from '@/lib/classifier/suggest'
 import { csvHeaderSignature } from '@/lib/csv-profile'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
+import { parseBRLToCents } from '@/lib/money'
+import {
+  assertOwnedCategories,
+  assertOwnedReserva,
+  assertOwnedStatement,
+  isReservaCategory,
+  syncReservaLedgerForTransaction,
+} from '@/lib/ownership'
 import { parseCsv, parseCsvRaw, readCsvHeaders } from '@/lib/parsers/csv'
 import { parseOfx } from '@/lib/parsers/ofx'
 import type { ParsedReviewRow, RawTransaction } from '@/lib/parsers/types'
-import { csvMappingSchema, type CsvMapping } from '@/lib/schemas/import'
+import {
+  confirmImportRowSchema,
+  csvMappingSchema,
+  type CsvMapping,
+} from '@/lib/schemas/import'
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.types'
 
@@ -65,8 +77,16 @@ export type IngestResult =
 
 export type SaveCsvProfileResult = { error: string } | { ok: true }
 
+/** confirmImport outcome: how many rows actually landed vs were dedupe-skipped. */
+export type ConfirmImportResult =
+  | { error: string }
+  | { imported: number; duplicated: number }
+
 const BUCKET = 'statements'
 const IMPORTAR_PATH = '/importar'
+const EXTRATO_PATH = '/extrato'
+const RESERVAS_PATH = '/reservas'
+const DASHBOARD_PATH = '/dashboard'
 
 /** Only OFX and CSV are accepted (the bucket path ext + the parser dispatch key). */
 const extSchema = z.enum(['ofx', 'csv'])
@@ -403,4 +423,221 @@ export async function lookupCsvProfile(
   if (!data?.mapping) return null
   const parsed = csvMappingSchema.safeParse(data.mapping)
   return parsed.success ? parsed.data : null
+}
+
+/** Resolve a confirm row's amount to positive integer cents (OFX cents | CSV BRL). */
+function rowAmountCents(amount: string | number): number | null {
+  if (typeof amount === 'number') {
+    return Number.isInteger(amount) && amount > 0 ? amount : null
+  }
+  try {
+    return parseBRLToCents(amount)
+  } catch {
+    return null
+  }
+}
+
+/**
+ * Persist the reviewed rows into `transactions` and — ONLY THEN, ONLY on this human
+ * confirm — LEARN the merchant→category (and merchant→reserva) patterns. This is the
+ * phase's core value: confirm once, auto-classify the same merchant on the next
+ * upload (CLS-03/04). Mirrors actions/transactions.ts: Zod safeParse at the boundary
+ * → { error } (never throws/leaks), getClaims() for the owner, a server-side
+ * ownership re-derive of EVERY FK before any write, revalidatePath on success.
+ *
+ * IDOR (T-04-02, Pitfall 6): the statement_id + every category_id + every reserva_id
+ * are re-derived as owner-scoped under the RLS-active client BEFORE any FK write — a
+ * single forged id rejects the WHOLE payload (FKs are not RLS-aware).
+ *
+ * Dedupe (T-04-04, Pitfall 4): rows persist via UPSERT ON CONFLICT (user_id,
+ * dedupe_key) DO NOTHING (ignoreDuplicates) — re-confirming or an overlapping
+ * statement never duplicates. The count actually inserted = imported (M novas); the
+ * rest were already present = duplicated (J, silently skipped). Manual rows elsewhere
+ * carry a null dedupe_key and are untouched by the partial unique index.
+ *
+ * Point-in-time (CLS-05): the category_id lands on the transaction row at confirm and
+ * is NEVER rewritten by a later rename — patterns are keyed by category_id, not name.
+ *
+ * Reserva (RSV-06): an is_reserva row (by the FLAG, never the name) reuses the proven
+ * Phase-3 syncReservaLedgerForTransaction so the aporte 'in' ledger entry is created
+ * IDENTICALLY to manual entry (no new ledger write — T-04-09), and merchant→reserva
+ * is saved onto the learned merchant_patterns row.
+ *
+ * Recurring (CLS-06): is_recurring is set at confirm from v_recurring_descriptors
+ * (≥3 distinct civil months) — the just-imported rows now count toward the months.
+ */
+export async function confirmImport(
+  statementId: string,
+  rows: unknown[],
+): Promise<ConfirmImportResult> {
+  // Validate every row at the boundary (confirmImportRowSchema). A malformed row
+  // rejects the whole payload — we never half-persist a statement.
+  const parsedRows: import('@/lib/schemas/import').ConfirmImportRow[] = []
+  for (const raw of rows) {
+    const parsed = confirmImportRowSchema.safeParse(raw)
+    if (!parsed.success) {
+      return { error: 'Não foi possível confirmar a importação. Revise as linhas.' }
+    }
+    parsedRows.push(parsed.data)
+  }
+
+  const supabase = await createClient()
+  const { data: claims } = await supabase.auth.getClaims()
+  const userId = claims?.claims.sub
+  if (!userId) return { error: 'Sessão expirada.' }
+
+  // IDOR re-derive #1 — the statement must belong to the caller.
+  if (!(await assertOwnedStatement(supabase, statementId))) {
+    return { error: 'Importação inválida.' }
+  }
+
+  // IDOR re-derive #2 — every classified row's category_id must be owned.
+  const categoryIds = [
+    ...new Set(
+      parsedRows
+        .map((r) => r.categoryId)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  ]
+  if (categoryIds.length > 0 && !(await assertOwnedCategories(supabase, categoryIds))) {
+    return { error: 'Categoria inválida.' }
+  }
+
+  // IDOR re-derive #3 — every chosen reserva_id must be owned.
+  const reservaIds = [
+    ...new Set(
+      parsedRows
+        .map((r) => r.reservaId)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  ]
+  for (const reservaId of reservaIds) {
+    if (!(await assertOwnedReserva(supabase, reservaId))) {
+      return { error: 'Reserva inválida.' }
+    }
+  }
+
+  // Recurring (CLS-06): compute the recurring descriptor set ONCE from the view
+  // (security_invoker → caller's own rows). A row whose descriptor_norm is flagged
+  // persists is_recurring=true.
+  const { data: recurringRows } = await supabase
+    .from('v_recurring_descriptors')
+    .select('descriptor_norm')
+  const recurring = new Set(
+    (recurringRows ?? [])
+      .map((r) => r.descriptor_norm)
+      .filter((d): d is string => typeof d === 'string'),
+  )
+
+  // Build the insert payload. Amount resolves to positive integer cents; a bad
+  // amount rejects the whole payload (no silent mis-persist).
+  type TxnInsert = import('@/types/database.types').Database['public']['Tables']['transactions']['Insert']
+  const inserts: TxnInsert[] = []
+  for (const r of parsedRows) {
+    const amountCents = rowAmountCents(r.amount)
+    if (amountCents === null) return { error: 'Valor monetário inválido.' }
+    inserts.push({
+      user_id: userId,
+      statement_id: statementId,
+      category_id: r.categoryId ?? null, // unclassified persists category-less (honest)
+      amount_cents: amountCents,
+      kind: 'expense',
+      occurred_on: r.occurred_on,
+      description: r.descriptor_raw,
+      descriptor_norm: r.descriptor_norm,
+      dedupe_key: r.dedupe_key,
+      classification_source: r.categoryId ? 'memória' : null,
+      is_recurring: recurring.has(r.descriptor_norm),
+    })
+  }
+
+  // Persist with ON CONFLICT (user_id, dedupe_key) DO NOTHING semantics. The dedupe
+  // constraint is a PARTIAL unique index (where dedupe_key is not null), which
+  // PostgREST's .upsert({ onConflict }) cannot target (42P10 — it can't supply the
+  // index predicate). So we INSERT per-row and SWALLOW the 23505 unique-violation:
+  // a fresh dedupe_key inserts (counts into M novas), an already-present one raises
+  // 23505 and is silently skipped (counts into J duplicadas) — re-confirming or an
+  // overlapping statement never duplicates (T-04-04, Pitfall 4).
+  const insertedByKey = new Map<string, string>()
+  for (const ins of inserts) {
+    const { data: inserted, error } = await supabase
+      .from('transactions')
+      .insert(ins)
+      .select('id, dedupe_key')
+      .maybeSingle()
+    if (error) {
+      if (error.code === '23505') continue // dedupe_key already present → J (skip)
+      return { error: 'Não foi possível importar as transações. Tente de novo.' }
+    }
+    if (inserted?.dedupe_key) insertedByKey.set(inserted.dedupe_key, inserted.id)
+  }
+  const imported = insertedByKey.size
+  const duplicated = parsedRows.length - imported
+
+  // Reserva aporte (RSV-06): for each freshly-inserted is_reserva row, create the
+  // 'in' ledger entry via the SHARED Phase-3 path — identical to manual entry, no new
+  // ledger write. deleteOld=false (a fresh txn has no pre-existing linked entry).
+  for (const r of parsedRows) {
+    if (!r.categoryId) continue
+    const txnId = insertedByKey.get(r.dedupe_key)
+    if (!txnId) continue // a dedupe-skipped row already has its aporte from before
+    if (await isReservaCategory(supabase, r.categoryId)) {
+      const amountCents = rowAmountCents(r.amount)
+      if (amountCents === null) continue
+      const sync = await syncReservaLedgerForTransaction(
+        supabase,
+        userId,
+        txnId,
+        r.categoryId,
+        amountCents,
+        r.occurred_on,
+        r.reservaId,
+        false,
+      )
+      if ('error' in sync) return sync
+    }
+  }
+
+  // LEARN (CLS-03/04, T-04-08): UPSERT merchant_patterns ONLY for CLASSIFIED rows,
+  // ONLY here on human confirm (no poisoning). descriptor_norm → category_id [,
+  // reserva_id]; ON CONFLICT (user_id, descriptor_norm) DO UPDATE re-points the
+  // mapping + bumps hit_count + last_used_at. Unclassified rows learn nothing.
+  // De-dupe by descriptor_norm so one merchant yields one upsert (last wins).
+  const patternByNorm = new Map<
+    string,
+    { descriptor_norm: string; category_id: string; reserva_id: string | null }
+  >()
+  for (const r of parsedRows) {
+    if (!r.categoryId) continue
+    patternByNorm.set(r.descriptor_norm, {
+      descriptor_norm: r.descriptor_norm,
+      category_id: r.categoryId,
+      reserva_id: r.reservaId ?? null,
+    })
+  }
+  for (const p of patternByNorm.values()) {
+    const { error: learnError } = await supabase.from('merchant_patterns').upsert(
+      {
+        user_id: userId,
+        descriptor_norm: p.descriptor_norm,
+        category_id: p.category_id,
+        reserva_id: p.reserva_id,
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+    // A learn failure does not unwind the persist — the transactions already landed.
+    // Surface it so the user knows the memory may not have updated.
+    if (learnError) {
+      return { error: 'As transações foram importadas, mas a memória não atualizou.' }
+    }
+  }
+
+  // Mark the statement consumed so a re-visit shows the done state.
+  await supabase.from('statements').update({ status: 'imported' }).eq('id', statementId)
+
+  revalidatePath(EXTRATO_PATH)
+  revalidatePath(RESERVAS_PATH)
+  revalidatePath(DASHBOARD_PATH)
+  return { imported, duplicated }
 }

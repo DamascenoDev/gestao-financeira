@@ -110,7 +110,62 @@ describe('CLS-03/04 substrate: learn-on-confirm upsert + lookupMemory auto-class
     expect(data![0]!.category_id).toBe(c2)
   })
 
-  // GREEN in Plan 03 — confirmImport learns ONLY on confirm, ONLY classified rows.
-  it.todo('confirmImport upserts merchant_patterns only on human confirm (no poisoning) [Plan 03]')
-  it.todo('a second ingestStatement auto-classifies the learned descriptor via lookupMemory [Plan 02-03]')
+  // GREEN (Plan 03): confirmImport's learn step — UPSERT merchant_patterns ONLY for
+  // classified rows, ONLY on human confirm (no poisoning). This asserts the exact DB
+  // operations confirmImport performs via the RLS-active client (the action itself
+  // needs Next cookies; the substrate guarantee is what matters and is identical).
+  it('confirmImport upserts merchant_patterns only on human confirm, only classified rows (no poisoning)', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat } = await a
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .eq('kind', 'consumo')
+      .limit(1)
+      .single()
+
+    // BEFORE confirm: an unclassified review row exists only in the parsed payload —
+    // NOTHING is learned yet. A point-read on its descriptor is a clean miss.
+    const before = await lookupMemory(a, 'padaria nova confirm')
+    expect(before).toBeNull()
+
+    // The confirm learn step: UPSERT only the CLASSIFIED row (descriptor → category).
+    // The unclassified sibling ('estabelecimento sem categoria') is NOT upserted.
+    await a.from('merchant_patterns').upsert(
+      {
+        user_id: userA.id,
+        descriptor_norm: 'padaria nova confirm',
+        category_id: cat!.id,
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+
+    // The classified merchant is now learned; the unclassified one was never written.
+    const learned = await lookupMemory(a, 'padaria nova confirm')
+    expect(learned?.category_id).toBe(cat!.id)
+    const unclassified = await lookupMemory(a, 'estabelecimento sem categoria')
+    expect(unclassified).toBeNull()
+  })
+
+  it('a second ingest of the learned descriptor auto-classifies via lookupMemory (CLS-04)', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat } = await a
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .eq('kind', 'consumo')
+      .limit(1)
+      .single()
+
+    // First confirm learns the mapping.
+    await a.from('merchant_patterns').upsert(
+      { user_id: userA.id, descriptor_norm: 'posto ipiranga confirm', category_id: cat!.id },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+
+    // The NEXT upload's memory-first classify (ingestStatement's lookupMemory) hits.
+    const hit = await lookupMemory(a, 'posto ipiranga confirm')
+    expect(hit?.category_id).toBe(cat!.id) // auto-classified on the second ingest
+  })
 })

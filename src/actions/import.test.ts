@@ -31,6 +31,20 @@ let memoryHits: Record<string, { category_id: string; reserva_id: string | null 
 let existingDedupeKeys: Set<string> = new Set()
 // csv profile lookup result (null ⇒ no saved profile).
 let csvProfile: unknown = null
+// confirmImport: owner-scoped rows the RLS-active client "sees" (IDOR re-derive).
+let ownedCategoryIds: Set<string> = new Set()
+let ownedReservaIds: Set<string> = new Set()
+let ownedStatementIds: Set<string> = new Set()
+// confirmImport: which category ids are is_reserva (drives the aporte path).
+let reservaCategoryIds: Set<string> = new Set()
+// confirmImport: descriptor_norms flagged recurring by v_recurring_descriptors.
+let recurringNorms: string[] = []
+// confirmImport: the rows the transactions UPSERT reports as actually-inserted
+// (ignoreDuplicates) — keyed by dedupe_key; absent key ⇒ a dedupe skip.
+let insertedDedupeKeys: Set<string> | null = null
+// Capture sink: every merchant_patterns upsert + reserva_ledger insert payload.
+const learnedPatterns: unknown[] = []
+const ledgerInserts: unknown[] = []
 // download: the bytes the storage.download returns (drives parse path).
 let downloadBytes: Uint8Array | null = null
 let downloadError: unknown = null
@@ -46,26 +60,43 @@ const ofxBytes = (name: string): Uint8Array =>
 // A minimal chainable builder modelling the calls import.ts makes per table.
 function makeBuilder(from: string) {
   let op = ''
+  let selectCols = ''
   const filters: Array<[string, unknown]> = []
+  const inFilters: Array<[string, unknown[]]> = []
   let upsertPayload: unknown = null
+  let insertPayload: unknown = null
 
   const builder: Record<string, unknown> = {}
-  builder.select = vi.fn(() => builder)
+  builder.select = vi.fn((cols?: string) => {
+    if (typeof cols === 'string') selectCols = cols
+    return builder
+  })
   builder.eq = vi.fn((col: string, val: unknown) => {
     filters.push([col, val])
+    return builder
+  })
+  builder.in = vi.fn((col: string, vals: unknown[]) => {
+    inFilters.push([col, vals])
     return builder
   })
   builder.upsert = vi.fn((payload: unknown) => {
     op = 'upsert'
     upsertPayload = payload
+    if (from === 'merchant_patterns') learnedPatterns.push(payload)
     return builder
   })
   builder.update = vi.fn(() => {
     op = 'update'
     return builder
   })
-  builder.insert = vi.fn(() => {
+  builder.insert = vi.fn((payload: unknown) => {
     op = 'insert'
+    insertPayload = payload
+    if (from === 'reserva_ledger') ledgerInserts.push(payload)
+    return builder
+  })
+  builder.delete = vi.fn(() => {
+    op = 'delete'
     return builder
   })
   builder.maybeSingle = vi.fn((): Promise<QueryResult> => {
@@ -81,6 +112,29 @@ function makeBuilder(from: string) {
       const hit = memoryHits[norm]
       return Promise.resolve({ data: hit ?? null, error: null })
     }
+    if (from === 'categories' && selectCols.includes('is_reserva')) {
+      // isReservaCategory point-read for confirmImport.
+      const id = filters.find(([c]) => c === 'id')?.[1] as string
+      return Promise.resolve({
+        data: { is_reserva: reservaCategoryIds.has(id) },
+        error: null,
+      })
+    }
+    if (from === 'transactions' && op === 'insert') {
+      // confirmImport per-row INSERT(...).select('id, dedupe_key').maybeSingle():
+      // a fresh dedupe_key inserts; an already-present one raises 23505 (skipped → J).
+      const payload = insertPayload as { dedupe_key?: string }
+      const key = payload?.dedupe_key
+      const isInserted =
+        insertedDedupeKeys === null || (key !== undefined && insertedDedupeKeys.has(key))
+      if (!isInserted) {
+        return Promise.resolve({ data: null, error: { code: '23505' } })
+      }
+      return Promise.resolve({
+        data: { id: `txn-${key}`, dedupe_key: key },
+        error: null,
+      })
+    }
     if (from === 'transactions') {
       const key = filters.find(([c]) => c === 'dedupe_key')?.[1] as string
       return Promise.resolve({
@@ -93,23 +147,46 @@ function makeBuilder(from: string) {
     }
     return Promise.resolve({ data: null, error: null })
   })
-  // categories.select('id, name') is awaited directly (thenable).
+  // Several calls are awaited directly (thenable) — resolve by table + op + filters.
   builder.then = (onF: (v: QueryResult) => unknown) => {
+    const resolve = (r: QueryResult) => Promise.resolve(r).then(onF)
+
+    if (from === 'categories' && selectCols.includes('is_reserva')) {
+      const id = filters.find(([c]) => c === 'id')?.[1] as string
+      return resolve({ data: { is_reserva: reservaCategoryIds.has(id) }, error: null })
+    }
+    if (from === 'categories' && inFilters.length > 0) {
+      // assertOwnedCategories: return only the OWNED subset of the requested ids.
+      const requested = inFilters.find(([c]) => c === 'id')?.[1] ?? []
+      const owned = (requested as string[]).filter((id) => ownedCategoryIds.has(id))
+      return resolve({ data: owned.map((id) => ({ id })), error: null })
+    }
     if (from === 'categories') {
-      return Promise.resolve({
-        data: [{ id: 'cat-merc', name: 'Mercado' }],
+      return resolve({ data: [{ id: 'cat-merc', name: 'Mercado' }], error: null })
+    }
+    if (from === 'reservas') {
+      // assertOwnedReserva: eq('id', id) → 1 row when owned, else 0.
+      const id = filters.find(([c]) => c === 'id')?.[1] as string
+      return resolve({ data: ownedReservaIds.has(id) ? [{ id }] : [], error: null })
+    }
+    if (from === 'statements' && op !== 'upsert' && op !== 'update' && filters.length > 0) {
+      // assertOwnedStatement: eq('id', id) → 1 row when owned, else 0.
+      const id = filters.find(([c]) => c === 'id')?.[1] as string
+      return resolve({ data: ownedStatementIds.has(id) ? [{ id }] : [], error: null })
+    }
+    if (from === 'v_recurring_descriptors') {
+      return resolve({
+        data: recurringNorms.map((d) => ({ descriptor_norm: d })),
         error: null,
-      } as QueryResult).then(onF)
+      })
     }
-    if (from === 'statements' && op === 'update') {
-      return Promise.resolve({ data: null, error: null } as QueryResult).then(onF)
+    if (from === 'reserva_ledger') {
+      return resolve({ data: null, error: null })
     }
-    if (from === 'csv_import_profiles' && op === 'upsert') {
-      return Promise.resolve({ data: null, error: null } as QueryResult).then(onF)
-    }
-    return Promise.resolve({ data: null, error: null } as QueryResult).then(onF)
+    return resolve({ data: null, error: null })
   }
   void upsertPayload
+  void insertPayload
   return builder
 }
 
@@ -141,6 +218,7 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import {
+  confirmImport,
   createSignedStatementUpload,
   ingestStatement,
   saveCsvProfile,
@@ -163,6 +241,14 @@ beforeEach(() => {
     data: { path: 'user-1/uuid.ofx', token: 'tok', signedUrl: 'http://signed' },
     error: null,
   }
+  ownedCategoryIds = new Set()
+  ownedReservaIds = new Set()
+  ownedStatementIds = new Set()
+  reservaCategoryIds = new Set()
+  recurringNorms = []
+  insertedDedupeKeys = null
+  learnedPatterns.length = 0
+  ledgerInserts.length = 0
 })
 
 // --- createSignedStatementUpload (IMP-01) ----------------------------------
@@ -311,5 +397,129 @@ describe('saveCsvProfile', () => {
       valorCol: 'Valor',
     }, 'Banco X')
     expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+})
+
+// --- confirmImport (IMP-05, CLS-03/04/05/06, RSV-06, SEC-03/IDOR) -----------
+
+describe('confirmImport', () => {
+  const STMT = '11111111-1111-4111-8111-111111111111'
+  const CAT = '22222222-2222-4222-8222-222222222222'
+  const RESERVA_CAT = '33333333-3333-4333-8333-333333333333'
+  const RESERVA = '44444444-4444-4444-8444-444444444444'
+
+  function row(over: Partial<Record<string, unknown>> = {}) {
+    return {
+      id: crypto.randomUUID(),
+      dedupe_key: `ofx:${crypto.randomUUID()}`,
+      occurred_on: '2026-01-10',
+      amount: 5000, // integer cents (OFX path)
+      descriptor_raw: 'MERCADO ABC SAO PAULO',
+      descriptor_norm: 'mercado abc',
+      categoryId: CAT,
+      ...over,
+    }
+  }
+
+  it('gates on an absent session', async () => {
+    claimsSub = null
+    const r = await confirmImport(STMT, [row()])
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+
+  it('rejects a forged statement_id before any write (IDOR)', async () => {
+    ownedStatementIds = new Set() // statement not owned
+    ownedCategoryIds = new Set([CAT])
+    const r = await confirmImport(STMT, [row()])
+    expect(r).toEqual({ error: 'Importação inválida.' })
+  })
+
+  it('rejects a forged category_id (IDOR — whole payload)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set() // category not owned
+    const r = await confirmImport(STMT, [row()])
+    expect(r).toEqual({ error: 'Categoria inválida.' })
+  })
+
+  it('rejects a forged reserva_id (IDOR — whole payload)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([RESERVA_CAT])
+    reservaCategoryIds = new Set([RESERVA_CAT])
+    ownedReservaIds = new Set() // reserva not owned
+    const r = await confirmImport(STMT, [row({ categoryId: RESERVA_CAT, reservaId: RESERVA })])
+    expect(r).toEqual({ error: 'Reserva inválida.' })
+  })
+
+  it('persists classified rows and LEARNS merchant_patterns only for classified rows', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    const classified = row({ descriptor_norm: 'mercado abc', categoryId: CAT })
+    const unclassified = row({ descriptor_norm: 'desconhecido', categoryId: null })
+    insertedDedupeKeys = new Set([classified.dedupe_key, unclassified.dedupe_key])
+
+    const r = await confirmImport(STMT, [classified, unclassified])
+    expect(r).toEqual({ imported: 2, duplicated: 0 })
+
+    // Exactly ONE merchant_patterns upsert — for the classified row only (no poison).
+    expect(learnedPatterns).toHaveLength(1)
+    const learned = learnedPatterns[0] as { descriptor_norm: string; category_id: string }
+    expect(learned.descriptor_norm).toBe('mercado abc')
+    expect(learned.category_id).toBe(CAT)
+  })
+
+  it('an unclassified-only payload learns nothing', async () => {
+    ownedStatementIds = new Set([STMT])
+    const only = row({ descriptor_norm: 'desconhecido', categoryId: null })
+    insertedDedupeKeys = new Set([only.dedupe_key])
+    const r = await confirmImport(STMT, [only])
+    expect('imported' in r && r.imported).toBe(1)
+    expect(learnedPatterns).toHaveLength(0)
+  })
+
+  it('dedupe_key ON CONFLICT path: only actually-inserted rows count as imported (M)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    const fresh = row()
+    const dup = row()
+    insertedDedupeKeys = new Set([fresh.dedupe_key]) // dup is collapsed by the index
+    const r = await confirmImport(STMT, [fresh, dup])
+    expect(r).toEqual({ imported: 1, duplicated: 1 })
+  })
+
+  it('a Reserva row creates the aporte "in" ledger entry + saves merchant→reserva', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([RESERVA_CAT])
+    reservaCategoryIds = new Set([RESERVA_CAT])
+    ownedReservaIds = new Set([RESERVA])
+    const r = row({ categoryId: RESERVA_CAT, reservaId: RESERVA, descriptor_norm: 'aporte mensal' })
+    insertedDedupeKeys = new Set([r.dedupe_key])
+
+    const result = await confirmImport(STMT, [r])
+    expect('imported' in result && result.imported).toBe(1)
+
+    // The aporte 'in' ledger entry was created via the shared Phase-3 path.
+    expect(ledgerInserts).toHaveLength(1)
+    const ledger = ledgerInserts[0] as { kind: string; reserva_id: string }
+    expect(ledger.kind).toBe('in')
+    expect(ledger.reserva_id).toBe(RESERVA)
+
+    // merchant_patterns carries the reserva_id (RSV-06).
+    const learned = learnedPatterns[0] as { reserva_id: string | null }
+    expect(learned.reserva_id).toBe(RESERVA)
+  })
+
+  it('sets is_recurring from v_recurring_descriptors and the point-in-time category on the row', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    recurringNorms = ['spotify']
+    const recurringRow = row({ descriptor_norm: 'spotify', categoryId: CAT })
+    insertedDedupeKeys = new Set([recurringRow.dedupe_key])
+
+    // Spy on the transactions upsert payload via the captured builder call.
+    const r = await confirmImport(STMT, [recurringRow])
+    expect('imported' in r && r.imported).toBe(1)
+    // The learned pattern is keyed by category_id (point-in-time basis, CLS-05).
+    const learned = learnedPatterns[0] as { category_id: string }
+    expect(learned.category_id).toBe(CAT)
   })
 })

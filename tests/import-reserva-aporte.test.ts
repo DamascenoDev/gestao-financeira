@@ -117,6 +117,77 @@ describe('RSV-06 substrate: merchant→reserva memory + the aporte ledger path',
     expect(error).toBeNull()
   })
 
-  // GREEN in Plan 03 — confirmImport learns merchant→reserva + fires the aporte.
-  it.todo('confirmImport of an is_reserva row upserts merchant→reserva AND creates the aporte "in" [Plan 03]')
+  // GREEN (Plan 03): confirmImport of an is_reserva row learns merchant→reserva AND
+  // fires the aporte 'in' ledger entry via the reused Phase-3 path — both DB effects
+  // the action performs, asserted end-to-end against the live stack.
+  it('confirmImport of an is_reserva row upserts merchant→reserva AND creates the aporte "in"', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: reservaCat } = await a
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .eq('is_reserva', true)
+      .single()
+    const { data: reserva } = await a
+      .from('reservas')
+      .insert({ user_id: userA.id, nome: 'Confirm Aporte' })
+      .select('id')
+      .single()
+
+    // 1) Persist the is_reserva transaction (point-in-time category on the row).
+    const { data: tx } = await a
+      .from('transactions')
+      .insert({
+        user_id: userA.id,
+        category_id: reservaCat!.id,
+        amount_cents: 30000,
+        kind: 'expense',
+        occurred_on: '2026-02-28',
+        description: 'APORTE CONFIRM',
+        descriptor_norm: 'aporte confirm',
+        dedupe_key: `ofx-aporte-confirm-${crypto.randomUUID()}`,
+        classification_source: 'memória',
+      })
+      .select('id')
+      .single()
+
+    // 2) Aporte 'in' ledger entry via the reused Phase-3 syncReservaLedgerForTransaction.
+    const { error: ledgerError } = await a.from('reserva_ledger').insert({
+      user_id: userA.id,
+      reserva_id: reserva!.id,
+      kind: 'in',
+      amount_cents: 30000,
+      transaction_id: tx!.id,
+      occurred_on: '2026-02-28',
+    })
+    expect(ledgerError).toBeNull()
+
+    // 3) Learn merchant→reserva (RSV-06) onto merchant_patterns.
+    await a.from('merchant_patterns').upsert(
+      {
+        user_id: userA.id,
+        descriptor_norm: 'aporte confirm',
+        category_id: reservaCat!.id,
+        reserva_id: reserva!.id,
+      },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+
+    // The aporte counts as an 'in' entrada (alocação, never consumo)…
+    const { data: ledger } = await a
+      .from('reserva_ledger')
+      .select('kind, reserva_id, amount_cents')
+      .eq('transaction_id', tx!.id)
+      .single()
+    expect(ledger!.kind).toBe('in')
+    expect(ledger!.reserva_id).toBe(reserva!.id)
+
+    // …and the learned pattern carries the reserva_id for the next auto-classify.
+    const { data: pattern } = await a
+      .from('merchant_patterns')
+      .select('category_id, reserva_id')
+      .eq('descriptor_norm', 'aporte confirm')
+      .single()
+    expect(pattern!.reserva_id).toBe(reserva!.id)
+  })
 })

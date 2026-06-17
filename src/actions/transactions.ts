@@ -4,6 +4,13 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { parseBRLToCents } from '@/lib/money'
+import {
+  assertOwnedCategories,
+  assertOwnedReserva,
+  isReservaCategory,
+  moneyWriteError,
+  syncReservaLedgerForTransaction,
+} from '@/lib/ownership'
 import { transactionSchema } from '@/lib/schemas/transaction'
 import { createClient } from '@/lib/supabase/server'
 
@@ -27,9 +34,6 @@ const EXTRATO_PATH = '/extrato'
 const RESERVAS_PATH = '/reservas'
 const DASHBOARD_PATH = '/dashboard'
 
-/** Optional reservaId on the aporte path (RSV-02) — a uuid when present. */
-const reservaIdSchema = z.string().uuid('Selecione uma reserva')
-
 /** The bulk target must be a real category id — validated at the boundary. */
 const categoryIdSchema = z.string().uuid('Selecione uma categoria')
 
@@ -42,143 +46,6 @@ const idSchema = z.string().uuid('Identificador inválido')
 
 function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
-}
-
-/** A Postgres error carries a SQLSTATE `code` we can branch on (MD-03). */
-type DbError = { code?: string } | null
-
-/**
- * MD-03: differentiate the DB errors the user can act on instead of collapsing
- * everything into one generic string. 23514 (check_violation) is the
- * `amount_cents > 0` money rule → a money-specific message; everything else keeps
- * the provided generic fallback. Raw error details are never returned to the client.
- */
-function moneyWriteError(error: DbError, fallback: string): string {
-  if (error?.code === '23514') return 'Valor monetário inválido.'
-  return fallback
-}
-
-/**
- * HG-01: verify EVERY category id belongs to the caller before writing it as a
- * foreign key. RLS scopes WHICH transaction rows are written (the caller's own),
- * but Postgres foreign keys are NOT RLS-aware: a forged `category_id` pointing at
- * another user's category satisfies the FK (the row exists globally) and would
- * silently attach the caller's financial data to a category they do not own
- * (IDOR on the FK target). The RLS-active client only returns the caller's own
- * categories, so a `select ... in (ids)` that returns fewer rows than requested
- * means at least one id is missing or not-owned — reject the whole write.
- */
-async function assertOwnedCategories(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  ids: string[],
-): Promise<boolean> {
-  const unique = [...new Set(ids)]
-  const { data, error } = await supabase
-    .from('categories')
-    .select('id')
-    .in('id', unique)
-  if (error || !data) return false
-  return data.length === unique.length
-}
-
-/**
- * RSV-02 / Open Question 2: a category triggers the aporte sub-flow ONLY when its
- * `is_reserva` FLAG is set — never a name match (the user may rename it; CAT-02).
- * The flag is read under the RLS-active client so a foreign/garbage id yields no
- * row (treated as not-Reserva). Keys off the migration-0012 flag, the stable handle.
- */
-async function isReservaCategory(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  categoryId: string,
-): Promise<boolean> {
-  const { data, error } = await supabase
-    .from('categories')
-    .select('is_reserva')
-    .eq('id', categoryId)
-    .maybeSingle()
-  if (error || !data) return false
-  return data.is_reserva === true
-}
-
-/**
- * IDOR (Pitfall 6): verify the reserva id belongs to the caller before writing it
- * as the `reserva_ledger.reserva_id` FK. RLS scopes WHICH ledger rows are written,
- * but Postgres FKs are NOT RLS-aware — a forged reserva_id pointing at another
- * user's bucket satisfies the FK globally. The RLS-active client only returns the
- * caller's own reservas, so a `select id where id = $1` returning exactly 1 row
- * means owned; 0 ⇒ reject. (Verbatim clone of assertOwnedCategories applied to
- * reservas — mirrors actions/reservas.ts; pinned by tests/reserva-idor.test.ts.)
- */
-async function assertOwnedReserva(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  id: string,
-): Promise<boolean> {
-  const { data, error } = await supabase.from('reservas').select('id').eq('id', id)
-  if (error || !data) return false
-  return data.length === 1
-}
-
-/**
- * RSV-02 (Open Question 3): keep the reserva_ledger consistent with a transaction's
- * category on create AND edit through ONE code path. Always delete-old (the partial
- * unique(transaction_id) index makes the re-link idempotent — no orphan, no
- * double-count); then, ONLY when the category carries the `is_reserva` flag, require
- * + ownership-check the reservaId and insert a fresh `in` entry linked to the txn.
- *
- * An aporte is an entrada ('in') — it raises the reserva's saldo and (via the
- * alocação grouping in v_adherence_*) the investment allocation total, and NEVER a
- * consumo spend (RSV-03, pinned by tests/reserva-aporte.test.ts).
- *
- * Returns an { error } when the Reserva category is chosen without a (valid, owned)
- * reservaId so the caller can surface it; otherwise { ok: true }.
- */
-async function syncReservaLedgerForTransaction(
-  supabase: Awaited<ReturnType<typeof createClient>>,
-  userId: string,
-  txnId: string,
-  categoryId: string,
-  amountCents: number,
-  occurredOn: string,
-  reservaId: string | undefined,
-  // EDIT path only: drop any pre-existing linked entry first. A freshly-inserted
-  // transaction (create path) has none, so we skip the delete to avoid touching the
-  // ledger at all on a non-Reserva create.
-  deleteOld: boolean,
-): Promise<ActionResult> {
-  const isReserva = await isReservaCategory(supabase, categoryId)
-
-  // Delete-old: on an edit, drop any existing linked entry. On a non-Reserva edit
-  // this is the undo (balance re-derives); on a Reserva edit it clears the way for
-  // the idempotent re-link. Skipped on create (nothing to delete) — and on a
-  // non-Reserva create the ledger is never touched.
-  if (deleteOld) {
-    const { error: delError } = await supabase
-      .from('reserva_ledger')
-      .delete()
-      .eq('transaction_id', txnId)
-    if (delError) return { error: 'Não foi possível sincronizar a reserva.' }
-  }
-
-  if (!isReserva) return { ok: true }
-
-  if (!reservaId) return { error: 'Selecione uma reserva.' }
-  if (!reservaIdSchema.safeParse(reservaId).success) {
-    return { error: 'Reserva inválida.' }
-  }
-  if (!(await assertOwnedReserva(supabase, reservaId))) {
-    return { error: 'Reserva inválida.' }
-  }
-
-  const { error: insError } = await supabase.from('reserva_ledger').insert({
-    user_id: userId,
-    reserva_id: reservaId,
-    kind: 'in', // an aporte is an entrada — raises the saldo + alocação total
-    amount_cents: amountCents, // positive bigint; sign derives from kind
-    transaction_id: txnId,
-    occurred_on: occurredOn,
-  })
-  if (insError) return { error: 'Não foi possível registrar o aporte.' }
-  return { ok: true }
 }
 
 /** Create a manual expense (data, valor, descrição, categoria) for the user (TXN-01). */

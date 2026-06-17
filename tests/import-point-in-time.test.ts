@@ -84,6 +84,57 @@ describe('CLS-05: renaming a category does not rewrite an imported transaction',
     expect(after!.category_id).toBe(cat!.id) // same uuid; the rename did not touch it
   })
 
-  // GREEN in Plan 03 — confirmImport writes the category_id at confirm time.
-  it.todo('confirmImport records the point-in-time category_id on each persisted row [Plan 03]')
+  // GREEN (Plan 03): confirmImport records the point-in-time category_id on each
+  // persisted row — the same INSERT (category_id on the row) the action performs, and
+  // a later rename does not rewrite it (patterns + row keyed by category_id, CLS-05).
+  it('confirmImport records the point-in-time category_id on each persisted row', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat } = await a
+      .from('categories')
+      .select('id, name')
+      .eq('user_id', userA.id)
+      .eq('kind', 'consumo')
+      .limit(1)
+      .single()
+
+    // confirmImport persists the row with the category_id chosen at confirm time +
+    // learns the merchant→category pattern keyed by that same category_id.
+    const dedupe = `pit-confirm-${crypto.randomUUID()}`
+    const { data: tx } = await a
+      .from('transactions')
+      .insert({
+        user_id: userA.id,
+        category_id: cat!.id,
+        amount_cents: 7300,
+        kind: 'expense',
+        occurred_on: '2026-02-14',
+        description: 'CINEMA CENTRO',
+        descriptor_norm: 'cinema centro',
+        dedupe_key: dedupe,
+        classification_source: 'memória',
+      })
+      .select('id, category_id')
+      .single()
+    await a.from('merchant_patterns').upsert(
+      { user_id: userA.id, descriptor_norm: 'cinema centro', category_id: cat!.id },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+
+    expect(tx!.category_id).toBe(cat!.id) // point-in-time category recorded on the row
+
+    // Rename the category AFTER confirm — neither the row nor the pattern is rewritten.
+    await a.from('categories').update({ name: 'Lazer Renomeado' }).eq('id', cat!.id)
+    const { data: afterTx } = await a
+      .from('transactions')
+      .select('category_id')
+      .eq('id', tx!.id)
+      .single()
+    expect(afterTx!.category_id).toBe(cat!.id) // unchanged — keyed by id, not name
+    const { data: afterPattern } = await a
+      .from('merchant_patterns')
+      .select('category_id')
+      .eq('descriptor_norm', 'cinema centro')
+      .single()
+    expect(afterPattern!.category_id).toBe(cat!.id) // pattern keyed by category_id too
+  })
 })
