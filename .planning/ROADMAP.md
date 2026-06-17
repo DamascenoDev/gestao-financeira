@@ -283,7 +283,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 **Plans**: 4 plans
 
   - [x] 11-01-PLAN.md — [Wave 1] componentes net-new: CarroConsumoChart (linha km/l no tempo, recharts via shadcn chart, token-aware --chart-1, tooltip pt-BR via kmPerLitroLabel + consumoTooltipFormatter, pontos null/0-omitidos, empty pt-BR) + CarroCategoriaBars (barras de magnitude neutras bg-muted-foreground, ordem valor desc, label formatCents mono, empty line) + Wave-0 component tests (data/empty/pt-BR/null/ordem/magnitude); suíte 729 passed, tsc limpo (CAR-05.2/CAR-05.4) ✓ 2026-06-17
-  - [ ] 11-02-PLAN.md — [Wave 1] lista /carros: CarroCardData += gastoTotalCents/kmPorLitroMedio + strip KPI aditivo (mono tabular-nums, '—' null) + RSC lê v_carro_resumo RLS-scoped (gasto 0 → '—', nunca R$ 0,00); identidade/ações intactas (CAR-05.2)
+  - [x] 11-02-PLAN.md — [Wave 1] lista /carros: CarroCardData += gastoTotalCents/kmPorLitroMedio + strip KPI aditivo (mono tabular-nums, '—' null) + RSC lê v_carro_resumo RLS-scoped (gasto 0 → '—', nunca R$ 0,00); identidade/ações intactas; 3 Wave-0 tests green, suíte 732 passed, tsc limpo, build exit 0 (CAR-05.2) ✓ 2026-06-17
   - [ ] 11-03-PLAN.md — [Wave 2] detalhe /carros/[id] enriquecido: 3 KPI cards (km/l médio · R$/km · gasto total de v_carro_resumo) + agregação INLINE gasto-por-categoria (sem view nova — 1 consumidor, RLS-scoped; integration test sums/isolamento/D4 não-destrutivo) → CarroCategoriaBars + CarroConsumoChart de v_abastecimento_consumo + AbastecimentoHistory Phase-10 integrado; re-auditoria SEC-01 bundle-secret exit 0; WR-02 documentado como limitação conhecida (não corrigido)
   - [ ] 11-04-PLAN.md — [Wave 3, autonomous:false] phase gate (suíte + tsc + build + secret-audit) + human-verify visual: chart/bars/KPI cards/list KPIs em light+dark+mobile (recharts SVG/cores/flip/tooltip não medíveis em jsdom)
 **UI hint**: yes
@@ -302,7 +302,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 | 8. Substrato Carro + CRUD + navegação | 3/3 | Complete    | 2026-06-17 |
 | 9. Etiquetar gastos da fatura ao carro | 3/3 | Complete    | 2026-06-17 |
 | 10. Abastecimento híbrido + consumo | 3/3 | Complete    | 2026-06-17 |
-| 11. Detalhe do carro + gráfico de consumo | 1/4 | In progress | - |
+| 11. Detalhe do carro + gráfico de consumo | 2/4 | In progress | - |
 
 ## Dependencies & Parallelization
 

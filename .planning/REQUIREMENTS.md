@@ -217,7 +217,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | CAR-02 | Phase 9 | In progress (09-01: contrato server — carroId no transactionSchema + carro_id write/clear + bulkTagCarro + Wave-0 D4/IDOR; UI seletor/extrato/import-review em 09-02/09-03) |
 | CAR-03 | Phase 10 | In progress (10-02: contrato server — abastecimentoSchema XOR + actions create/update/delete dual IDOR carro_id+transaction_id + sync carro_id no lançamento vinculado + consumo.ts; Wave-0 abastecimento-action.test.ts green; UI form/picker/histórico em 10-03) |
 | CAR-04 | Phase 10 | Complete |
-| CAR-05 | Phase 11 | In progress (11-01: primitivas net-new — CarroConsumoChart linha km/l token-aware --chart-1 + tooltip pt-BR + null/0-drop + empty; CarroCategoriaBars barras neutras valor-desc + formatCents; 9 Wave-0 tests green. KPIs no CarroCard em 11-02; KPI cards + agregação categoria + wiring no /carros/[id] em 11-03; human-verify em 11-04) |
+| CAR-05 | Phase 11 | In progress (11-01: primitivas net-new — CarroConsumoChart linha km/l token-aware --chart-1 + tooltip pt-BR + null/0-drop + empty; CarroCategoriaBars barras neutras valor-desc + formatCents; 9 Wave-0 tests green. 11-02: metade-lista — CarroCard com KPI strip gasto total + km/l médio de v_carro_resumo, '—' para sem-dados (gasto 0 → null, nunca R$ 0,00) + /carros RSC RLS-scoped; 3 Wave-0 tests green, suíte 732. KPI cards + agregação categoria + wiring no /carros/[id] em 11-03; human-verify em 11-04) |
 
 **Coverage:**
 
