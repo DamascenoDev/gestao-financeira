@@ -107,7 +107,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 **Plans**: 4 plans
   - [x] 05-01-PLAN.md — Substrate [BLOCKING]: migrations 0025/0026 (mei_settings, mei_year_flags, mei_invoices + v_mei_year_summary security_invoker) applied LOCAL + types regen; pure libs rules.ts (the single source of the 4 verified 2026 numbers) + limit.ts + status.ts + csv.ts with SQL↔TS parity guard + never-hardcode grep gate clean; assertOwnedMeiInvoice; 4 local-DB Wave-0 tests (RLS isolation, report split+employee+limit parity, view-leak, IDOR); full suite 430 GREEN, tsc + build clean (MEI-01/02/03/04/05/06 substrate) ✓ 2026-06-17
   - [x] 05-02-PLAN.md — Actions + dashboard slice: actions/mei.ts (NF CRUD + settings + year-flag, IDOR-checked) + schemas/mei.ts + 16 action tests + MEI nav/segment layout + YearSelector + MeiDisclaimer + presentation.ts (meiStatusTokens) + /mei dashboard (LimiteGauge reusing AdherenceBar + status badge + 80%/100% alert, computed limit never hardcoded teto) — full suite 446 GREEN, tsc + build (/mei compiles) clean, grep gate clean (MEI-02/05/06 complete; MEI-01/03 action contract, UI in 05-03) ✓ 2026-06-17
-  - [ ] 05-03-PLAN.md — NF list + settings + report slice: NfForm/NfTable (register/edit/delete + comércio/serviços split + year total) + MeiSettingsForm (start date + per-year employee flag) + DasnReportView + ExportCsvButton (DASN fields + CSV, the Phase-6 DATA-01 pattern) + 3 MEI sub-pages (MEI-01/03/04/06)
+  - [x] 05-03-PLAN.md — NF list + settings + report slice: NfForm/NfTable (register/edit/delete + comércio/serviços split + year total via deleteMeiInvoice) + AtividadeBadge + MeiSettingsForm (start date + per-year employee flag) + DasnReportView (total + split summing to total + employee + deadline from rules.ts + disclaimer in print header) + ExportCsvButton (meiReportToCsv Blob download — the Phase-6 DATA-01 pattern) + PrintButton + @media print + 3 MEI sub-pages reading mei_invoices/v_mei_year_summary RLS-scoped; full suite 455 GREEN (+9), tsc + build (all 4 MEI routes compile) clean, grep gate clean (MEI-01/03/04 complete, MEI-06 reinforced) ✓ 2026-06-17
   - [ ] 05-04-PLAN.md — [autonomous:false] Human-verify walkthrough: register NF → list + year total + dashboard gauge/status; proportional limit copy; ≥80% alert; report split + employee + CSV + print; disclaimer on every screen; year isolation
 **UI hint**: yes
 
@@ -132,7 +132,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 2. Receitas, categorias e lançamentos | 3/5 | In progress | - |
 | 3. Metas, aderência e reservas | 5/6 | In progress | - |
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
-| 5. Módulo MEI / DASN-SIMEI | 0/4 | Planned | - |
+| 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 0/0 | Not started | - |
 
 ## Dependencies & Parallelization

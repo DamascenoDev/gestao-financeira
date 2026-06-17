@@ -3,13 +3,13 @@ gsd_state_version: 1.0
 milestone: v1.0
 milestone_name: milestone
 status: executing
-last_updated: "2026-06-17T02:10:00Z"
+last_updated: "2026-06-17T02:40:00Z"
 progress:
   total_phases: 6
   completed_phases: 3
   total_plans: 23
-  completed_plans: 20
-  percent: 54
+  completed_plans: 21
+  percent: 57
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,12 +26,12 @@ progress:
 ## Current Position
 
 Phase: 5 (Módulo MEI / DASN-SIMEI) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 
 - **Phase:** 5 — Módulo MEI / DASN-SIMEI
-- **Plan:** 05-02 complete (MEI actions + dashboard slice: actions/mei.ts [5 IDOR-checked Server Actions — createMeiInvoice/updateMeiInvoice/deleteMeiInvoice + upsertMeiSettings/upsertMeiYearFlag, mirroring incomes.ts, assertOwnedMeiInvoice before .eq('id') on edit/delete] + schemas/mei.ts + 16 action unit tests; presentation.ts [meiStatusTokens, the adherence.ts twin]; year-selector + mei-disclaimer [persistent MEI-06 banner] + limite-gauge [AdherenceBar pattern, 80% tick + 100% marker, role=progressbar] + limite-status-badge; /mei segment layout [disclaimer + YearSelector] + dashboard RSC [reads v_mei_year_summary for ?ano + mei_settings config gate, hero + COMPUTED limit line + gauge + tiered status + 80%/100% alert, no hardcoded teto]; MEI nav item; full suite 446 GREEN, tsc + build [/mei compiles] clean, grep gate clean; local stack left running); next is 05-03 (NF list + settings form + DASN report)
+- **Plan:** 05-03 complete (NF list + settings + DASN report slice: nf-form [create/edit dialog → createMeiInvoice/updateMeiInvoice, activity_type Select for the comércio/serviços split] + nf-table [dense list, AtividadeBadge + income AmountCell + gross year total + edit/delete via deleteMeiInvoice] + atividade-badge; mei-settings-form [mei_start_date + per-year has_employee switch → upsertMeiSettings/upsertMeiYearFlag]; dasn-report-view [print-friendly card: total + comércio/serviços split summing to total + employee Sim/Não + DASN deadline from rules.ts + disclaimer in print header] + export-csv-button [meiReportToCsv Blob download dasn-{ano}.csv — Phase-6 DATA-01 pattern] + print-button + @media print; the 3 MEI sub-route RSCs /mei/{notas,configuracoes,relatorio} reading mei_invoices/v_mei_year_summary RLS-scoped; todaySP() helper; full suite 455 GREEN [+9 component tests], tsc + build [all 4 MEI routes compile] clean, grep gate clean; local stack left running for 05-04 human-verify); next is 05-04 (manual walkthrough / human-verify)
 - **Status:** Executing Phase 5
-- **Progress:** Phase 3/6 complete (Phase 5: 2/4 plans — actions + dashboard GREEN)
+- **Progress:** Phase 3/6 complete (Phase 5: 3/4 plans — substrate + dashboard + NF/settings/report GREEN; 05-04 human-verify remaining)
 
 ```
 [█████·····] 3/6 phases
@@ -45,7 +45,7 @@ Plan: 3 of 4
 | Phases complete | 3 |
 | v1 requirements | 47 |
 | Requirements mapped | 47 |
-| Plans complete | 20 |
+| Plans complete | 21 |
 
 ### Plan Execution Log
 
@@ -67,6 +67,7 @@ Plan: 3 of 4
 | 4 | 03 | ~17 min | 2 | 7 created / 9 modified | 2026-06-16 |
 | 5 | 01 | ~1h | 3 | 14 created / 3 modified | 2026-06-17 |
 | 5 | 02 | ~10 min | 3 | 10 created / 1 modified | 2026-06-17 |
+| 5 | 03 | ~25 min | 3 | 13 created / 4 modified | 2026-06-17 |
 
 ## Accumulated Context
 
