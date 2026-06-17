@@ -1,5 +1,4 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 /**
@@ -43,20 +42,19 @@ describe('ThemeToggle', () => {
   })
 
   it('calls setTheme with light / dark / system on selection', async () => {
-    const user = userEvent.setup()
     render(<ThemeToggle />)
 
     await waitFor(() => {
       expect(screen.getByRole('button', { name: /claro/i })).toBeInTheDocument()
     })
 
-    await user.click(screen.getByRole('button', { name: /claro/i }))
+    fireEvent.click(screen.getByRole('button', { name: /claro/i }))
     expect(setTheme).toHaveBeenCalledWith('light')
 
-    await user.click(screen.getByRole('button', { name: /escuro/i }))
+    fireEvent.click(screen.getByRole('button', { name: /escuro/i }))
     expect(setTheme).toHaveBeenCalledWith('dark')
 
-    await user.click(screen.getByRole('button', { name: /sistema/i }))
+    fireEvent.click(screen.getByRole('button', { name: /sistema/i }))
     expect(setTheme).toHaveBeenCalledWith('system')
   })
 
