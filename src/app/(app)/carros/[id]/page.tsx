@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
 import { kmPerLitroLabel, reaisPerKmLabel } from '@/lib/carro/consumo'
+import { gastoOrNull } from '@/lib/carro/resumo'
 import { centsToBigInt, formatCents } from '@/lib/money'
 import { createClient } from '@/lib/supabase/server'
 
@@ -263,13 +264,15 @@ export default async function CarroDetailPage({
   // The 3 KPI figures (CAR-05.1) from v_carro_resumo. Each renders the '—' sentinel for
   // null/no-data — never a fake zero. Gasto total is neutral foreground (a gasto is
   // normal, never red); 0/no-data → '—' (UI-SPEC null rule).
-  const gastoTotalCents = resumo?.gasto_total_cents ?? 0
+  // WR-03: shared gastoOrNull is the single home for the "0/missing → no-data"
+  // rule, so this KPI card and the list KPI strip never disagree on R$ x vs '—'.
+  const gastoTotalCents = gastoOrNull(resumo?.gasto_total_cents)
   const kpis: { label: string; value: string }[] = [
     { label: 'km/l médio', value: kmPerLitroLabel(resumo?.km_por_litro_medio ?? null) },
     { label: 'R$/km', value: reaisPerKmLabel(resumo?.reais_por_km_medio ?? null) },
     {
       label: 'Gasto total',
-      value: gastoTotalCents > 0 ? formatCents(gastoTotalCents) : '—',
+      value: gastoTotalCents !== null ? formatCents(gastoTotalCents) : '—',
     },
   ]
 

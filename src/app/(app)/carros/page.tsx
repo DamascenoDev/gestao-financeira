@@ -11,6 +11,7 @@ import {
   EmptyMedia,
   EmptyTitle,
 } from '@/components/ui/empty'
+import { gastoOrNull } from '@/lib/carro/resumo'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -64,12 +65,9 @@ export default async function CarrosPage({
     if (r.carro_id === null) continue
     // gasto_total_cents is coalesced to 0 by the view; treat 0/missing as
     // "no data" → null so the card shows '—', never "R$ 0,00" (D4 null rule).
-    const gasto =
-      r.gasto_total_cents !== null && r.gasto_total_cents > 0
-        ? r.gasto_total_cents
-        : null
+    // WR-03: shared gastoOrNull keeps this rule identical to the detail page.
     kpiByCarro.set(r.carro_id, {
-      gastoTotalCents: gasto,
+      gastoTotalCents: gastoOrNull(r.gasto_total_cents),
       kmPorLitroMedio: r.km_por_litro_medio,
     })
   }
