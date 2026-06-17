@@ -1,6 +1,7 @@
 'use client'
 
-import { LogOut, User } from 'lucide-react'
+import { LogOut, Shield, User } from 'lucide-react'
+import Link from 'next/link'
 import { useTransition } from 'react'
 
 import { signOut } from '@/actions/auth'
@@ -34,6 +35,15 @@ export function UserMenu({ email }: { email: string }) {
         <DropdownMenuLabel className="truncate font-normal text-muted-foreground">
           {email}
         </DropdownMenuLabel>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem
+          render={
+            <Link href="/conta">
+              <Shield className="size-4" />
+              Privacidade e conta
+            </Link>
+          }
+        />
         <DropdownMenuSeparator />
         <DropdownMenuItem
           disabled={isPending}
