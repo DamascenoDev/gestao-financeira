@@ -412,6 +412,26 @@ export async function bulkTagCarro(
 }
 
 /**
+ * CR-01: tag (or clear) the `carro_id` of ONE own transaction — the single-row
+ * counterpart to bulkTagCarro. Routing the row-menu "Vincular a carro" through this
+ * (instead of updateTransaction) makes the carro tag CATEGORY-FREE: it never
+ * re-validates categoryId/reservaId and never re-parses the amount, so it works for
+ * an imported-but-unclassified row (category_id === null) and for a Reserva-category
+ * row alike (CR-01 / WR-01 / WR-02). D4: the write payload is carro_id ONLY.
+ *
+ * Implemented as a single-id reuse of bulkTagCarro so the RLS scoping + WR-04
+ * tri-state assertOwnedCarro ownership re-derive are shared verbatim — a forged carro
+ * issues no write, a forged tx id touches 0 foreign rows, and a null carroId clears
+ * the tag on the caller's own row.
+ */
+export async function tagCarro(
+  id: string,
+  carroId: string | null,
+): Promise<ActionResult> {
+  return bulkTagCarro([id], carroId)
+}
+
+/**
  * Re-classify every selected transaction to one category in a SINGLE
  * update().in('id', ids) (TXN-04). RLS scopes the UPDATE to the caller's own
  * rows even if an id is forged (bulk-reclassify.test.ts asserts a forged-id

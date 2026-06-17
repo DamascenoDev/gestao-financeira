@@ -65,6 +65,7 @@ import { centsToEditableBRL, formatCents } from '@/lib/money'
 import {
   bulkReclassify,
   bulkTagCarro,
+  tagCarro,
   updateTransaction,
 } from '@/actions/transactions'
 import { cn } from '@/lib/utils'
@@ -243,10 +244,12 @@ function InlineCategoryCell({
 /**
  * Per-row actions (CAR-02) — a DropdownMenu hosting "Vincular a carro", which opens
  * a focused dialog containing a CarroPicker (mirrors InlineCategoryCell's focused
- * "Qual reserva?" dialog). On confirm it calls updateTransaction(row.id, fd) with the
- * row's EXISTING description/amount/category/date PLUS the chosen carroId — so the
- * action's transactionSchema validates AND no accounting field is mutated (D4). Picking
- * "Nenhum" sends carroId='' to unlink.
+ * "Qual reserva?" dialog). On confirm it calls the dedicated carro-only action
+ * tagCarro(row.id, carroId|null) — NOT updateTransaction — so the tag is CATEGORY-FREE:
+ * it writes carro_id ONLY and never re-validates categoryId/reservaId nor re-parses the
+ * amount (CR-01 / WR-01 / WR-02). This works for imported-but-unclassified rows
+ * (category_id === null) and Reserva-category rows alike. Picking "Nenhum" sends null
+ * to unlink. No accounting field is ever re-sent or mutated (D4).
  */
 function RowActions({
   row,
@@ -265,17 +268,13 @@ function RowActions({
   }
 
   function confirm() {
-    const fd = new FormData()
-    // D4: resend the row's REAL accounting fields so the schema validates and the
-    // carro-only change never mutates category/amount/date.
-    fd.set('description', row.description)
-    fd.set('amount', centsToEditableBRL(row.amount_cents))
-    if (row.category_id) fd.set('categoryId', row.category_id)
-    fd.set('occurredOn', row.occurred_on)
-    fd.set('carroId', carroId) // '' clears (unlink) — Plan-01 decode
-    const linking = carroId !== ''
+    // CR-01: carro tag is category-free. Call the dedicated tagCarro action (carro_id
+    // ONLY) instead of updateTransaction — '' (Nenhum) clears, a uuid links. No
+    // accounting field is re-sent, so an unclassified or Reserva-category row tags fine.
+    const carro = carroId === '' ? null : carroId
+    const linking = carro !== null
     startTransition(async () => {
-      const result = await updateTransaction(row.id, fd)
+      const result = await tagCarro(row.id, carro)
       if ('error' in result) {
         toast.error(result.error)
         return

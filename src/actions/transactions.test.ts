@@ -161,6 +161,7 @@ import {
   deleteTransaction,
   bulkReclassify,
   bulkTagCarro,
+  tagCarro,
 } from './transactions'
 
 const CATEGORY_ID = '11111111-1111-4111-8111-111111111111'
@@ -800,6 +801,73 @@ describe('bulkTagCarro', () => {
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await bulkTagCarro([TX_IDS[0]!], CARRO_ID)
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+})
+
+// --- tagCarro (CR-01: single-row, category-free carro tag) -----------------
+
+describe('tagCarro', () => {
+  it('tags ONE row to an owned carro with a carro_id-only payload (D4 field isolation)', async () => {
+    const r = await tagCarro(TX_ID, CARRO_ID)
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd).toBeDefined()
+    // D4: ONLY carro_id is written — never category_id/amount_cents/occurred_on/etc.
+    expect(upd!.payload).toEqual({ carro_id: CARRO_ID })
+    // Single-row reuse: the .in('id', ids) filter carries exactly this one id.
+    expect(upd!.inFilter).toEqual({ col: 'id', vals: [TX_ID] })
+    expect(revalidatePath).toHaveBeenCalledWith('/extrato')
+  })
+
+  it('tags an UNCLASSIFIED row (no category context needed) — CR-01 core fix', async () => {
+    // The row-menu path no longer re-sends categoryId; an imported memory-miss row
+    // (category_id === null) must tag without any "Selecione uma categoria" rejection.
+    const r = await tagCarro(TX_ID, CARRO_ID)
+    expect(r).toEqual({ ok: true })
+    // No categories read at all — the tag is fully category-free.
+    expect(calls.some((c) => c.from === 'categories')).toBe(false)
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd!.payload).toEqual({ carro_id: CARRO_ID })
+  })
+
+  it('tags a Reserva-category row without a reservaId (WR-01) — no reserva read', async () => {
+    // Same root cause as CR-01: the old updateTransaction path demanded a reservaId
+    // for a Reserva-category row. The carro-only action never touches the reserva path.
+    categoryIsReserva = true // would have triggered "Selecione uma reserva." via update
+    const r = await tagCarro(TX_ID, CARRO_ID)
+    expect(r).toEqual({ ok: true })
+    expect(calls.some((c) => c.from === 'reservas')).toBe(false)
+    expect(calls.some((c) => c.from === 'reserva_ledger')).toBe(false)
+  })
+
+  it('clears the tag on null without an ownership read (untag)', async () => {
+    const r = await tagCarro(TX_ID, null)
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd!.payload).toEqual({ carro_id: null })
+    // Clearing own row needs no assertOwnedCarro read.
+    expect(calls.some((c) => c.from === 'carros')).toBe(false)
+  })
+
+  it('rejects a forged/foreign carro before updating (IDOR no-write)', async () => {
+    ownedCarroIds = [] // assertOwnedCarro → 'not-owned'
+    const r = await tagCarro(TX_ID, CARRO_ID)
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(calls.some((c) => c.from === 'transactions' && c.op === 'update')).toBe(
+      false,
+    )
+  })
+
+  it('rejects a non-uuid transaction id before updating (WR-06)', async () => {
+    const r = await tagCarro('not-a-uuid', CARRO_ID)
+    expect('error' in r).toBe(true)
+    expect(calls.some((c) => c.op === 'update')).toBe(false)
+  })
+
+  it('gates on an absent session', async () => {
+    claimsSub = null
+    const r = await tagCarro(TX_ID, CARRO_ID)
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
 })
