@@ -83,7 +83,7 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 
 ### Segurança
 
-- [ ] **SEC-01**: RLS isola dados por usuário em tabelas e Storage, validado com teste de 2 usuários
+- [x] **SEC-01**: RLS isola dados por usuário em tabelas e Storage, validado com teste de 2 usuários
 - [x] **SEC-02**: Chaves de serviço ficam só no servidor, nunca no bundle do cliente
 - [x] **SEC-03**: Na classificação via IA, só o descritor normalizado é enviado (sem PII) e a saída é validada contra o enum de categorias
 
@@ -164,7 +164,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | MEI-06 | Phase 5 | Complete (05-02, 05-03) |
 | DATA-01 | Phase 6 | Complete (06-02; MEI CSV half from Phase 5) |
 | DATA-02 | Phase 6 | Pending |
-| SEC-01 | Phase 6 | Pending |
+| SEC-01 | Phase 6 | Complete (06-04) |
 
 **Coverage:**
 - v1 requirements: 47 total
@@ -181,4 +181,4 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-16 after roadmap creation (traceability mapped, 47/47 covered)*
+*Last updated: 2026-06-17 — SEC-01 Complete (06-04: 4×14 isolation matrix + Storage + secret-bundle real-build audit + PII guard all GREEN)*
