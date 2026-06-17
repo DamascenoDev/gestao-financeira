@@ -94,6 +94,23 @@ export async function assertOwnedStatement(
 }
 
 /**
+ * IDOR (Pitfall 7, T-05-03): verify the mei_invoice id belongs to the caller before
+ * using a client-supplied `mei_invoice_id` on the edit/delete path. Verbatim clone of
+ * assertOwnedStatement applied to mei_invoices — a forged mei_invoice_id pointing at
+ * another user's NF satisfies the FK globally (Postgres FKs are NOT RLS-aware); the
+ * RLS-active client only returns the caller's own invoices, so exactly 1 row = owned;
+ * 0 ⇒ reject. (MEI-01)
+ */
+export async function assertOwnedMeiInvoice(
+  supabase: Client,
+  id: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.from('mei_invoices').select('id').eq('id', id)
+  if (error || !data) return false
+  return data.length === 1
+}
+
+/**
  * RSV-02 / Open Question 2: a category triggers the aporte sub-flow ONLY when its
  * `is_reserva` FLAG is set — never a name match (the user may rename it; CAT-02).
  * The flag is read under the RLS-active client so a foreign/garbage id yields no row
