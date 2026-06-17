@@ -8,6 +8,7 @@ import {
   createTransactionWithReserva,
   updateTransaction,
 } from '@/actions/transactions'
+import { CarroPicker, type CarroOption } from '@/components/carro-picker'
 import { isValidMoney, MoneyInput } from '@/components/money-input'
 import { ReservaPicker, type ReservaOption } from '@/components/reserva-picker'
 import { Button } from '@/components/ui/button'
@@ -44,6 +45,8 @@ type TransacaoFormProps = {
   categories: CategoryOption[]
   /** The user's reservas — feeds the conditional ReservaPicker (RSV-02). */
   reservas?: ReservaOption[]
+  /** CAR-02: the user's non-archived carros — feeds the optional Carro selector. */
+  carros?: CarroOption[]
   /** Default occurred_on / month context (e.g. "2026-06-15"). */
   defaultDate: string
   /** Edit mode: when set, the dialog updates this transaction instead of creating. */
@@ -53,6 +56,8 @@ type TransacaoFormProps = {
     amount: string // raw pt-BR string e.g. "1.234,56"
     categoryId: string | null
     occurredOn: string // yyyy-MM-dd
+    /** CAR-02: the currently-linked carro (null = untagged). */
+    carroId: string | null
   }
   /** Optional controlled-open (so a row menu can drive the edit dialog). */
   open?: boolean
@@ -71,6 +76,7 @@ type TransacaoFormProps = {
 export function TransacaoForm({
   categories,
   reservas = [],
+  carros = [],
   defaultDate,
   edit,
   open: controlledOpen,
@@ -90,6 +96,8 @@ export function TransacaoForm({
   const [amount, setAmount] = React.useState(edit?.amount ?? '')
   const [categoryId, setCategoryId] = React.useState(edit?.categoryId ?? '')
   const [reservaId, setReservaId] = React.useState('')
+  // CAR-02: optional carro tag, free of category ('' = none/cleared).
+  const [carroId, setCarroId] = React.useState(edit?.carroId ?? '')
   const [occurredOn, setOccurredOn] = React.useState(
     edit?.occurredOn ?? defaultDate,
   )
@@ -107,6 +115,7 @@ export function TransacaoForm({
     setAmount(edit?.amount ?? '')
     setCategoryId(edit?.categoryId ?? '')
     setReservaId('')
+    setCarroId(edit?.carroId ?? '')
     setOccurredOn(edit?.occurredOn ?? defaultDate)
     setErrors({})
   }
@@ -147,6 +156,9 @@ export function TransacaoForm({
     fd.set('categoryId', categoryId)
     fd.set('occurredOn', occurredOn)
     if (isReservaCategory && reservaId) fd.set('reservaId', reservaId)
+    // CAR-02: always send the carro tag (empty string clears — Plan-01 decode);
+    // free of category, never gated on the Reserva sub-flow.
+    fd.set('carroId', carroId)
 
     startTransition(async () => {
       // Both paths route through actions that sync the reserva ledger: edit via
@@ -272,6 +284,15 @@ export function TransacaoForm({
                 error={errors.reservaId}
               />
             ) : null}
+
+            {/* CAR-02: the optional "Carro" selector — UNCONDITIONAL and free of
+                category (not coupled to the Reserva sub-flow). "Nenhum" clears it. */}
+            <CarroPicker
+              id="tx-carro"
+              carros={carros}
+              value={carroId}
+              onChange={setCarroId}
+            />
           </FieldGroup>
 
           <DialogFooter className="mt-6">
