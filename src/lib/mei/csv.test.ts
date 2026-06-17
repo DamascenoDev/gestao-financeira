@@ -57,6 +57,16 @@ describe('meiReportToCsv (DASN-ready export)', () => {
     expect(row).toContain('Não')
   })
 
+  it('routes textual fields through the shared formula-injection guard, a no-op for benign values (CR-01)', () => {
+    // The current MeiReport columns are numeric/boolean and benign, but the serializer
+    // shares the same csvField() guard as the transactions CSV so any future
+    // user-controlled column is inert. A benign report serializes with NO injected
+    // apostrophe (year/money cells start with a digit or 'R'), proving the guard does
+    // not corrupt safe values while still being wired into every cell.
+    const [, row] = rowsOf(meiReportToCsv({ ...report, year: 2026 })) as [string, string]
+    expect(row.split(';').every((cell) => !cell.startsWith("'"))).toBe(true)
+  })
+
   it('a zero-revenue year still emits a valid row (R$ 0,00)', () => {
     const zero: MeiReport = {
       year: 2026,

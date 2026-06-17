@@ -6,6 +6,7 @@
 // money via formatCents (pt-BR). Exactly the DASN fields: ano, receita bruta total,
 // comércio/indústria, serviços, funcionário (Sim/Não), limite aplicável. (MEI-04)
 
+import { csvField } from '@/lib/csv/escape'
 import { formatCents } from '@/lib/money'
 
 /** The consolidated yearly row the report screen + this CSV serializer render. */
@@ -40,15 +41,20 @@ const HEADER = [
  * Serialize a MeiReport to a DASN-ready CSV string (BOM + `;`-delimited header row +
  * one data row). All money goes through formatCents (pt-BR). A zero-revenue year still
  * emits a valid row (R$ 0,00) — the DASN is obligatory even with zero revenue.
+ *
+ * Every textual field is routed through the SHARED csvField() escaper (CR-01): the
+ * current columns are numeric/year/boolean and benign, but routing them through the
+ * same formula-injection + RFC-4180 guard as the transactions CSV means any future
+ * user-controlled column (e.g. tomador/descrição) is safe by construction.
  */
 export function meiReportToCsv(report: MeiReport): string {
   const dataRow = [
-    String(report.year),
-    formatCents(report.grossCents),
-    formatCents(report.comercioCents),
-    formatCents(report.servicosCents),
-    report.hasEmployee ? 'Sim' : 'Não',
-    formatCents(report.applicableLimitCents),
+    csvField(String(report.year)),
+    csvField(formatCents(report.grossCents)),
+    csvField(formatCents(report.comercioCents)),
+    csvField(formatCents(report.servicosCents)),
+    csvField(report.hasEmployee ? 'Sim' : 'Não'),
+    csvField(formatCents(report.applicableLimitCents)),
   ]
   const lines = [HEADER.join(DELIMITER), dataRow.join(DELIMITER)]
   return BOM + lines.join('\r\n') + '\r\n'

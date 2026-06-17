@@ -3,14 +3,16 @@
 // byte-order mark generated in code (String.fromCharCode(0xFEFF) — NEVER a literal
 // invisible char in source) so Excel pt-BR opens it correctly, `;` as the delimiter
 // (Excel pt-BR), CRLF line endings, and money ONLY through formatCents (pt-BR comma
-// decimals). A `field()` escaper quotes any value containing `;`, `"`, CR or LF and
-// doubles inner quotes (RFC-4180) so an odd/malicious description can never break
-// the column layout.
+// decimals). Field escaping goes through the SHARED csvField() (src/lib/csv/escape):
+// it defuses spreadsheet formula injection (CR-01: a leading `= + - @ TAB CR` is
+// prefixed with `'`) AND RFC-4180-quotes any value containing `;`, `"`, CR or LF, so
+// an odd/malicious description can neither execute as a formula nor break the layout.
 //
 // Open Question #2: the CSV carries the resolved point-in-time category NAME (human
 // readable). The raw category_id stays in the JSON bundle (06-03) — two
 // representations, one source.
 
+import { csvField } from '@/lib/csv/escape'
 import { formatCents } from '@/lib/money'
 
 /** A single RLS-scoped transaction row, already resolved for human-readable CSV. */
@@ -31,11 +33,6 @@ const BOM = String.fromCharCode(0xfeff)
 const DELIMITER = ';'
 
 const HEADER = ['Data', 'Descrição', 'Categoria', 'Tipo', 'Valor'] as const
-
-/** Escape a field for `;`-delimited CSV (quote if it contains ; " CR or LF; double inner "). */
-function field(value: string): string {
-  return /[;"\r\n]/.test(value) ? `"${value.replace(/"/g, '""')}"` : value
-}
 
 /** Render a 'YYYY-MM-DD' civil date as dd/MM/yyyy (string-only; no Date/TZ involved). */
 function formatDate(isoDate: string): string {
@@ -64,10 +61,10 @@ export function transactionsToCsv(rows: readonly TransactionCsvRow[]): string {
   for (const r of rows) {
     lines.push(
       [
-        field(formatDate(r.occurred_on)),
-        field(r.description),
-        field(r.category_name || 'Sem categoria'),
-        field(tipo(r.category_kind)),
+        csvField(formatDate(r.occurred_on)),
+        csvField(r.description),
+        csvField(r.category_name || 'Sem categoria'),
+        csvField(tipo(r.category_kind)),
         formatCents(r.amount_cents), // 'R$ 1.234,56' — pt-BR comma decimal
       ].join(DELIMITER),
     )
