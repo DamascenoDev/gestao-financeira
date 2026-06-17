@@ -7,7 +7,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { currentYear, todaySP, yearBounds } from '@/lib/month'
+import { todaySP, toYearOrCurrent, yearBounds } from '@/lib/month'
 import { centsToBigInt } from '@/lib/money'
 import { MEI_ACTIVITY_TYPES, type MeiActivityType } from '@/lib/schemas/mei'
 import { createClient } from '@/lib/supabase/server'
@@ -30,7 +30,7 @@ export default async function MeiNotasPage({
   searchParams: Promise<{ ano?: string }>
 }) {
   const { ano: anoParam } = await searchParams
-  const ano = Number(anoParam) || Number(currentYear())
+  const ano = toYearOrCurrent(anoParam)
   const { first, last } = yearBounds(String(ano))
   const today = todaySP()
 

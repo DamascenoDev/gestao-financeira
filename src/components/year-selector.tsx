@@ -4,7 +4,7 @@ import { ChevronLeft, ChevronRight } from 'lucide-react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 
 import { Button } from '@/components/ui/button'
-import { currentYear } from '@/lib/month'
+import { toYearOrCurrent } from '@/lib/month'
 
 /**
  * MEI year context: a ‹ 2026 › segmented control mirroring MonthSelector's shape.
@@ -18,7 +18,7 @@ export function YearSelector() {
   const pathname = usePathname()
   const searchParams = useSearchParams()
 
-  const ano = Number(searchParams.get('ano')) || Number(currentYear())
+  const ano = toYearOrCurrent(searchParams.get('ano'))
 
   function goTo(nextAno: number) {
     const params = new URLSearchParams(searchParams.toString())

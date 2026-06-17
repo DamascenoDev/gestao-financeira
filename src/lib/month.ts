@@ -95,6 +95,18 @@ export function currentYear(): string {
 }
 
 /**
+ * Normalize an untrusted year value (e.g. `searchParams.ano`) to a real calendar
+ * year, falling back to the current civil year when it is missing, non-integer, or
+ * out of the supported [2000, 2100] range. Mirrors `toMonthKeyOrCurrent`: the single
+ * guard so a crafted `?ano` (e.g. '2026.5', '1e9', '-5', 'garbage') becomes the
+ * current year instead of flowing into `.eq('year', ...)` as a nonsense value (LR-02).
+ */
+export function toYearOrCurrent(value: unknown): number {
+  const n = Number(value)
+  return Number.isInteger(n) && n >= 2000 && n <= 2100 ? n : Number(currentYear())
+}
+
+/**
  * First and last civil day of the year (YYYY-MM-DD) for the YTD window. The civil
  * year is a fixed [YYYY-01-01 .. YYYY-12-31] span — no TZ math needed beyond the
  * year string, which currentYear() already pins to America/Sao_Paulo. (BUD-03)

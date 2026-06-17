@@ -8,6 +8,7 @@ import {
   monthLabel,
   shiftMonthKey,
   toMonthKeyOrCurrent,
+  toYearOrCurrent,
 } from './month'
 
 describe('lib/month — civil-month helpers (America/Sao_Paulo)', () => {
@@ -95,6 +96,29 @@ describe('lib/month — civil-month helpers (America/Sao_Paulo)', () => {
       expect(toMonthKeyOrCurrent('2026-99')).toBe(current)
       expect(toMonthKeyOrCurrent(undefined)).toBe(current)
       expect(toMonthKeyOrCurrent(new File([], 'x'))).toBe(current)
+    })
+  })
+
+  describe('toYearOrCurrent (LR-02)', () => {
+    it('passes through a valid in-range integer year (number or string)', () => {
+      expect(toYearOrCurrent(2026)).toBe(2026)
+      expect(toYearOrCurrent('2026')).toBe(2026)
+      expect(toYearOrCurrent('2000')).toBe(2000)
+      expect(toYearOrCurrent('2100')).toBe(2100)
+    })
+
+    it('falls back to the current year for non-integer / out-of-range / garbage', () => {
+      // 2026-07-01T02:00:00Z is still 2026-06-30 in America/Sao_Paulo → year 2026.
+      vi.useFakeTimers()
+      vi.setSystemTime(new Date('2026-07-01T02:00:00Z'))
+      expect(toYearOrCurrent('2026.5')).toBe(2026)
+      expect(toYearOrCurrent('1e9')).toBe(2026)
+      expect(toYearOrCurrent('-5')).toBe(2026)
+      expect(toYearOrCurrent('1999')).toBe(2026)
+      expect(toYearOrCurrent('2101')).toBe(2026)
+      expect(toYearOrCurrent('garbage')).toBe(2026)
+      expect(toYearOrCurrent(undefined)).toBe(2026)
+      expect(toYearOrCurrent(null)).toBe(2026)
     })
   })
 

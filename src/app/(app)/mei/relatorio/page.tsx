@@ -2,7 +2,7 @@ import { DasnReportView } from '@/components/dasn-report-view'
 import { PrintButton } from '@/components/print-button'
 import type { MeiReport } from '@/lib/mei/csv'
 import { applicableLimitCents } from '@/lib/mei/limit'
-import { currentYear } from '@/lib/month'
+import { toYearOrCurrent } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -21,7 +21,7 @@ export default async function MeiRelatorioPage({
   searchParams: Promise<{ ano?: string }>
 }) {
   const { ano: anoParam } = await searchParams
-  const ano = Number(anoParam) || Number(currentYear())
+  const ano = toYearOrCurrent(anoParam)
 
   const supabase = await createClient()
 

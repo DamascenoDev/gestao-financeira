@@ -1,5 +1,5 @@
 import { MeiSettingsForm } from '@/components/mei-settings-form'
-import { currentYear } from '@/lib/month'
+import { toYearOrCurrent } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -16,7 +16,7 @@ export default async function MeiConfiguracoesPage({
   searchParams: Promise<{ ano?: string }>
 }) {
   const { ano: anoParam } = await searchParams
-  const ano = Number(anoParam) || Number(currentYear())
+  const ano = toYearOrCurrent(anoParam)
 
   const supabase = await createClient()
 

@@ -11,7 +11,7 @@ import {
   EmptyHeader,
   EmptyTitle,
 } from '@/components/ui/empty'
-import { currentYear } from '@/lib/month'
+import { toYearOrCurrent } from '@/lib/month'
 import { formatCents } from '@/lib/money'
 import { applicableLimitCents, bandCeilingCents } from '@/lib/mei/limit'
 import { meiStatusTokens } from '@/lib/mei/presentation'
@@ -42,7 +42,7 @@ export default async function MeiDashboardPage({
   searchParams: Promise<{ ano?: string }>
 }) {
   const { ano: anoParam } = await searchParams
-  const ano = Number(anoParam) || Number(currentYear())
+  const ano = toYearOrCurrent(anoParam)
 
   const supabase = await createClient()
 
