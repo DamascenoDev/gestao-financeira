@@ -4,6 +4,7 @@ import {
   type CategoryTotal,
   type ExtratoRow,
 } from '@/components/extrato-table'
+import { ExportTransactionsButton } from '@/components/export-transactions-button'
 import { TransacaoForm } from '@/components/transacao-form'
 import {
   Empty,
@@ -13,6 +14,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { centsToBigInt } from '@/lib/money'
+import type { TransactionCsvRow } from '@/lib/transactions/csv'
 import { monthBounds, monthLabel, toMonthKeyOrCurrent } from '@/lib/month'
 import { createClient } from '@/lib/supabase/server'
 import type { Database } from '@/types/database.types'
@@ -24,6 +26,13 @@ type CategoryRow = Database['public']['Tables']['categories']['Row']
 function parseCatFilter(raw: string | undefined): string[] {
   if (!raw) return []
   return raw.split(',').filter(Boolean)
+}
+
+/** Narrow the DB `kind` (string) to the CSV Tipo union; unknown → null. */
+function toCategoryKind(
+  kind: string | undefined,
+): TransactionCsvRow['category_kind'] {
+  return kind === 'consumo' || kind === 'alocacao' ? kind : null
 }
 
 /**
@@ -51,14 +60,14 @@ export default async function ExtratoPage({
   // the RSV-02 "Qual reserva?" sub-flow (the FLAG, never the name — CAT-02 rename-safe).
   const { data: categoriesData } = await supabase
     .from('categories')
-    .select('id, name, color, is_reserva')
+    .select('id, name, color, is_reserva, kind')
     .eq('is_archived', false)
     .order('sort', { ascending: true })
     .order('name', { ascending: true })
 
   const categories: Pick<
     CategoryRow,
-    'id' | 'name' | 'color' | 'is_reserva'
+    'id' | 'name' | 'color' | 'is_reserva' | 'kind'
   >[] = categoriesData ?? []
   const categoryById = new Map(categories.map((c) => [c.id, c]))
 
@@ -101,6 +110,21 @@ export default async function ExtratoPage({
     category_id: t.category_id,
   }))
 
+  // DATA-01: the month's RLS-scoped rows resolved for the transactions CSV. Each
+  // transaction is joined to its category point-in-time (name + kind); a null/missing
+  // category → 'Sem categoria' / null Tipo. The CSV reflects the current ?mes window
+  // the Extrato shows (UI-SPEC: "the CSV matches what the Extrato shows").
+  const csvRows: TransactionCsvRow[] = rows.map((r) => {
+    const cat = r.category_id ? categoryById.get(r.category_id) : undefined
+    return {
+      occurred_on: r.occurred_on,
+      description: r.description,
+      category_name: cat?.name ?? '',
+      category_kind: toCategoryKind(cat?.kind),
+      amount_cents: r.amount_cents,
+    }
+  })
+
   // Per-category + grand totals from the security_invoker view (RLS-scoped),
   // scoped to the month and (when present) the category filter. Sums in SQL.
   const { data: totalsData } = await supabase
@@ -141,7 +165,10 @@ export default async function ExtratoPage({
     <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-xl font-semibold">Extrato</h1>
-        {txForm}
+        <div className="flex items-center gap-2">
+          <ExportTransactionsButton rows={csvRows} mes={mes} />
+          {txForm}
+        </div>
       </div>
 
       <CategoryFilter
