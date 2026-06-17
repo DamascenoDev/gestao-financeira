@@ -181,7 +181,7 @@ export default async function ExtratoPage({
 
       {error ? (
         <p className="text-sm text-destructive">
-          Não foi possível carregar o extrato.
+          Não foi possível carregar o extrato. Tente recarregar a página.
         </p>
       ) : rows.length === 0 ? (
         <Empty>
