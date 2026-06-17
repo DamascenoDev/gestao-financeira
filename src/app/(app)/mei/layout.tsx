@@ -14,7 +14,7 @@ export default function MeiLayout({
 }: Readonly<{ children: React.ReactNode }>) {
   return (
     <div className="mx-auto flex w-full max-w-5xl flex-col gap-6">
-      <div className="flex items-center justify-end">
+      <div data-print="hide" className="flex items-center justify-end">
         <YearSelector />
       </div>
       <MeiDisclaimer />

@@ -148,3 +148,29 @@
     @apply font-sans;
   }
 }
+
+/*
+ * Print stylesheet for the DASN-SIMEI report (MEI-04 / MEI-06). When printing, the
+ * app shell (sidebar, top header, year selector, action affordances) is hidden so
+ * only the report card + the disclaimer render — on white. Elements tagged
+ * `data-print="hide"` drop out; the `[data-print-root]` report container expands to
+ * full width. The disclaimer is plain `data-print` content, so it survives the print
+ * view (the report must carry its informativo notice into the printed document).
+ */
+@media print {
+  [data-slot='sidebar'],
+  [data-print='hide'] {
+    display: none !important;
+  }
+
+  html,
+  body {
+    background: #fff !important;
+  }
+
+  [data-print-root] {
+    margin: 0 !important;
+    padding: 0 !important;
+    max-width: none !important;
+  }
+}
