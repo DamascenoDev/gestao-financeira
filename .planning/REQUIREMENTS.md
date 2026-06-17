@@ -87,6 +87,27 @@ Requisitos do release inicial. Cada um mapeia para fases do roadmap.
 - [x] **SEC-02**: Chaves de serviço ficam só no servidor, nunca no bundle do cliente
 - [x] **SEC-03**: Na classificação via IA, só o descritor normalizado é enviado (sem PII) e a saída é validada contra o enum de categorias
 
+## v1.1 Requirements (Visual — Phase 7)
+
+Re-skin de identidade private-banking (azul marinho + dourado). Não muda lógica/dados/segurança das fases 1-6.
+
+### Identidade & Tema
+
+- [ ] **UI-01**: Sistema de design navy+gold aplicado globalmente (tokens OKLCH light+dark, tipografia, marca) — coerente em todas as rotas, semântica de dinheiro/status preservada
+- [ ] **UI-02**: Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica teto/alvo/income
+- [ ] **UI-03**: Logo/marca e tela de login/landing com identidade de produto (não form cru)
+
+### Data-viz
+
+- [ ] **UI-04**: Gráfico de evolução mensal (receita vs gasto) no dashboard
+- [ ] **UI-05**: Gráfico de distribuição de gastos por categoria (mês) no dashboard
+- [ ] **UI-06**: Visual rico de aderência às metas + gauge MEI elevado
+
+### Polimento & Mobile
+
+- [ ] **UI-07**: Refinamento mobile-first de todas as telas (tabelas densas → cards, nav adapta)
+- [ ] **UI-08**: Empty/loading/error states + micro-interações/transições consistentes em todas as telas
+
 ## v2 Requirements
 
 Adiados para release futuro. Rastreados, fora do roadmap atual.

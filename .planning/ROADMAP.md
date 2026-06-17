@@ -129,6 +129,20 @@ This roadmap follows the research-converged build order: **foundation → manual
   - [ ] 06-05-PLAN.md — [autonomous:false] Human-verify walkthrough: phase gate (full suite + tsc + build + secret audit) then browser checks — transactions CSV download (pt-BR), LGPD bundle download, type-to-confirm APAGAR delete + sign-out (throwaway LOCAL user only)
 **UI hint**: yes
 
+### Phase 7: Identidade visual e polimento (navy+gold, dark mode, gráficos, mobile)
+**Goal**: Re-skin completo do app numa identidade private-banking — azul marinho profundo + dourado (vibe BTG/Mercury) — com dark mode, gráficos de data-viz no dashboard e MEI, refinamento mobile-first, e polimento de todas as telas (empty/loading/error states, micro-interações), elevando de "esqueleto funcional" para produto premium e coeso. Re-skin only: não muda lógica de negócio, dados ou segurança das fases 1-6.
+**Mode:** mvp
+**Depends on**: Phase 1, Phase 2, Phase 3, Phase 4, Phase 5, Phase 6
+**Requirements**: UI-01, UI-02, UI-03, UI-04, UI-05, UI-06, UI-07, UI-08
+**Success Criteria** (what must be TRUE):
+  1. Sistema de design navy+gold aplicado globalmente (tokens OKLCH, tipografia, marca) — coerente e premium em todas as ~20 rotas; semântica de dinheiro/status preservada
+  2. Dark mode completo, alternável e persistente, sem quebra de contraste nem da semântica de dinheiro/teto-alvo
+  3. Data-viz: evolução mensal receita vs gasto + distribuição por categoria no dashboard; visual rico de aderência às metas e gauge MEI
+  4. Refinamento mobile-first: toda tela usável e bonita no celular (tabelas densas viram cards, nav adapta)
+  5. Polimento: empty/loading/error states e micro-interações/transições consistentes em todas as telas
+  6. Login/landing com identidade de produto (não form cru)
+**UI hint**: yes
+
 ## Progress
 
 | Phase | Plans Complete | Status | Completed |
