@@ -111,6 +111,24 @@ export async function assertOwnedMeiInvoice(
 }
 
 /**
+ * IDOR (Pitfall 6/7, T-08-06): verify the carro id belongs to the caller before any
+ * write touches it (updateCarro / archiveCarro / unarchiveCarro now, and the
+ * `transactions.carro_id` FK in Phase 9 + `abastecimentos.carro_id` in Phase 10).
+ * Postgres FKs are NOT RLS-aware — a forged carro_id pointing at another user's carro
+ * satisfies the FK globally; the RLS-active client only returns the caller's own
+ * carros, so a `select id where id = $1` returning exactly 1 row means owned; 0 rows
+ * ⇒ not owned ⇒ reject. Verbatim clone of assertOwnedReserva retargeted to carros.
+ */
+export async function assertOwnedCarro(
+  supabase: Client,
+  id: string,
+): Promise<boolean> {
+  const { data, error } = await supabase.from('carros').select('id').eq('id', id)
+  if (error || !data) return false
+  return data.length === 1
+}
+
+/**
  * RSV-02 / Open Question 2: a category triggers the aporte sub-flow ONLY when its
  * `is_reserva` FLAG is set — never a name match (the user may rename it; CAT-02).
  * The flag is read under the RLS-active client so a foreign/garbage id yields no row
