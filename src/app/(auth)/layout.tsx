@@ -1,5 +1,6 @@
 import { redirect } from 'next/navigation'
 
+import { AuthShell } from '@/components/auth-shell'
 import { createClient } from '@/lib/supabase/server'
 
 export default async function AuthLayout({
@@ -15,5 +16,5 @@ export default async function AuthLayout({
     redirect('/dashboard')
   }
 
-  return children
+  return <AuthShell>{children}</AuthShell>
 }

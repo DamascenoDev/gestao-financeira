@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" role="img" aria-label="Gestão Financeira">
+  <!-- Favicon = the BrandMark in static colors: navy tile + gold ascending bar-trio.
+       A static single-theme asset, so it uses the navy+gold hex equivalents of the
+       identity tokens (--primary-foreground navy ink / --primary gold) rather than CSS vars. -->
+  <rect x="0" y="0" width="24" height="24" rx="6" fill="#1b2542" />
+  <rect x="5" y="13" width="3.5" height="6" rx="1" fill="#c79a3a" />
+  <rect x="10.25" y="9" width="3.5" height="10" rx="1" fill="#c79a3a" />
+  <rect x="15.5" y="5" width="3.5" height="14" rx="1" fill="#c79a3a" />
+</svg>
