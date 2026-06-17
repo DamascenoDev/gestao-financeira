@@ -105,6 +105,11 @@ export default async function MeiDashboardPage({
   const overLimit = ratioBp !== null && ratioBp >= 10000
   const overBand = status === 'vermelho-fora'
   const noNfs = grossCents === 0
+  // Pre-opening edge (LR-03): there is no applicable limit yet (ratioBp === null)
+  // but the year already has recorded gross. meiStatus → 'verde'/"Dentro do limite",
+  // which alone is misleading next to a non-zero hero figure. Surface why that
+  // revenue does not count toward the {ano} limit instead of leaving it unexplained.
+  const preOpeningWithRevenue = ratioBp === null && !noNfs
 
   return (
     <section className="flex flex-col gap-6">
@@ -150,6 +155,16 @@ export default async function MeiDashboardPage({
           </div>
 
           <LimiteStatusBadge status={status} />
+
+          {/* Pre-opening edge (LR-03): revenue recorded before the MEI's opening
+              year does not count toward this year's limit — explain the verde state
+              rather than leaving "Dentro do limite" misleading next to a non-zero hero. */}
+          {preOpeningWithRevenue ? (
+            <p className="text-muted-foreground text-sm">
+              As notas registradas em {ano} são anteriores ao início do seu MEI e
+              não contam para o limite deste ano.
+            </p>
+          ) : null}
 
           {/* Remaining-to-limit line while under 100%. */}
           {!overLimit && ratioBp !== null ? (
