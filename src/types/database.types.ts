@@ -34,6 +34,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      abastecimentos: {
+        Row: {
+          amount_cents: number | null
+          carro_id: string
+          combustivel: string | null
+          created_at: string
+          id: string
+          litros: number
+          note: string | null
+          occurred_on: string
+          odometro_km: number
+          tanque_cheio: boolean
+          transaction_id: string | null
+          user_id: string
+        }
+        Insert: {
+          amount_cents?: number | null
+          carro_id: string
+          combustivel?: string | null
+          created_at?: string
+          id?: string
+          litros: number
+          note?: string | null
+          occurred_on: string
+          odometro_km: number
+          tanque_cheio: boolean
+          transaction_id?: string | null
+          user_id: string
+        }
+        Update: {
+          amount_cents?: number | null
+          carro_id?: string
+          combustivel?: string | null
+          created_at?: string
+          id?: string
+          litros?: number
+          note?: string | null
+          occurred_on?: string
+          odometro_km?: number
+          tanque_cheio?: boolean
+          transaction_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abastecimentos_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "carros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abastecimentos_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "v_carro_resumo"
+            referencedColumns: ["carro_id"]
+          },
+          {
+            foreignKeyName: "abastecimentos_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: false
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       budget_targets: {
         Row: {
           category_id: string
@@ -71,6 +138,42 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      carros: {
+        Row: {
+          ano: number | null
+          apelido: string
+          combustivel_padrao: string | null
+          created_at: string
+          id: string
+          is_archived: boolean
+          modelo: string | null
+          placa: string | null
+          user_id: string
+        }
+        Insert: {
+          ano?: number | null
+          apelido: string
+          combustivel_padrao?: string | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          modelo?: string | null
+          placa?: string | null
+          user_id: string
+        }
+        Update: {
+          ano?: number | null
+          apelido?: string
+          combustivel_padrao?: string | null
+          created_at?: string
+          id?: string
+          is_archived?: boolean
+          modelo?: string | null
+          placa?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
       categories: {
         Row: {
@@ -496,6 +599,7 @@ export type Database = {
       transactions: {
         Row: {
           amount_cents: number
+          carro_id: string | null
           category_id: string | null
           classification_source: string | null
           created_at: string
@@ -511,6 +615,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          carro_id?: string | null
           category_id?: string | null
           classification_source?: string | null
           created_at?: string
@@ -526,6 +631,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          carro_id?: string | null
           category_id?: string | null
           classification_source?: string | null
           created_at?: string
@@ -540,6 +646,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "transactions_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "carros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "transactions_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "v_carro_resumo"
+            referencedColumns: ["carro_id"]
+          },
           {
             foreignKeyName: "transactions_category_id_fkey"
             columns: ["category_id"]
@@ -558,6 +678,36 @@ export type Database = {
       }
     }
     Views: {
+      v_abastecimento_consumo: {
+        Row: {
+          carro_id: string | null
+          custo_intervalo_cents: number | null
+          id: string | null
+          km_por_litro: number | null
+          km_rodados: number | null
+          litros_intervalo: number | null
+          occurred_on: string | null
+          odometro_km: number | null
+          reais_por_km: number | null
+          user_id: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abastecimentos_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "carros"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abastecimentos_carro_id_fkey"
+            columns: ["carro_id"]
+            isOneToOne: false
+            referencedRelation: "v_carro_resumo"
+            referencedColumns: ["carro_id"]
+          },
+        ]
+      }
       v_adherence_month: {
         Row: {
           adherence_bp: number | null
@@ -605,6 +755,18 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      v_carro_resumo: {
+        Row: {
+          carro_id: string | null
+          gasto_mes_corrente_cents: number | null
+          gasto_total_cents: number | null
+          km_por_litro_medio: number | null
+          preco_litro_medio_cents: number | null
+          reais_por_km_medio: number | null
+          user_id: string | null
+        }
+        Relationships: []
       }
       v_category_totals: {
         Row: {

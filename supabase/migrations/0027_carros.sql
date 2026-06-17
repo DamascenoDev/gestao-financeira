@@ -111,7 +111,20 @@ create policy "own abastecimentos" on public.abastecimentos
 -- exposed so security_invoker scopes the view per caller.
 create or replace view public.v_abastecimento_consumo
   with (security_invoker = true) as
-  with fills as (
+  -- Postgres does NOT support FILTER on window functions (SQLSTATE 0A000), so we
+  -- isolate the tanque_cheio fills into their own CTE first, then lag() over THAT set
+  -- to get the previous full-tank odometer (the interval lower bound).
+  with full_fills as (
+    select
+      a.id,
+      a.carro_id,
+      a.occurred_on,
+      a.odometro_km,
+      lag(a.odometro_km) over (partition by a.carro_id order by a.odometro_km) as prev_full_odometro
+    from public.abastecimentos a
+    where a.tanque_cheio
+  ),
+  fills as (
     select
       a.id,
       a.user_id,
@@ -121,14 +134,10 @@ create or replace view public.v_abastecimento_consumo
       a.litros,
       a.tanque_cheio,
       coalesce(t.amount_cents, a.amount_cents)::bigint as custo_cents,
-      -- The previous FULL-tank odometer for this carro (interval lower bound).
-      lag(a.odometro_km) filter (where a.tanque_cheio)
-        over (partition by a.carro_id order by a.odometro_km) as prev_full_odometro,
-      -- The previous FULL-tank occurred_on (interval lower time bound, for the litros sum).
-      lag(a.occurred_on) filter (where a.tanque_cheio)
-        over (partition by a.carro_id order by a.odometro_km) as prev_full_on
+      ff.prev_full_odometro
     from public.abastecimentos a
     left join public.transactions t on t.id = a.transaction_id
+    left join full_fills ff on ff.id = a.id
   ),
   intervals as (
     -- A consumption interval is closed at each tanque_cheio fill that has a prior
