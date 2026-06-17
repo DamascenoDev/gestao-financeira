@@ -12,13 +12,17 @@ import {
   CarroCategoriaBars,
   type CarroCategoriaDatum,
 } from '@/components/carro-categoria-bars'
-import { CarroConsumoChart } from '@/components/carro-consumo-chart'
+import {
+  CarroConsumoChart,
+  type CarroConsumoDatum,
+} from '@/components/carro-consumo-chart'
 import { CarroDetailActions } from '@/components/carro-detail-actions'
 import { type TransacaoOption } from '@/components/transacao-picker'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent } from '@/components/ui/card'
-import { centsToBigInt } from '@/lib/money'
+import { kmPerLitroLabel, reaisPerKmLabel } from '@/lib/carro/consumo'
+import { centsToBigInt, formatCents } from '@/lib/money'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -76,15 +80,34 @@ export default async function CarroDetailPage({
     .order('occurred_on', { ascending: false })
 
   // Per-interval km/l keyed by abastecimento id (the closing fill of each interval).
+  // Also carries occurred_on so the chart can plot km/l chronologically (the history
+  // table orders by odômetro desc; the chart needs the date-ascending series).
   const { data: consumoRows } = await supabase
     .from('v_abastecimento_consumo')
-    .select('id, km_por_litro')
+    .select('id, occurred_on, km_por_litro')
     .eq('carro_id', id)
   const kmPorLitroById = new Map<string, number | null>(
     (consumoRows ?? []).flatMap((c) =>
       c.id ? [[c.id, c.km_por_litro]] : [],
     ),
   )
+
+  // Consumo (km/l) chart series (CAR-05.4): chronological, null-km/l intervals dropped
+  // (CONTEXT: never plot a gap-filled 0). The X label is dd/MM from the civil date
+  // string (SP-pinned by construction — no tz math on a yyyy-MM-dd day; same discipline
+  // as AbastecimentoHistory's ddMM, no new date lib).
+  const consumoSeries: CarroConsumoDatum[] = (consumoRows ?? [])
+    .filter(
+      (c): c is { id: string; occurred_on: string; km_por_litro: number } =>
+        c.occurred_on != null &&
+        c.km_por_litro != null &&
+        c.km_por_litro > 0,
+    )
+    .sort((a, b) => a.occurred_on.localeCompare(b.occurred_on))
+    .map((c) => {
+      const [, m, d] = c.occurred_on.split('-')
+      return { data: `${d}/${m}`, kmPorLitro: c.km_por_litro }
+    })
 
   // The carro averages (km/l médio + R$/km médio) + gasto total — the 3 KPI figures.
   const { data: resumo } = await supabase
@@ -220,6 +243,19 @@ export default async function CarroDetailPage({
     { label: 'Combustível padrão', value: carro.combustivelPadrao ?? '—' },
   ]
 
+  // The 3 KPI figures (CAR-05.1) from v_carro_resumo. Each renders the '—' sentinel for
+  // null/no-data — never a fake zero. Gasto total is neutral foreground (a gasto is
+  // normal, never red); 0/no-data → '—' (UI-SPEC null rule).
+  const gastoTotalCents = resumo?.gasto_total_cents ?? 0
+  const kpis: { label: string; value: string }[] = [
+    { label: 'km/l médio', value: kmPerLitroLabel(resumo?.km_por_litro_medio ?? null) },
+    { label: 'R$/km', value: reaisPerKmLabel(resumo?.reais_por_km_medio ?? null) },
+    {
+      label: 'Gasto total',
+      value: gastoTotalCents > 0 ? formatCents(gastoTotalCents) : '—',
+    },
+  ]
+
   return (
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
@@ -249,6 +285,39 @@ export default async function CarroDetailPage({
           </dl>
         </CardContent>
       </Card>
+
+      {/* KPI stat cards (CAR-05.1): km/l médio · R$/km · gasto total — mono
+          tabular-nums, '—' for null/no-data, neutral foreground (never red). */}
+      <div className="grid grid-cols-1 gap-6 sm:grid-cols-3">
+        {kpis.map((kpi) => (
+          <Card key={kpi.label}>
+            <CardContent className="flex flex-col gap-1 pt-6">
+              <span className="text-xs text-muted-foreground">{kpi.label}</span>
+              <span className="font-mono text-xl font-semibold tabular-nums">
+                {kpi.value}
+              </span>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* Gasto por categoria (CAR-05.2): magnitude bars from the inline aggregation,
+          ordered by valor desc. The component renders its own empty line. */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">Gasto por categoria</h2>
+        <CarroCategoriaBars data={categoriaData} />
+      </section>
+
+      {/* Consumo (km/l) (CAR-05.4): km/l-over-time line chart, null intervals dropped,
+          chronological. The component guards <2 valid points → pt-BR empty copy. */}
+      <section className="flex flex-col gap-4">
+        <h2 className="text-sm font-semibold">Consumo (km/l)</h2>
+        <Card>
+          <CardContent className="pt-6">
+            <CarroConsumoChart data={consumoSeries} />
+          </CardContent>
+        </Card>
+      </section>
 
       <section className="flex flex-col gap-4">
         <div className="flex items-center justify-between gap-4">
