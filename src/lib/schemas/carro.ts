@@ -11,6 +11,14 @@ import { z } from 'zod'
 /** The current year + 1 — a sane upper bound for `ano` (next model-year cars exist). */
 const MAX_ANO = new Date().getFullYear() + 1
 
+/**
+ * The fixed set of fuel types (08-CONTEXT). Exported as a `const` tuple so the
+ * abastecimento schema (CAR-03) reuses the SAME literal — the enum cannot drift
+ * between a carro's `combustivel_padrao` and an abastecimento's `combustivel`.
+ */
+export const COMBUSTIVEL_OPTIONS = ['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV'] as const
+export type Combustivel = (typeof COMBUSTIVEL_OPTIONS)[number]
+
 /** Create/edit a carro: apelido required, everything else optional. */
 export const carroSchema = z.object({
   apelido: z.string().trim().min(1, 'Informe o apelido').max(60),
@@ -27,9 +35,7 @@ export const carroSchema = z.object({
     .min(1900, 'Ano inválido')
     .max(MAX_ANO, 'Ano inválido')
     .optional(),
-  combustivel_padrao: z
-    .enum(['Flex', 'Gasolina', 'Etanol', 'Diesel', 'GNV'])
-    .optional(),
+  combustivel_padrao: z.enum(COMBUSTIVEL_OPTIONS).optional(),
 })
 
 export type CarroInput = z.infer<typeof carroSchema>
