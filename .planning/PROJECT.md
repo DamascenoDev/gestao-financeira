@@ -8,6 +8,18 @@ Sistema web **pessoal e privado** de gestão financeira. Eu cadastro meus recebi
 
 Subir uma fatura e ver os gastos classificados automaticamente — o sistema aprende cada padrão merchant→categoria a partir das minhas confirmações — junto com a aderência às minhas metas. Se tudo mais falhar, **classificação inteligente com memória + visão de metas** tem que funcionar.
 
+## Current Milestone: v1.2 Carro
+
+**Goal:** Módulo de veículo — cadastrar carro(s), etiquetar gastos da fatura ao carro (manutenção/óleo), registrar abastecimentos + odômetro e calcular médias de consumo (km/l), tudo dentro do app.
+
+**Target features:**
+- Cadastro de vários carros (multi-car, user_id-scoped)
+- Etiquetar gastos da fatura a um carro (`carro_id` em transactions, não-destrutivo para categorias/metas)
+- Log de abastecimento híbrido (vincula ao lançamento da fatura OU custo manual) com odômetro + litros + flag tanque-cheio
+- Consumo km/l pelo método tanque-cheio + R$/km, com gráfico de consumo no detalhe do carro
+
+**Design seed:** `docs/superpowers/specs/2026-06-17-modulo-carro-design.md` (aprovado). Módulo autocontido espelhando o MEI.
+
 ## Requirements
 
 ### Validated
@@ -29,6 +41,7 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 - [ ] Reservas de oportunidade (sinking funds) nomeadas (ex: Apê, Carro): alvo opcional com barra de progresso; entradas via gasto classificado como "Reserva" (sub-pergunta "qual reserva?") e saídas, com histórico por reserva
 - [ ] Aba MEI: registro das NFs de serviço emitidas, acompanhamento do limite anual (R$ 81k) e relatório para a declaração anual (DASN-SIMEI)
 - [ ] Modelo de dados escopado por `user_id` desde o v1 (multi-user-ready, sem migração dolorosa para adicionar a esposa)
+- [ ] **(v1.2)** Aba Carro: cadastrar carro(s), etiquetar gastos da fatura ao carro, registrar abastecimentos+odômetro e calcular consumo (km/l tanque-cheio, R$/km) com gráfico
 
 ### Out of Scope
 
@@ -74,6 +87,9 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 | Denominador das metas % = receita líquida recebida no mês | % sobre o que efetivamente caiu (recorrentes + avulsos) | — Pending |
 | Metas têm direção: teto (consumo, não exceder) vs alvo (investimento/poupança, atingir) | "lazer 10%" é teto; "investimentos 20%" é alvo — aderência se mede diferente | — Pending |
 | Dinheiro em centavos inteiros (bigint), nunca float | Erro de float em dinheiro é irreversível; padrão convergente da pesquisa | — Pending |
+| (v1.2) Etiqueta `carro_id` em transactions é lente não-destrutiva | Gasto etiquetado continua contando na categoria/metas; aba Carro só agrega, não muda contabilidade | — Pending |
+| (v1.2) Abastecimento híbrido (vincula à fatura OU custo manual, XOR) | Combustível pago no cartão reaproveita o custo do lançamento (sem digitar/contar 2x); dinheiro/pix entra manual. Espelha reserva_ledger.transaction_id | — Pending |
+| (v1.2) Consumo pelo método tanque-cheio | Mais preciso que km/l por abastecimento isolado; requer flag tanque_cheio + odômetro | — Pending |
 
 ## Evolution
 
@@ -93,4 +109,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-17 — Phase 7 (identidade visual e polimento: navy+gold, dark mode, data-viz, mobile, polish) complete; milestone v1.0 final phase shipped (7/7 phases).*
+*Last updated: 2026-06-17 — Milestone v1.2 "Carro" iniciado (módulo de veículo: cadastro, etiquetar gastos da fatura, abastecimento+odômetro, consumo km/l). Design aprovado em docs/superpowers/specs/2026-06-17-modulo-carro-design.md. v1.0 fases 1-7 executadas (fase 7 re-skin); v1.0 ainda tem 6 human-verify/deploy diferidos.*
