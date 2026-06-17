@@ -59,6 +59,36 @@ describe('NfTable', () => {
     expect(screen.getByText('Receita bruta no ano')).toBeInTheDocument()
   })
 
+  it('sums the gross total bigint-safe when supabase surfaces amount_cents as strings (MD-01)', () => {
+    // supabase-js may surface a Postgres bigint column as a STRING. A raw `acc + r`
+    // reduce would string-concatenate ("0" + "150000" + "250000"); the centsToBigInt
+    // sum must instead compute 1.500,00 + 2.500,00 = 4.000,00.
+    const stringRows: NfRow[] = [
+      {
+        id: 'a',
+        issued_on: '2026-03-10',
+        amount_cents: '150000' as unknown as number,
+        tomador: 'Cliente A',
+        descricao: 'Consultoria',
+        activity_type: 'servicos',
+      },
+      {
+        id: 'b',
+        issued_on: '2026-05-02',
+        amount_cents: '250000' as unknown as number,
+        tomador: 'Cliente B',
+        descricao: 'Venda de produto',
+        activity_type: 'comercio_industria',
+      },
+    ]
+    render(<NfTable rows={stringRows} defaultDate="2026-06-16" />)
+    const expected = norm(formatCents(400000))
+    const matches = screen.getAllByText(
+      (_, el) => norm(el?.textContent ?? '') === expected,
+    )
+    expect(matches.length).toBeGreaterThan(0)
+  })
+
   it('renders one row per NF with its tomador + activity badge', () => {
     render(<NfTable rows={rows} defaultDate="2026-06-16" />)
     expect(screen.getByText('Cliente A')).toBeInTheDocument()

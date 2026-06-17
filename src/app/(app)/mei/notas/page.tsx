@@ -8,6 +8,7 @@ import {
   EmptyTitle,
 } from '@/components/ui/empty'
 import { currentYear, todaySP, yearBounds } from '@/lib/month'
+import { centsToBigInt } from '@/lib/money'
 import { MEI_ACTIVITY_TYPES, type MeiActivityType } from '@/lib/schemas/mei'
 import { createClient } from '@/lib/supabase/server'
 
@@ -45,7 +46,9 @@ export default async function MeiNotasPage({
   const rows: NfRow[] = (data ?? []).map((r) => ({
     id: r.id,
     issued_on: r.issued_on,
-    amount_cents: r.amount_cents,
+    // Coerce the bigint money column at the data boundary (MD-04), mirroring
+    // extrato/page.tsx — never pass a raw supabase value into a money sum.
+    amount_cents: centsToBigInt(r.amount_cents),
     tomador: r.tomador,
     descricao: r.descricao,
     activity_type: isActivityType(r.activity_type) ? r.activity_type : 'servicos',

@@ -40,13 +40,15 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip'
-import { centsToEditableBRL, formatCents } from '@/lib/money'
+import { centsToBigInt, centsToEditableBRL, formatCents } from '@/lib/money'
 import type { MeiActivityType } from '@/lib/schemas/mei'
 
 export type NfRow = {
   id: string
   issued_on: string // yyyy-MM-dd
-  amount_cents: number // GROSS billed value (centavos)
+  // GROSS billed value (centavos). `number | bigint` because supabase-js may surface
+  // the Postgres bigint column as either; summed via centsToBigInt (MD-04, MD-01).
+  amount_cents: number | bigint
   tomador: string
   descricao: string
   activity_type: MeiActivityType
@@ -173,7 +175,14 @@ export function NfTable({
   /** Today (SP, yyyy-MM-dd) — seeds a fresh date in the edit form when needed. */
   defaultDate: string
 }) {
-  const totalCents = rows.reduce((acc, r) => acc + r.amount_cents, 0)
+  // Sum on bigint and coerce each amount at the data boundary — never via a lossy
+  // Number() cast or a raw `+` that becomes string concatenation if supabase-js
+  // surfaces the bigint column as a string (MD-04 convention, the sibling money
+  // tables' pattern). The total is then formatted bigint-safe via formatCents (MD-01).
+  const totalCents = rows.reduce(
+    (acc, r) => acc + centsToBigInt(r.amount_cents),
+    0n,
+  )
 
   return (
     <Table>
