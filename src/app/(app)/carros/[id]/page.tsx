@@ -34,7 +34,8 @@ import { createClient } from '@/lib/supabase/server'
  * list of the fields, then the "Abastecimentos" section — the "Novo abastecimento"
  * dialog + the history (table→card) + the km/l-médio & R$/km averages, all fed by
  * RLS-scoped reads of the abastecimentos + v_abastecimento_consumo + v_carro_resumo.
- * NO chart / rich KPI layout — those are Phase 11.
+ * Capstone (CAR-05, Phase 11): 3 KPI cards + gasto-por-categoria bars (inline RLS-scoped
+ * aggregation) + the km/l consumption line chart, above the integrated abastecimento history.
  */
 export default async function CarroDetailPage({
   params,
