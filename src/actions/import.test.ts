@@ -39,6 +39,10 @@ let ownedStatementIds: Set<string> = new Set()
 let reservaCategoryIds: Set<string> = new Set()
 // confirmImport: descriptor_norms flagged recurring by v_recurring_descriptors.
 let recurringNorms: string[] = []
+// WR-01: the AUTHORITATIVE parsed rows confirmImport re-reads from the statement.
+// confirmImport trusts THIS content (descriptor_norm/amount/occurred_on/dedupe_key),
+// not the client payload — so each test seeds it from the rows it confirms.
+let statementParsedRows: unknown[] = []
 // confirmImport: the rows the transactions UPSERT reports as actually-inserted
 // (ignoreDuplicates) — keyed by dedupe_key; absent key ⇒ a dedupe skip.
 let insertedDedupeKeys: Set<string> | null = null
@@ -102,6 +106,10 @@ function makeBuilder(from: string) {
   builder.maybeSingle = vi.fn((): Promise<QueryResult> => {
     if (from === 'statements' && op === 'upsert') {
       return Promise.resolve({ data: statementInsertedRow, error: null })
+    }
+    if (from === 'statements' && selectCols.includes('parsed_rows')) {
+      // WR-01: confirmImport re-reads the authoritative persisted rows.
+      return Promise.resolve({ data: { parsed_rows: statementParsedRows }, error: null })
     }
     if (from === 'statements' && op !== 'upsert') {
       // read-back of the existing statement on the "0 novas" path
@@ -256,6 +264,7 @@ beforeEach(() => {
   reservaCategoryIds = new Set()
   recurringNorms = []
   insertedDedupeKeys = null
+  statementParsedRows = []
   learnedPatterns.length = 0
   ledgerInserts.length = 0
 })
@@ -430,6 +439,23 @@ describe('confirmImport', () => {
     }
   }
 
+  // WR-01: seed the AUTHORITATIVE persisted parsed rows the action re-reads. The
+  // content (descriptor_norm/amount/occurred_on) is taken from THESE rows, not the
+  // client payload — so every test that expects acceptance must persist its rows.
+  function persist(...rows: ReturnType<typeof row>[]) {
+    statementParsedRows = rows.map((r) => ({
+      dedupe_key: r.dedupe_key,
+      occurred_on: r.occurred_on as string,
+      amount_cents: r.amount as number,
+      descriptor_raw: r.descriptor_raw as string,
+      descriptor_norm: r.descriptor_norm as string,
+      category_id: null,
+      reserva_id: null,
+      classification_source: null,
+      is_recurring: false,
+    }))
+  }
+
   it('gates on an absent session', async () => {
     claimsSub = null
     const r = await confirmImport(STMT, [row()])
@@ -464,6 +490,7 @@ describe('confirmImport', () => {
     ownedCategoryIds = new Set([CAT])
     const classified = row({ descriptor_norm: 'mercado abc', categoryId: CAT })
     const unclassified = row({ descriptor_norm: 'desconhecido', categoryId: null })
+    persist(classified, unclassified)
     insertedDedupeKeys = new Set([classified.dedupe_key, unclassified.dedupe_key])
 
     const r = await confirmImport(STMT, [classified, unclassified])
@@ -479,6 +506,7 @@ describe('confirmImport', () => {
   it('an unclassified-only payload learns nothing', async () => {
     ownedStatementIds = new Set([STMT])
     const only = row({ descriptor_norm: 'desconhecido', categoryId: null })
+    persist(only)
     insertedDedupeKeys = new Set([only.dedupe_key])
     const r = await confirmImport(STMT, [only])
     expect('imported' in r && r.imported).toBe(1)
@@ -490,6 +518,7 @@ describe('confirmImport', () => {
     ownedCategoryIds = new Set([CAT])
     const fresh = row()
     const dup = row()
+    persist(fresh, dup)
     insertedDedupeKeys = new Set([fresh.dedupe_key]) // dup is collapsed by the index
     const r = await confirmImport(STMT, [fresh, dup])
     expect(r).toEqual({ imported: 1, duplicated: 1 })
@@ -501,6 +530,7 @@ describe('confirmImport', () => {
     reservaCategoryIds = new Set([RESERVA_CAT])
     ownedReservaIds = new Set([RESERVA])
     const r = row({ categoryId: RESERVA_CAT, reservaId: RESERVA, descriptor_norm: 'aporte mensal' })
+    persist(r)
     insertedDedupeKeys = new Set([r.dedupe_key])
 
     const result = await confirmImport(STMT, [r])
@@ -522,6 +552,7 @@ describe('confirmImport', () => {
     ownedCategoryIds = new Set([CAT])
     recurringNorms = ['spotify']
     const recurringRow = row({ descriptor_norm: 'spotify', categoryId: CAT })
+    persist(recurringRow)
     insertedDedupeKeys = new Set([recurringRow.dedupe_key])
 
     // Spy on the transactions upsert payload via the captured builder call.
@@ -530,5 +561,54 @@ describe('confirmImport', () => {
     // The learned pattern is keyed by category_id (point-in-time basis, CLS-05).
     const learned = learnedPatterns[0] as { category_id: string }
     expect(learned.category_id).toBe(CAT)
+  })
+
+  // WR-01: learning poisoning / dedupe forgery — confirmImport must use the
+  // SERVER-persisted content, never the client payload.
+  it('a tampered client descriptor_norm cannot poison merchant_patterns (uses persisted content)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    // The statement was persisted with the REAL merchant key.
+    const real = row({ descriptor_norm: 'mercado abc', amount: 5000, categoryId: CAT })
+    persist(real)
+    insertedDedupeKeys = new Set([real.dedupe_key])
+
+    // The CLIENT submits the same dedupe_key but forges a different descriptor_norm
+    // and amount, trying to learn an arbitrary merchant + book a wrong value.
+    const tampered = { ...real, descriptor_norm: 'forjado evil', amount: 999999 }
+    const r = await confirmImport(STMT, [tampered])
+    expect('imported' in r && r.imported).toBe(1)
+
+    // merchant_patterns learned the PERSISTED key, not the forged one (no poison).
+    const learned = learnedPatterns[0] as { descriptor_norm: string }
+    expect(learned.descriptor_norm).toBe('mercado abc')
+    expect(learned.descriptor_norm).not.toBe('forjado evil')
+  })
+
+  it('a forged dedupe_key not in the persisted set rejects the whole payload', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    const persisted = row()
+    persist(persisted)
+    // The client sends a row whose dedupe_key was never parsed for this statement.
+    const forged = row({ dedupe_key: `ofx:${crypto.randomUUID()}` })
+    const r = await confirmImport(STMT, [forged])
+    expect(r).toEqual({ error: 'Linha não pertence a esta importação.' })
+  })
+
+  // WR-03: a Reserva-classified row missing its reservaId must reject the WHOLE
+  // payload BEFORE any transaction is persisted (no partial state).
+  it('rejects a Reserva row without reservaId up front (no transaction persisted)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([RESERVA_CAT])
+    reservaCategoryIds = new Set([RESERVA_CAT])
+    const reservaRow = row({ categoryId: RESERVA_CAT, descriptor_norm: 'aporte sem reserva' })
+    persist(reservaRow)
+    // NO reservaId supplied — must reject before any insert.
+    const r = await confirmImport(STMT, [reservaRow])
+    expect(r).toEqual({ error: 'Selecione uma reserva para os lançamentos de Reserva.' })
+    // No transaction insert and no ledger entry happened (no partial state).
+    expect(ledgerInserts).toHaveLength(0)
+    expect(learnedPatterns).toHaveLength(0)
   })
 })

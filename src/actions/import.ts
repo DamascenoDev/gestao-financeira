@@ -565,6 +565,56 @@ export async function confirmImport(
     }
   }
 
+  // WR-01 (learning poisoning / dedupe forgery): NEVER trust client-supplied row
+  // CONTENT. Re-read the authoritative parsed rows that ingestStatement persisted on
+  // the statement and key them by dedupe_key. The client payload contributes ONLY
+  // the user's category/reserva CHOICE; descriptor_norm / amount / occurred_on /
+  // dedupe_key come from the SERVER-side parse, so a tampered payload can neither
+  // poison merchant_patterns with a forged descriptor_norm nor forge a dedupe_key.
+  const { data: stmt } = await supabase
+    .from('statements')
+    .select('parsed_rows')
+    .eq('id', statementId)
+    .maybeSingle()
+  const persistedRows = (stmt?.parsed_rows ?? []) as unknown as ParsedReviewRow[]
+  const persistedByKey = new Map<string, ParsedReviewRow>(
+    persistedRows
+      .filter((p): p is ParsedReviewRow => typeof p?.dedupe_key === 'string')
+      .map((p) => [p.dedupe_key, p]),
+  )
+
+  // Each incoming row must correspond to a PERSISTED parsed row (by dedupe_key). The
+  // authoritative row carries the trusted content; merge in only the client's choice.
+  type AuthoritativeRow = {
+    base: ParsedReviewRow
+    categoryId: string | null
+    reservaId: string | undefined
+  }
+  const authoritativeRows: AuthoritativeRow[] = []
+  for (const r of parsedRows) {
+    const base = persistedByKey.get(r.dedupe_key)
+    if (!base) return { error: 'Linha não pertence a esta importação.' }
+    authoritativeRows.push({
+      base,
+      categoryId: r.categoryId ?? null,
+      reservaId: r.reservaId,
+    })
+  }
+
+  // WR-03 (partial state): validate the reserva precondition BEFORE any transaction
+  // insert. A row classified into an is_reserva category but missing its reservaId
+  // rejects the WHOLE payload up front (exactly like a forged id) so no transaction
+  // is ever persisted without its aporte ledger entry.
+  for (const r of authoritativeRows) {
+    if (
+      r.categoryId &&
+      (await isReservaCategory(supabase, r.categoryId)) &&
+      !r.reservaId
+    ) {
+      return { error: 'Selecione uma reserva para os lançamentos de Reserva.' }
+    }
+  }
+
   // Recurring (CLS-06): compute the recurring descriptor set ONCE from the view
   // (security_invoker → caller's own rows). A row whose descriptor_norm is flagged
   // persists is_recurring=true.
@@ -577,25 +627,27 @@ export async function confirmImport(
       .filter((d): d is string => typeof d === 'string'),
   )
 
-  // Build the insert payload. Amount resolves to positive integer cents; a bad
-  // amount rejects the whole payload (no silent mis-persist).
+  // Build the insert payload from the AUTHORITATIVE (server-persisted) content —
+  // amount / occurred_on / descriptor_norm / dedupe_key come from base, NEVER the
+  // client (WR-01). Amount resolves to positive integer cents; a bad amount rejects
+  // the whole payload (no silent mis-persist).
   type TxnInsert = import('@/types/database.types').Database['public']['Tables']['transactions']['Insert']
   const inserts: TxnInsert[] = []
-  for (const r of parsedRows) {
-    const amountCents = rowAmountCents(r.amount)
+  for (const r of authoritativeRows) {
+    const amountCents = rowAmountCents(r.base.amount_cents)
     if (amountCents === null) return { error: 'Valor monetário inválido.' }
     inserts.push({
       user_id: userId,
       statement_id: statementId,
-      category_id: r.categoryId ?? null, // unclassified persists category-less (honest)
+      category_id: r.categoryId, // unclassified persists category-less (honest)
       amount_cents: amountCents,
       kind: 'expense',
-      occurred_on: r.occurred_on,
-      description: r.descriptor_raw,
-      descriptor_norm: r.descriptor_norm,
-      dedupe_key: r.dedupe_key,
+      occurred_on: r.base.occurred_on,
+      description: r.base.descriptor_raw,
+      descriptor_norm: r.base.descriptor_norm,
+      dedupe_key: r.base.dedupe_key,
       classification_source: r.categoryId ? 'memória' : null,
-      is_recurring: recurring.has(r.descriptor_norm),
+      is_recurring: recurring.has(r.base.descriptor_norm),
     })
   }
 
@@ -620,17 +672,18 @@ export async function confirmImport(
     if (inserted?.dedupe_key) insertedByKey.set(inserted.dedupe_key, inserted.id)
   }
   const imported = insertedByKey.size
-  const duplicated = parsedRows.length - imported
+  const duplicated = authoritativeRows.length - imported
 
   // Reserva aporte (RSV-06): for each freshly-inserted is_reserva row, create the
   // 'in' ledger entry via the SHARED Phase-3 path — identical to manual entry, no new
   // ledger write. deleteOld=false (a fresh txn has no pre-existing linked entry).
-  for (const r of parsedRows) {
+  // Amount / occurred_on come from the AUTHORITATIVE base (WR-01).
+  for (const r of authoritativeRows) {
     if (!r.categoryId) continue
-    const txnId = insertedByKey.get(r.dedupe_key)
+    const txnId = insertedByKey.get(r.base.dedupe_key)
     if (!txnId) continue // a dedupe-skipped row already has its aporte from before
     if (await isReservaCategory(supabase, r.categoryId)) {
-      const amountCents = rowAmountCents(r.amount)
+      const amountCents = rowAmountCents(r.base.amount_cents)
       if (amountCents === null) continue
       const sync = await syncReservaLedgerForTransaction(
         supabase,
@@ -638,7 +691,7 @@ export async function confirmImport(
         txnId,
         r.categoryId,
         amountCents,
-        r.occurred_on,
+        r.base.occurred_on,
         r.reservaId,
         false,
       )
@@ -655,10 +708,12 @@ export async function confirmImport(
     string,
     { descriptor_norm: string; category_id: string; reserva_id: string | null }
   >()
-  for (const r of parsedRows) {
+  for (const r of authoritativeRows) {
     if (!r.categoryId) continue
-    patternByNorm.set(r.descriptor_norm, {
-      descriptor_norm: r.descriptor_norm,
+    // descriptor_norm is the SERVER-persisted key (WR-01) — the client cannot forge
+    // an arbitrary descriptor_norm into merchant_patterns.
+    patternByNorm.set(r.base.descriptor_norm, {
+      descriptor_norm: r.base.descriptor_norm,
       category_id: r.categoryId,
       reserva_id: r.reservaId ?? null,
     })
