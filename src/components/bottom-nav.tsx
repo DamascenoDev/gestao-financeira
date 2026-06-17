@@ -1,6 +1,6 @@
 'use client'
 
-import { FileText, LayoutDashboard, PiggyBank, ReceiptText, Upload } from 'lucide-react'
+import { Car, FileText, LayoutDashboard, PiggyBank, ReceiptText, Upload } from 'lucide-react'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
@@ -23,6 +23,7 @@ const NAV_ITEMS = [
   { href: '/importar', label: 'Importar', icon: Upload },
   { href: '/mei', label: 'MEI', icon: FileText },
   { href: '/reservas', label: 'Reservas', icon: PiggyBank },
+  { href: '/carros', label: 'Carros', icon: Car },
 ] as const
 
 export function BottomNav() {
