@@ -33,7 +33,15 @@ findings:
   medium: 2
   low: 2
   total: 6
-status: findings
+status: fixed
+fixed_at: 2026-06-17
+fixes:
+  CR-01: { status: fixed, commit: e0927ee }
+  HI-01: { status: fixed, commit: 270ac5f }
+  MD-01: { status: fixed, commit: d8e5644 }
+  MD-02: { status: fixed_requires_human_verification, commit: 32108e9 }
+  LO-01: { status: fixed, commit: 15a800d }
+  LO-02: { status: fixed, commit: d8e5644 }
 ---
 
 # Phase 6: Code Review Report — Endurecimento (LGPD, Isolamento, Auditoria)
@@ -82,6 +90,12 @@ robustness/quality items.
 
 ### CR-01: Transactions CSV is vulnerable to spreadsheet formula injection
 
+> **RESOLVED (commit e0927ee):** Centralized the field escaper into
+> `src/lib/csv/escape.ts` (`csvField`) — prefixes a leading `= + - @ TAB CR` with `'`
+> before RFC-4180 quoting. `transactionsToCsv` and `meiReportToCsv` (and transitively
+> the LGPD bundle CSVs) now share it. Regression tests cover `=cmd`/`+x`/`-x`/`@x`/leading
+> TAB in the transactions CSV (description + category_name) and the shared escaper itself.
+
 **File:** `src/lib/transactions/csv.ts:36-38` (the `field()` escaper); consumed at
 `src/lib/transactions/csv.ts:62-76`, embedded in the LGPD bundle at
 `src/lib/export/bundle.ts:58-72,181`.
@@ -128,6 +142,12 @@ columns are numeric.
 
 ### HI-01: deleteMyAccount removes only the first 1000 Storage objects, then irreversibly deletes auth — orphaning the surplus
 
+> **RESOLVED (commit 270ac5f):** Storage removal now loops, re-listing from offset 0
+> after each removal until a page comes back empty (or short), draining ALL pages before
+> `auth.admin.deleteUser`. Storage-first ordering + abort-on-failure-leaves-account-intact
+> preserved. Unit test extended with a >1000 multi-page drain case and a mid-pagination
+> list-failure abort; the lgpd-delete integration core mirrors the loop.
+
 **File:** `src/actions/delete-account.ts:66-78`
 
 **Issue:** Storage objects are listed once with `{ limit: 1000 }` (line 68) and only that
@@ -172,6 +192,13 @@ set — pick one and add a >1000-object regression test.)
 
 ### MD-01: `getClaims` JWT validity is the IDOR boundary but its verification mode is not pinned
 
+> **RESOLVED (commit d8e5644):** The delete path now derives `userId` from
+> `supabase.auth.getUser()` — an authenticated round-trip to the Auth server that rejects
+> a forged/expired access-token cookie — instead of the unverified `getClaims()`. A unit
+> test proves a `getUser` error yields `nao_autenticado` with zero admin calls. (The
+> export path's `getClaims` is left as-is: it is RLS-scoped and reads only, so an invalid
+> token simply returns no rows — not an irreversible operation.)
+
 **File:** `src/actions/delete-account.ts:58-61`; `src/actions/export-data.ts:20-25`
 
 **Issue:** Both the delete and the export derive `userId` solely from
@@ -199,6 +226,13 @@ yields `nao_autenticado` and performs no delete.
 
 ### MD-02: Export bundle aborts wholesale if any single table read errors — no partial-export resilience and a generic failure to the user
 
+> **RESOLVED — requires human verification (commit 32108e9):** A per-table read failure
+> is now logged server-side (`console.error`), recorded in a new optional `bundle.errors`
+> map, and the table serializes as an empty array, so one hiccup no longer denies the
+> whole export. A clean export omits the `errors` key. Flagged for human verification
+> because this changes the export's failure semantics on a compliance path — confirm the
+> client surfaces partial-export + `errors` appropriately.
+
 **File:** `src/lib/export/bundle.ts:166-174`; surfaced at `src/actions/export-data.ts:27-33`
 
 **Issue:** `buildExportBundle` throws on the first table whose `select('*')` returns an
@@ -221,6 +255,10 @@ whole export. Keep the generic client message but stop discarding the cause.
 
 ### LO-01: `buildMeiCsv` treats every non-`comercio_industria` invoice as `servicos`
 
+> **RESOLVED (commit 15a800d):** The split now matches the two known DASN values
+> explicitly (`comercio_industria` / `servicos`); a null/malformed/future value counts in
+> gross (the obligatory total) but in neither split column.
+
 **File:** `src/lib/export/bundle.ts:102-103`
 
 **Issue:** The split uses `if (inv.activity_type === 'comercio_industria') agg.comercio +=
@@ -234,6 +272,10 @@ explicit `outros`/skip with a count), e.g.
 `if (inv.activity_type === 'comercio_industria') …; else if (inv.activity_type === 'servicos') …; else continue`.
 
 ### LO-02: `delete-account.test.ts` mock omits `auth.getUser`, hiding the MD-01 verification gap
+
+> **RESOLVED (commit d8e5644):** With MD-01 switched to `getUser()`, the mock now drives
+> `auth.getUser` and a new case returns `{ user: null, error }` → expects `nao_autenticado`
+> with zero admin calls.
 
 **File:** `src/actions/delete-account.test.ts:41-49`
 
