@@ -10,6 +10,7 @@ import { lookupCsvProfile } from '@/lib/csv-profile.server'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseBRLToCents } from '@/lib/money'
 import {
+  assertOwnedCarro,
   assertOwnedCategories,
   assertOwnedReserva,
   assertOwnedStatement,
@@ -548,6 +549,26 @@ export async function confirmImport(
     }
   }
 
+  // IDOR re-derive #4 (T-09-07) — every chosen carro_id must be owned. carro is a
+  // client CHOICE (like reservaId), free of category; the tri-state assertOwnedCarro
+  // distinguishes a transient backend hiccup ('error' → generic retry) from a genuine
+  // not-owned/forged id ('not-owned' → 'Carro inválido.'). Either rejects the WHOLE
+  // payload before any insert (FKs are NOT RLS-aware).
+  const carroIds = [
+    ...new Set(
+      parsedRows
+        .map((r) => r.carroId)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  ]
+  for (const carroId of carroIds) {
+    const owned = await assertOwnedCarro(supabase, carroId)
+    if (owned === 'not-owned') return { error: 'Carro inválido.' }
+    if (owned === 'error') {
+      return { error: 'Não foi possível confirmar a importação. Tente novamente.' }
+    }
+  }
+
   // WR-01 (learning poisoning / dedupe forgery): NEVER trust client-supplied row
   // CONTENT. Re-read the authoritative parsed rows that ingestStatement persisted on
   // the statement and key them by dedupe_key. The client payload contributes ONLY
@@ -572,6 +593,8 @@ export async function confirmImport(
     base: ParsedReviewRow
     categoryId: string | null
     reservaId: string | undefined
+    // carroId is a client CHOICE (like categoryId/reservaId), NOT from base/parse.
+    carroId: string | null
   }
   const authoritativeRows: AuthoritativeRow[] = []
   for (const r of parsedRows) {
@@ -581,6 +604,7 @@ export async function confirmImport(
       base,
       categoryId: r.categoryId ?? null,
       reservaId: r.reservaId,
+      carroId: r.carroId ?? null,
     })
   }
 
@@ -631,6 +655,9 @@ export async function confirmImport(
       dedupe_key: r.base.dedupe_key,
       classification_source: r.categoryId ? 'memória' : null,
       is_recurring: recurring.has(r.base.descriptor_norm),
+      // CAR-02 (D4): additive carro tag — the row persists tagged or untagged. Free
+      // of category; does NOT touch the reserva-aporte loop or the metas views.
+      carro_id: r.carroId ?? null,
     })
   }
 

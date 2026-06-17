@@ -30,6 +30,8 @@ export type CsvMapping = z.infer<typeof csvMappingSchema>
  * or already-derived integer cents (OFX path). categoryId is optional/nullable for
  * an unclassified (memory-miss, manually-skipped) row; reservaId is optional and
  * only meaningful when the chosen category is the Reserva one (RSV-06 aporte).
+ * carroId is the per-row carro CHOICE (CAR-02) — nullable/optional like categoryId
+ * (null/absent ⇒ untagged), free of category, re-derived for ownership server-side.
  */
 export const confirmImportRowSchema = z.object({
   id: z.string().min(1), // temp client row id
@@ -40,6 +42,7 @@ export const confirmImportRowSchema = z.object({
   descriptor_norm: z.string(),
   categoryId: z.string().uuid().nullable().optional(),
   reservaId: z.string().uuid().optional(),
+  carroId: z.string().uuid().nullable().optional(),
 })
 
 export type ConfirmImportRow = z.infer<typeof confirmImportRowSchema>

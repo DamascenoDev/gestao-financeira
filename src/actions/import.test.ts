@@ -35,6 +35,8 @@ let csvProfile: unknown = null
 let ownedCategoryIds: Set<string> = new Set()
 let ownedReservaIds: Set<string> = new Set()
 let ownedStatementIds: Set<string> = new Set()
+// confirmImport: owner-scoped carro ids the RLS-active client "sees" (IDOR #4).
+let ownedCarroIds: Set<string> = new Set()
 // confirmImport: which category ids are is_reserva (drives the aporte path).
 let reservaCategoryIds: Set<string> = new Set()
 // confirmImport: descriptor_norms flagged recurring by v_recurring_descriptors.
@@ -49,6 +51,8 @@ let insertedDedupeKeys: Set<string> | null = null
 // Capture sink: every merchant_patterns upsert + reserva_ledger insert payload.
 const learnedPatterns: unknown[] = []
 const ledgerInserts: unknown[] = []
+// Capture sink: every transactions insert payload (asserts carro_id persist).
+const transactionInserts: unknown[] = []
 // download: the bytes the storage.download returns (drives parse path).
 let downloadBytes: Uint8Array | null = null
 let downloadError: unknown = null
@@ -97,6 +101,7 @@ function makeBuilder(from: string) {
     op = 'insert'
     insertPayload = payload
     if (from === 'reserva_ledger') ledgerInserts.push(payload)
+    if (from === 'transactions') transactionInserts.push(payload)
     return builder
   })
   builder.delete = vi.fn(() => {
@@ -176,6 +181,11 @@ function makeBuilder(from: string) {
       // assertOwnedReserva: eq('id', id) → 1 row when owned, else 0.
       const id = filters.find(([c]) => c === 'id')?.[1] as string
       return resolve({ data: ownedReservaIds.has(id) ? [{ id }] : [], error: null })
+    }
+    if (from === 'carros') {
+      // assertOwnedCarro (tri-state): eq('id', id) → 1 row when owned, else 0.
+      const id = filters.find(([c]) => c === 'id')?.[1] as string
+      return resolve({ data: ownedCarroIds.has(id) ? [{ id }] : [], error: null })
     }
     if (from === 'statements' && op !== 'upsert' && op !== 'update' && filters.length > 0) {
       // assertOwnedStatement: eq('id', id) → 1 row when owned, else 0.
@@ -261,12 +271,14 @@ beforeEach(() => {
   ownedCategoryIds = new Set()
   ownedReservaIds = new Set()
   ownedStatementIds = new Set()
+  ownedCarroIds = new Set()
   reservaCategoryIds = new Set()
   recurringNorms = []
   insertedDedupeKeys = null
   statementParsedRows = []
   learnedPatterns.length = 0
   ledgerInserts.length = 0
+  transactionInserts.length = 0
 })
 
 // --- createSignedStatementUpload (IMP-01) ----------------------------------
@@ -610,5 +622,55 @@ describe('confirmImport', () => {
     // No transaction insert and no ledger entry happened (no partial state).
     expect(ledgerInserts).toHaveLength(0)
     expect(learnedPatterns).toHaveLength(0)
+  })
+
+  // CAR-02 (T-09-07): a row tagged to an OWNED carro persists with carro_id set;
+  // carro is orthogonal to category/reserva (D4 — additive only).
+  const CARRO = '55555555-5555-4555-8555-555555555555'
+
+  it('persists carro_id for a row tagged to an owned carro', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    ownedCarroIds = new Set([CARRO])
+    const tagged = row({ descriptor_norm: 'oficina do ze', categoryId: CAT, carroId: CARRO })
+    persist(tagged)
+    insertedDedupeKeys = new Set([tagged.dedupe_key])
+
+    const r = await confirmImport(STMT, [tagged])
+    expect('imported' in r && r.imported).toBe(1)
+
+    expect(transactionInserts).toHaveLength(1)
+    const ins = transactionInserts[0] as { carro_id: string | null }
+    expect(ins.carro_id).toBe(CARRO)
+  })
+
+  it('rejects a forged carro_id (IDOR — whole payload, no transaction insert)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    ownedCarroIds = new Set() // carro not owned → assertOwnedCarro 'not-owned'
+    const forged = row({ categoryId: CAT, carroId: CARRO })
+    persist(forged)
+    insertedDedupeKeys = new Set([forged.dedupe_key])
+
+    const r = await confirmImport(STMT, [forged])
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    // Whole payload rejected BEFORE any transaction insert.
+    expect(transactionInserts).toHaveLength(0)
+    expect(learnedPatterns).toHaveLength(0)
+  })
+
+  it('a row with no carroId persists carro_id null (parity with today)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    const plain = row({ descriptor_norm: 'mercado abc', categoryId: CAT })
+    persist(plain)
+    insertedDedupeKeys = new Set([plain.dedupe_key])
+
+    const r = await confirmImport(STMT, [plain])
+    expect(r).toEqual({ imported: 1, duplicated: 0 })
+
+    expect(transactionInserts).toHaveLength(1)
+    const ins = transactionInserts[0] as { carro_id: string | null }
+    expect(ins.carro_id).toBeNull()
   })
 })
