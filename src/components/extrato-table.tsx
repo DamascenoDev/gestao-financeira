@@ -12,7 +12,10 @@ import {
 import * as React from 'react'
 import { toast } from 'sonner'
 
+import { MoreHorizontalIcon } from 'lucide-react'
+
 import { AmountCell } from '@/components/amount-cell'
+import { CarroPicker, type CarroOption } from '@/components/carro-picker'
 import { CategoryBadge } from '@/components/category-badge'
 import { ReservaPicker, type ReservaOption } from '@/components/reserva-picker'
 import {
@@ -30,6 +33,12 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Select,
   SelectContent,
@@ -53,7 +62,11 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { centsToEditableBRL, formatCents } from '@/lib/money'
-import { bulkReclassify, updateTransaction } from '@/actions/transactions'
+import {
+  bulkReclassify,
+  bulkTagCarro,
+  updateTransaction,
+} from '@/actions/transactions'
 import { cn } from '@/lib/utils'
 
 export type ExtratoRow = {
@@ -62,6 +75,8 @@ export type ExtratoRow = {
   description: string
   amount_cents: bigint // MD-04: integer-cents, never a lossy number
   category_id: string | null
+  /** CAR-02: the linked carro (null = untagged) — non-destructive aditive lens (D4). */
+  carro_id: string | null
 }
 
 export type ExtratoCategory = {
@@ -226,6 +241,106 @@ function InlineCategoryCell({
 }
 
 /**
+ * Per-row actions (CAR-02) — a DropdownMenu hosting "Vincular a carro", which opens
+ * a focused dialog containing a CarroPicker (mirrors InlineCategoryCell's focused
+ * "Qual reserva?" dialog). On confirm it calls updateTransaction(row.id, fd) with the
+ * row's EXISTING description/amount/category/date PLUS the chosen carroId — so the
+ * action's transactionSchema validates AND no accounting field is mutated (D4). Picking
+ * "Nenhum" sends carroId='' to unlink.
+ */
+function RowActions({
+  row,
+  carros,
+}: {
+  row: ExtratoRow
+  carros: CarroOption[]
+}) {
+  const [isPending, startTransition] = React.useTransition()
+  const [open, setOpen] = React.useState(false)
+  const [carroId, setCarroId] = React.useState(row.carro_id ?? '')
+
+  function openDialog() {
+    setCarroId(row.carro_id ?? '')
+    setOpen(true)
+  }
+
+  function confirm() {
+    const fd = new FormData()
+    // D4: resend the row's REAL accounting fields so the schema validates and the
+    // carro-only change never mutates category/amount/date.
+    fd.set('description', row.description)
+    fd.set('amount', centsToEditableBRL(row.amount_cents))
+    if (row.category_id) fd.set('categoryId', row.category_id)
+    fd.set('occurredOn', row.occurred_on)
+    fd.set('carroId', carroId) // '' clears (unlink) — Plan-01 decode
+    const linking = carroId !== ''
+    startTransition(async () => {
+      const result = await updateTransaction(row.id, fd)
+      if ('error' in result) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(linking ? 'Vinculado ao carro' : 'Desvinculado')
+      setOpen(false)
+    })
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon-sm"
+              aria-label="Ações da transação"
+            >
+              <MoreHorizontalIcon />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={openDialog}>
+            Vincular a carro
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <Dialog open={open} onOpenChange={setOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Vincular a carro</DialogTitle>
+            <DialogDescription>
+              Vincular não altera a categoria, o valor nem as metas — é só uma
+              etiqueta. Escolha &quot;Nenhum&quot; para desvincular.
+            </DialogDescription>
+          </DialogHeader>
+          <CarroPicker
+            id="row-carro"
+            carros={carros}
+            value={carroId}
+            onChange={setCarroId}
+          />
+          <DialogFooter className="mt-6">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              }
+            />
+            <Button type="button" onClick={confirm} disabled={isPending}>
+              {isPending ? 'Salvando…' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </>
+  )
+}
+
+/**
  * Extrato table (UI-SPEC §3) — the central, dense, selectable transaction grid.
  * @tanstack/react-table with getRowId = tx.id (stable selection across renders,
  * Phase-4 reusable), columns checkbox / Data dd/MM / Descrição (truncate+tooltip)
@@ -238,6 +353,7 @@ export function ExtratoTable({
   rows,
   categories,
   reservas = [],
+  carros = [],
   categoryTotals,
   grandTotalCents,
 }: {
@@ -245,6 +361,8 @@ export function ExtratoTable({
   categories: ExtratoCategory[]
   /** RSV-02: the user's reservas — feeds the focused re-tag "Qual reserva?" dialog. */
   reservas?: ReservaOption[]
+  /** CAR-02: the user's non-archived carros — feeds the row + bulk "Vincular a carro". */
+  carros?: CarroOption[]
   categoryTotals: CategoryTotal[]
   grandTotalCents: bigint
 }) {
@@ -342,8 +460,14 @@ export function ExtratoTable({
           </div>
         ),
       },
+      {
+        id: 'actions',
+        enableSorting: false,
+        header: () => <span className="sr-only">Ações</span>,
+        cell: ({ row }) => <RowActions row={row.original} carros={carros} />,
+      },
     ],
-    [categories, reservas],
+    [categories, reservas, carros],
   )
 
   const table = useReactTable({
@@ -367,6 +491,21 @@ export function ExtratoTable({
       toast.error(result.error)
     } else {
       toast.success(`${n} ${n === 1 ? 'transação reclassificada' : 'transações reclassificadas'}`)
+    }
+    return result
+  }
+
+  async function applyBulkCarro(carroId: string | null) {
+    const n = selectedIds.length
+    const result = await bulkTagCarro(selectedIds, carroId)
+    if ('error' in result) {
+      toast.error(result.error)
+    } else if (carroId === null) {
+      toast.success(`${n} ${n === 1 ? 'desvinculada' : 'desvinculadas'}`)
+    } else {
+      toast.success(
+        `${n} ${n === 1 ? 'vinculada ao carro' : 'vinculadas ao carro'}`,
+      )
     }
     return result
   }
@@ -479,7 +618,10 @@ export function ExtratoTable({
                 <span className="font-mono text-sm tabular-nums text-muted-foreground">
                   {ddMM(r.occurred_on)}
                 </span>
-                <AmountCell cents={r.amount_cents} kind="expense" signed={false} />
+                <div className="flex items-center gap-2">
+                  <AmountCell cents={r.amount_cents} kind="expense" signed={false} />
+                  <RowActions row={r} carros={carros} />
+                </div>
               </div>
             </li>
           )
@@ -511,6 +653,8 @@ export function ExtratoTable({
         selectedIds={selectedIds}
         categories={selectCategories}
         onApply={applyBulk}
+        carros={carros.map((c) => ({ id: c.id, apelido: c.apelido }))}
+        onApplyCarro={applyBulkCarro}
         onClear={() => setRowSelection({})}
       />
     </div>

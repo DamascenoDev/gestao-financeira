@@ -14,6 +14,10 @@ import {
 import { cn } from '@/lib/utils'
 
 export type SelectionCategory = { id: string; name: string }
+export type SelectionCarro = { id: string; apelido: string }
+
+/** Sentinel for the "Nenhum" (unlink) carro option — Radix forbids empty item values. */
+const CARRO_NONE = '__none__'
 
 /**
  * SelectionActionBar — a SELF-CONTAINED bulk-reclassify bar (UI-SPEC §3). Takes
@@ -29,6 +33,8 @@ export function SelectionActionBar({
   selectedIds,
   categories,
   onApply,
+  carros,
+  onApplyCarro,
   onClear,
   className,
 }: {
@@ -40,11 +46,23 @@ export function SelectionActionBar({
    * this to bulkReclassify + toast).
    */
   onApply: (categoryId: string) => Promise<{ error: string } | { ok: true }>
+  /** CAR-02: the user's non-archived carros — feeds the bulk "Vincular a carro" control. */
+  carros?: SelectionCarro[]
+  /**
+   * CAR-02: tag (or unlink, carroId=null) the selection. Same ok/error contract as
+   * onApply — the caller wires this to bulkTagCarro + toast. Optional: when omitted,
+   * the carro control is not rendered.
+   */
+  onApplyCarro?: (
+    carroId: string | null,
+  ) => Promise<{ error: string } | { ok: true }>
   onClear: () => void
   className?: string
 }) {
   const [categoryId, setCategoryId] = React.useState('')
+  const [carroValue, setCarroValue] = React.useState('')
   const [isPending, startTransition] = useTransition()
+  const [isCarroPending, startCarroTransition] = useTransition()
 
   const n = selectedIds.length
   if (n === 0) return null
@@ -55,6 +73,18 @@ export function SelectionActionBar({
       const result = await onApply(categoryId)
       if ('ok' in result) {
         setCategoryId('')
+        onClear()
+      }
+    })
+  }
+
+  function applyCarro() {
+    if (!carroValue || !onApplyCarro) return
+    const carroId = carroValue === CARRO_NONE ? null : carroValue
+    startCarroTransition(async () => {
+      const result = await onApplyCarro(carroId)
+      if ('ok' in result) {
+        setCarroValue('')
         onClear()
       }
     })
@@ -94,6 +124,37 @@ export function SelectionActionBar({
       >
         {isPending ? 'Aplicando…' : 'Reclassificar'}
       </Button>
+
+      {onApplyCarro ? (
+        <>
+          <Select
+            value={carroValue || null}
+            onValueChange={(v) => setCarroValue(v ?? '')}
+          >
+            <SelectTrigger className="min-w-48" size="sm" aria-label="Vincular a carro">
+              <SelectValue placeholder="Vincular a carro…" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value={CARRO_NONE}>Nenhum (desvincular)</SelectItem>
+              {(carros ?? []).map((c) => (
+                <SelectItem key={c.id} value={c.id}>
+                  {c.apelido}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          <Button
+            type="button"
+            size="sm"
+            variant="outline"
+            onClick={applyCarro}
+            disabled={!carroValue || isCarroPending}
+          >
+            {isCarroPending ? 'Aplicando…' : 'Vincular a carro'}
+          </Button>
+        </>
+      ) : null}
 
       <Button type="button" size="sm" variant="ghost" onClick={onClear}>
         Limpar seleção
