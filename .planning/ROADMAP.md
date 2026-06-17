@@ -148,7 +148,7 @@ This roadmap follows the research-converged build order: **foundation → manual
   - [x] 07-04-PLAN.md — Mobile table→card collapse (NET-NEW) nas 4 tabelas densas (extrato, import-review, nf, reserva-ledger) reusando AmountCell/CategoryBadge/ddMM via classes responsivas (hidden md:table / md:hidden); desktop ≥md intacto, seleção/actions congeladas (UI-07 tabelas→cards) — suite 593 passed GREEN, tsc + build limpos, grep gates OK ✓ 2026-06-17
   - [x] 07-05-PLAN.md — AuthShell duas colunas (painel navy + BrandMark + "Financeira" gold + value prop) envolvendo o auth-form (guard inverso preservado) + favicon icon.svg navy+gold (UI-03 login/landing) — suite 593 passed GREEN, tsc + build limpos, auth-form/actions/guard intactos, grep gates OK ✓ 2026-06-17
   - [x] 07-06-PLAN.md — Polish sweep (UI-08): TableSkeleton/CardSkeleton/ChartSkeleton (sobre shadcn skeleton, nunca spinner, Wave-0 test 6/6 GREEN) + loading.tsx por segmento (dashboard/extrato/mei — RSC streama com a chrome do layout visível) + varredura empty/error/transição confirmada (8 rotas Empty, erro text-destructive, 0 spinners; Button foco gold --ring; Desvio Rule 2: copy de recuperação no erro do Extrato) — suite 599 passed GREEN, tsc + build limpos, grep gates OK ✓ 2026-06-17
-  - [ ] 07-07-PLAN.md — [autonomous:false] Phase gate (suíte + tsc + build + secret-bundle audit + grep de cor hardcoded) + human-verify: identidade, flip light↔dark, charts, mobile (BottomNav + cards), auth (UI-01..UI-08)
+  - [x] 07-07-PLAN.md — [autonomous:false] Phase gate (suíte 599 passed + tsc + build + secret-bundle audit exit 0 + grep de cor hardcoded limpo) + human-verify "aprovado": identidade, flip light↔dark, charts, mobile (BottomNav + cards), auth confirmados em light E dark; nenhum arquivo de produção alterado (UI-01..UI-08 todos Complete) ✓ 2026-06-17
 **UI hint**: yes
 
 ## Progress
@@ -161,7 +161,7 @@ This roadmap follows the research-converged build order: **foundation → manual
 | 4. Upload + classificação inteligente | 3/4 | In progress | - |
 | 5. Módulo MEI / DASN-SIMEI | 3/4 | In progress | - |
 | 6. Endurecimento | 1/5 | In progress | - |
-| 7. Identidade visual e polimento | 2/7 | In progress | - |
+| 7. Identidade visual e polimento | 7/7 | Complete | 2026-06-17 |
 
 ## Dependencies & Parallelization
 

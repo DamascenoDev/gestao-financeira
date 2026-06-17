@@ -210,4 +210,4 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 ---
 *Requirements defined: 2026-06-16*
-*Last updated: 2026-06-17 — UI-04 + UI-05 + UI-06 Complete (07-03: dashboard data-viz recharts ReceitaGastoChart + CategoryDistributionChart lendo views existentes + gauge/adherence direction-aware via token-swap; suite 593 GREEN, build + secret-audit limpos)*
+*Last updated: 2026-06-17 — Phase 7 fechada (07-07 sign-off): UI-01..UI-08 todos Complete e verificados ponta-a-ponta em light E dark. Phase gate verde (suíte 599 passed/72 files + tsc limpo + build exit 0 + check-bundle-secrets exit 0, SEC-01 mantido), grep de cor hardcoded limpo fora do swatch sancionado, e sign-off humano "aprovado" (identidade navy+gold, flip light↔dark, charts, mobile BottomNav + tabelas→cards, auth). Nenhum arquivo de produção alterado por 07-07.*
