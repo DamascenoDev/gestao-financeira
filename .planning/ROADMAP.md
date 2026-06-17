@@ -197,7 +197,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 ### Phases (v1.2)
 
 - [x] **Phase 8: Substrato Carro + CRUD + navegação** - Tabelas/views/RLS do carro + coluna `carro_id`; usuário cadastra/edita/arquiva carros e navega para `/carros` (3/3 plans ✓ 2026-06-17)
-- [ ] **Phase 9: Etiquetar gastos da fatura ao carro** - Usuário etiqueta lançamentos a um carro via form e via ação no extrato, sem alterar categoria/metas (lente não-destrutiva)
+- [ ] **Phase 9: Etiquetar gastos da fatura ao carro** - Usuário etiqueta lançamentos a um carro via form e via ação no extrato, sem alterar categoria/metas (lente não-destrutiva) (1/3 plans — 09-01 contrato server ✓ 2026-06-17)
 - [ ] **Phase 10: Abastecimento híbrido + consumo** - Usuário registra abastecimento (custo da fatura OU manual, XOR) com odômetro/litros/tanque-cheio; sistema calcula km/l e R$/km
 - [ ] **Phase 11: Detalhe do carro + gráfico de consumo** - Detalhe do carro com gasto total, histórico de abastecimentos e gráfico de consumo km/l no tempo
 
@@ -238,7 +238,7 @@ Módulo de veículo autocontido, espelhando a estrutura do MEI. A ordem de fatia
 
 **Plans**: 3 plans
 
-  - [ ] 09-01-PLAN.md — Camada server [Wave 1]: carroId opcional/nullable no transactionSchema + carro_id write/clear em createTransactionWithReserva/updateTransaction (re-derive assertOwnedCarro tri-state, livre de categoria) + nova action bulkTagCarro (set/clear carro_id em N linhas próprias num único .update().in(), valida o carro UMA vez, IDOR no-write) + testes de ação (transactions.test.ts) + Wave-0 integração D4/IDOR (tests/carro-tag-nondestructive.test.ts: tag+untag deixa categoria/valor/metas-agg byte-idênticos, sem perturbar reserva_ledger)
+  - [x] 09-01-PLAN.md — Camada server [Wave 1]: carroId opcional/nullable no transactionSchema + carro_id write/clear em createTransactionWithReserva/updateTransaction (re-derive assertOwnedCarro tri-state, livre de categoria) + nova action bulkTagCarro (set/clear carro_id em N linhas próprias num único .update().in(), valida o carro UMA vez, IDOR no-write) + testes de ação (transactions.test.ts) + Wave-0 integração D4/IDOR (tests/carro-tag-nondestructive.test.ts: tag+untag deixa categoria/valor/metas-agg byte-idênticos, sem perturbar reserva_ledger) — **entregue 2026-06-17 (3 tasks; 654 suite green; tsc+build limpos)**
   - [ ] 09-02-PLAN.md — Fatia UI extrato [Wave 2]: CarroPicker (espelha ReservaPicker, opcional + "Nenhum", sem "+ Nova") + seletor Carro no transacao-form (incondicional, livre de categoria) + ação de linha "Vincular a carro" no extrato (dialog focado → updateTransaction só-carro, preserva categoria/valor) + "Vincular a carro" na SelectionActionBar (bulk → bulkTagCarro) + wiring do RSC /extrato (carros não-arquivados + carro_id nas linhas) + human-verify
   - [ ] 09-03-PLAN.md — Fatia UI revisão de importação [Wave 2]: carroId opcional no confirmImportRowSchema + persist de carro_id no confirmImport (re-derive assertOwnedCarro, rejeita o payload inteiro em carro forjado, aditivo — não toca categoria/valor/reserva/dedupe) + import.test.ts + seletor "Carro" por linha no import-review-table (CarroOption local + Select inline "Nenhum", sem importar carro-picker) + wiring do RSC /importar/[statementId] + human-verify
 

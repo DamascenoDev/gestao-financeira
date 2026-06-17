@@ -2,14 +2,14 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
-status: completed
-last_updated: "2026-06-17T16:31:11.689Z"
+status: in_progress
+last_updated: "2026-06-17T17:12:43.000Z"
 last_activity: 2026-06-17
 progress:
   total_phases: 4
   completed_phases: 1
   total_plans: 3
-  completed_plans: 3
+  completed_plans: 1
   percent: 25
 ---
 
@@ -22,13 +22,13 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Milestone v1.2 Carro — Phase 8 COMPLETA (3/3); próxima: Phase 9 (etiquetar gastos da fatura ao carro)
+- **Current focus:** Milestone v1.2 Carro — Phase 8 COMPLETA (3/3); Phase 9 em execução (09-01 entregue, Wave 1); próximo: 09-02 (UI extrato/transação-form) + 09-03 (UI import-review)
 
 ## Current Position
 
 Phase: 9
-Plan: Not started
-Status: 08-03 entregue (nav Carros sidebar+bottom-nav + CarroForm/CarroCard + /carros lista CRUD + /carros/[id] detalhe mínimo + arquivar/desarquivar); CAR-01 e CAR-06 Complete. Próximo: Phase 9 (CAR-02 etiquetar gastos→carro)
+Plan: 09-01 entregue (Wave 1); próximo 09-02
+Status: 09-01 entregue (contrato server CAR-02 — carroId opcional no transactionSchema; carro_id write/clear em createTransactionWithReserva+updateTransaction com assertOwnedCarro re-derive; bulkTagCarro; Wave-0 D4/IDOR integration green). CAR-02 In progress (contrato server pronto; UI fica em 09-02/09-03).
 Last activity: 2026-06-17
 
 ## Performance Metrics
@@ -39,7 +39,7 @@ Last activity: 2026-06-17
 | Phases complete | 8 (Phase 7 + Phase 8 fechadas; 1-6 com human-verify/deploy adiados) |
 | v1 requirements | 47 (todos mapeados/Complete exceto CLS-02 deferred) |
 | v1.2 requirements | 6 (CAR-01 + CAR-06 Complete; CAR-02..05 Pending; mapeados 6/6) |
-| Plans complete | 28 |
+| Plans complete | 29 |
 
 ### Plan Execution Log
 
@@ -75,6 +75,7 @@ Last activity: 2026-06-17
 | 8 | 01 | ~4 min | 3 | 3 created / 2 modified | 2026-06-17 |
 | 8 | 02 | ~4 min | 2 | 4 created / 1 modified | 2026-06-17 |
 | 8 | 03 | ~4 min | 3 | 7 created / 2 modified | 2026-06-17 |
+| 9 | 01 | ~6 min | 3 | 1 created / 3 modified | 2026-06-17 |
 
 ## Accumulated Context
 
@@ -92,6 +93,7 @@ Last activity: 2026-06-17
 - **PDF de fatura adiado para v2 (IMP-06)** — OFX/CSV (determinísticos) no v1; PDF requer spike sobre amostras reais.
 - **MEI usa o limite *aplicável*** — proporcional (R$6.750 × meses) no 1º ano, R$81k cheio, banda de 20%; receita *bruta*; split comércio/serviços + flag de funcionário desde o registro; módulo informativo, não consultoria fiscal.
 - **Provedor de IA a confirmar no build** — A/B Gemini 2.5 Flash-Lite vs GPT-5-nano via troca de string no AI Gateway; custo dominado por volume de chamadas (memória primeiro), não por modelo.
+- **Etiqueta `carro_id` é lente ADITIVA não-destrutiva (D4)** — tag/untag muda SÓ `transactions.carro_id`; nunca category_id/amount_cents/kind/reserva_ledger nem nenhum agregado de metas (v_adherence_month/ytd/v_category_totals byte-idênticos). Carro é LIVRE de categoria (qualquer gasto pode ser etiquetado). Toda escrita de carro_id re-deriva posse via `assertOwnedCarro` (tri-state WR-04) antes do FK write (FKs não são RLS-aware); bulk valida o carro UMA vez + `.in('id', ids)` RLS-scoped. bulkTagCarro revalida só `/extrato`.
 
 ### Open Decisions (resolve during planning)
 
@@ -109,7 +111,9 @@ Last activity: 2026-06-17
 
 ## Session Continuity
 
-**Última sessão (2026-06-17) — Completed 08-02-PLAN.md — camada server do módulo Carro (não-worktree, sequencial em `main`, Wave 2, depends_on [08-01]).** O boundary tipado/validado/IDOR-safe que a UI de 08-03 vai chamar, espelhando a gramática reservas/MEI verbatim. **Task 1 (RED `250139a` test → GREEN `57e4fa0` feat):** `src/lib/schemas/carro.ts` — `carroSchema` (`apelido` obrigatório `'Informe o apelido'`; `modelo`/`placa` opcionais texto livre; `ano` opcional inteiro 1900..anoAtual+1 com `'Ano inválido'` nos dois limites; `combustivel_padrao` opcional `z.enum(['Flex','Gasolina','Etanol','Diesel','GNV'])`) + `CarroInput`; e `assertOwnedCarro` adicionado ao `src/lib/ownership.ts` (clone verbatim de `assertOwnedReserva` → `from('carros').select('id').eq('id',id)` retornando `data.length===1` — FKs não são RLS-aware, é o substrato IDOR p/ os writes de `transactions.carro_id`/`abastecimentos` nas Fases 9/10). `src/lib/schemas/carro.test.ts` 6 casos green. **Task 2 (RED `940f3e7` test → GREEN `486d5a7` feat):** `src/actions/carros.ts` (`'use server'`) — `createCarro`/`updateCarro`/`archiveCarro`/`unarchiveCarro`, cada um Zod safeParse → `getClaims()` (sub gate `'Sessão expirada.'`) → (writes) `assertOwnedCarro` re-derive (`'Carro inválido.'` + NENHUM write num id forjado) → `.update(...).eq('id',id)` → `revalidatePath('/carros')`; `{ ok } | { error }`, nunca throw; erros de DB mapeados p/ strings genéricas amigáveis; helper `carroWriteFields` (opcionais ausentes → null) + helper privado `setArchived(id,boolean)` compartilhado por archive/unarchive. `src/actions/carros.test.ts` clonado da harness mei.test.ts (mock `@/lib/supabase/server` + `next/cache`, query-recorder builder, `claimsSub`/`ownershipSelectResult`), 16 casos green (happy-path insert/update/archive/unarchive, Zod gate sem write, session gate, IDOR forjado sem write, shape nunca-throw). **Sem desvios.** Suíte completa **632 passed/76 files** (de 610), `tsc --noEmit` limpo. **CAR-01 ainda In progress** — esta fatia entregou só o boundary server; a UI (`/carros` lista + CarroForm + CarroCard + `/carros/[id]`) que fecha CAR-01 fica em 08-03. Stack local segue rodando, sem push remoto. **Próxima ação:** executar/planejar 08-03 (nav + CRUD UI).
+**Última sessão (2026-06-17) — Completed 09-01-PLAN.md — contrato server de etiquetagem ao carro (CAR-02), não-worktree, sequencial em `main`, Wave 1, depends_on [].** O boundary tipado único que toda superfície de tagging (Plans 02/03) vai chamar, com a invariante D4 e o IDOR no-write provados por testes. **Task 1 (RED→GREEN `b86579d`, TDD):** `src/lib/schemas/transaction.ts` ganhou `carroId: z.string().uuid().nullable().optional()` (nullable p/ clear explícito "Nenhum"; ausente = sem mudança; FREE de categoria — espelha o nullable-optional categoryId do confirmImportRowSchema). `src/actions/transactions.ts` — `createTransactionWithReserva` + `updateTransaction` decodificam `carroId` do FormData igual ao `reservaId` (`''`/ausente → null), re-derivam posse via `assertOwnedCarro` (tri-state WR-04: `'error'`→retry genérico, `'not-owned'`→`'Carro inválido.'`, só `'owned'` segue) quando carroId é uuid não-nulo, e incluem `carro_id` no payload de insert/update; clear (null) não checa posse. Path do reserva_ledger INTOCADO (D4). `transactions.test.ts` estendido (mock `carros` ownership read + knobs `ownedCarroIds`/`carroOwnershipErrors`); 8 casos novos. **Task 2 (RED→GREEN `8c9e365`, TDD):** `bulkTagCarro(ids, carroId | null)` modelado verbatim no bulkReclassify — guard empty-ids, `idSchema` por id (WR-06), session gate, carro validado UMA vez p/ o batch, `update({ carro_id }).in('id', ids)` único; payload SÓ carro_id (D4 field isolation); revalidatePath('/extrato') APENAS (tagging não toca metas). describe block bulkTagCarro green. **Task 3 (`fda2dae`, test integração Wave-0):** `tests/carro-tag-nondestructive.test.ts` contra o stack local — D4 (tag→untag deixa category_id/amount_cents/kind/occurred_on/description + v_adherence_month/ytd + v_category_totals byte-idênticos; zero perturbação no reserva_ledger) + IDOR no-write (B forjando carro_id de A na tx de A toca 0 linhas via UPDATE RLS-scoped). **[Rule 1 - Bug na expectativa do teste]:** a asserção inicial "A taggeia com carro de B → DB rejeita" estava ERRADA — FKs do Postgres NÃO são RLS-aware, o carro de B existe globalmente e o FK é satisfeito (essa é exatamente a premissa do mitigation IDOR). Reescrita p/ provar o gate real: sob RLS de A, `select carros where id=carroB` retorna ZERO → `assertOwnedCarro`='not-owned' → action não escreve. **Gates:** `transactions.test.ts` 43 passed; teste integração 3 passed; suíte completa **654 passed/77 files** (≥635); `tsc --noEmit` limpo; `npm run build` exit 0. **CAR-02 In progress** — só o contrato server entregou; a UI (seletor Carro no transacao-form + ação de linha/bulk no extrato + seletor por linha no import-review) fica em 09-02/09-03. Stack local segue rodando, sem push remoto. **Próxima ação:** planejar/executar 09-02 (UI extrato + transação-form).
+
+**(ação anterior) Completed 08-02-PLAN.md — camada server do módulo Carro (não-worktree, sequencial em `main`, Wave 2, depends_on [08-01]).** O boundary tipado/validado/IDOR-safe que a UI de 08-03 vai chamar, espelhando a gramática reservas/MEI verbatim. **Task 1 (RED `250139a` test → GREEN `57e4fa0` feat):** `src/lib/schemas/carro.ts` — `carroSchema` (`apelido` obrigatório `'Informe o apelido'`; `modelo`/`placa` opcionais texto livre; `ano` opcional inteiro 1900..anoAtual+1 com `'Ano inválido'` nos dois limites; `combustivel_padrao` opcional `z.enum(['Flex','Gasolina','Etanol','Diesel','GNV'])`) + `CarroInput`; e `assertOwnedCarro` adicionado ao `src/lib/ownership.ts` (clone verbatim de `assertOwnedReserva` → `from('carros').select('id').eq('id',id)` retornando `data.length===1` — FKs não são RLS-aware, é o substrato IDOR p/ os writes de `transactions.carro_id`/`abastecimentos` nas Fases 9/10). `src/lib/schemas/carro.test.ts` 6 casos green. **Task 2 (RED `940f3e7` test → GREEN `486d5a7` feat):** `src/actions/carros.ts` (`'use server'`) — `createCarro`/`updateCarro`/`archiveCarro`/`unarchiveCarro`, cada um Zod safeParse → `getClaims()` (sub gate `'Sessão expirada.'`) → (writes) `assertOwnedCarro` re-derive (`'Carro inválido.'` + NENHUM write num id forjado) → `.update(...).eq('id',id)` → `revalidatePath('/carros')`; `{ ok } | { error }`, nunca throw; erros de DB mapeados p/ strings genéricas amigáveis; helper `carroWriteFields` (opcionais ausentes → null) + helper privado `setArchived(id,boolean)` compartilhado por archive/unarchive. `src/actions/carros.test.ts` clonado da harness mei.test.ts (mock `@/lib/supabase/server` + `next/cache`, query-recorder builder, `claimsSub`/`ownershipSelectResult`), 16 casos green (happy-path insert/update/archive/unarchive, Zod gate sem write, session gate, IDOR forjado sem write, shape nunca-throw). **Sem desvios.** Suíte completa **632 passed/76 files** (de 610), `tsc --noEmit` limpo. **CAR-01 ainda In progress** — esta fatia entregou só o boundary server; a UI (`/carros` lista + CarroForm + CarroCard + `/carros/[id]`) que fecha CAR-01 fica em 08-03. Stack local segue rodando, sem push remoto. **Próxima ação:** executar/planejar 08-03 (nav + CRUD UI).
 
 **(ação anterior) Completed 08-01-PLAN.md — substrato do módulo Carro (não-worktree, sequencial em `main`, Wave 1, depends_on []).** Front-load de TODO o schema irreversível do Carro antes de qualquer UI. **Task 1 (commit `482272b`, feat):** `supabase/migrations/0027_carros.sql` idempotente clonando o shape uniforme de 0025 (RLS) + 0026 (views security_invoker): tabela `carros` (apelido obrigatório + modelo/placa/ano/combustivel_padrao opcionais + is_archived + user_id→auth.users CASCADE); tabela `abastecimentos` (carro_id→carros CASCADE, odometro_km int>0, `litros numeric(7,3)` — VOLUME, não dinheiro —, tanque_cheio, transaction_id→transactions SET NULL, amount_cents bigint>0, **CHECK XOR D2** `(transaction_id XOR amount_cents)` + **índice único parcial** `where transaction_id is not null`); ALTER aditivo `transactions.carro_id uuid → carros(id) ON DELETE SET NULL` (tag não-contábil D4, não toca categoria/metas); views `v_abastecimento_consumo` + `v_carro_resumo` ambas `security_invoker = true` (km/l tanque-cheio + R$/km por intervalo + gasto_total/mes_corrente Σ transactions.amount_cents where carro_id; resumo deriva as médias DA view de consumo p/ lógica de intervalo em um só lugar); RLS own-row + grants authenticated/service_role + índices user_id/carro_id. **Task 2 (commit `07ea0c0`, feat):** `supabase migration up` aplicou 0027 no LOCAL (NÃO push remoto) + `npm run gen:types` regenerou `src/types/database.types.ts` (162 inserções, 0 deleções = SEM drift); `npx tsc --noEmit` limpo. **[Rule 1 - Bug, sem permissão]:** o 1º draft de `v_abastecimento_consumo` usava `lag(...) filter (where tanque_cheio) over (...)` — Postgres rejeita FILTER em window function (SQLSTATE 0A000) e a migration falhou; reescrito isolando os tanque_cheio fills num CTE `full_fills` e fazendo `lag()` sobre esse conjunto (semântica idêntica: km_rodados = Δodômetro ao último tanque-cheio); migration aplicou limpo no retry (transação fez rollback do apply falho, sem objetos órfãos). **Task 3 (commit `2cf1e69`, test):** `tests/carro-rls.test.ts` (isolamento 2-user em carros/abastecimentos/transactions.carro_id — B lê zero; + XOR CHECK rejeita ambos/nenhum; + índice único parcial rejeita 2º link no mesmo transaction_id) + `tests/carro-view-leak.test.ts` (security_invoker provado p/ as duas views — A vê suas linhas incl. km_rodados=400 do intervalo seedado, B lê zero), clonados das harnesses mei-invoice-rls/mei-view-leak; **11 testes green** contra o stack local. 08-VALIDATION.md: 08-01 T1/T2/T3 marcados green + os 2 deliverables Wave-0 checkados. Suíte completa **610 passed/74 files** (de ~599 baseline; ≥599 OK), `tsc --noEmit` limpo. **CAR-01/06 ainda Pending** — só o substrato entregou; CRUD + nav UI ficam em 08-02 (schema/assertOwnedCarro + carros actions) e 08-03 (nav + CarroForm/CarroCard + lista + detalhe). Stack local deixado RODANDO (API 127.0.0.1:55321, migrations 0001-0027). Sem push remoto. **Próxima ação:** `/gsd-plan-phase 8` para 08-02 ou avançar a execução.
 

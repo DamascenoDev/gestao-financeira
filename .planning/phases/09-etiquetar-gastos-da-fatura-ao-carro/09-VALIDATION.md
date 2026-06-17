@@ -3,7 +3,7 @@ phase: 9
 slug: etiquetar-gastos-da-fatura-ao-carro
 status: planned
 nyquist_compliant: true
-wave_0_complete: false
+wave_0_complete: true
 created: 2026-06-17
 ---
 
@@ -37,9 +37,9 @@ Local Supabase stack used by action/RLS/integration tests (must be UP for `tests
 
 | Task ID | Plan | Wave | Requirement | Test Type | Automated Command | Status |
 |---------|------|------|-------------|-----------|-------------------|--------|
-| 09-01-T1 | 01 | 1 | CAR-02 | unit (action) | `npm test -- src/actions/transactions.test.ts` | ⬜ pending |
-| 09-01-T2 | 01 | 1 | CAR-02 | unit (action) | `npm test -- src/actions/transactions.test.ts` | ⬜ pending |
-| 09-01-T3 | 01 | 1 | CAR-02 | integration (local stack) — Wave 0 | `npm test -- tests/carro-tag-nondestructive.test.ts` | ⬜ pending |
+| 09-01-T1 | 01 | 1 | CAR-02 | unit (action) | `npm test -- src/actions/transactions.test.ts` | ✅ green |
+| 09-01-T2 | 01 | 1 | CAR-02 | unit (action) | `npm test -- src/actions/transactions.test.ts` | ✅ green |
+| 09-01-T3 | 01 | 1 | CAR-02 | integration (local stack) — Wave 0 | `npm test -- tests/carro-tag-nondestructive.test.ts` | ✅ green |
 | 09-02-T1 | 02 | 2 | CAR-02 | type/build | `npx tsc --noEmit && npm run build` | ⬜ pending |
 | 09-02-T2 | 02 | 2 | CAR-02 | type/build | `npx tsc --noEmit && npm run build` | ⬜ pending |
 | 09-02-T3 | 02 | 2 | CAR-02 | type/build + full suite | `npx tsc --noEmit && npm run build && npm test` | ⬜ pending |
@@ -51,8 +51,8 @@ Local Supabase stack used by action/RLS/integration tests (must be UP for `tests
 ---
 
 ## Wave 0 Requirements
-- [ ] `tests/carro-tag-nondestructive.test.ts` (09-01-T3, local stack): D4 non-destructive — tag then untag a transaction; assert category_id / amount_cents / kind / occurred_on / description AND the user's rows from v_adherence_month + v_adherence_ytd + v_category_totals are byte-identical before/after (only carro_id changes); assert no reserva_ledger row created/removed for that transaction; IDOR no-write — a forged cross-user carro_id tag writes 0 rows.
-- [ ] `src/actions/transactions.test.ts` extended (09-01-T1/T2): carro_id write/clear on create+update behind assertOwnedCarro tri-state; bulkTagCarro single-.in()-update shape; IDOR no-write on forged carro; carro_id-only payload (D4 field isolation).
+- [x] `tests/carro-tag-nondestructive.test.ts` (09-01-T3, local stack): D4 non-destructive — tag then untag a transaction; assert category_id / amount_cents / kind / occurred_on / description AND the user's rows from v_adherence_month + v_adherence_ytd + v_category_totals are byte-identical before/after (only carro_id changes); assert no reserva_ledger row created/removed for that transaction; IDOR no-write — a forged cross-user carro_id tag writes 0 rows. **(09-01, 3 green)**
+- [x] `src/actions/transactions.test.ts` extended (09-01-T1/T2): carro_id write/clear on create+update behind assertOwnedCarro tri-state; bulkTagCarro single-.in()-update shape; IDOR no-write on forged carro; carro_id-only payload (D4 field isolation). **(09-01, 43 green)**
 - [ ] `src/actions/import.test.ts` extended (09-03-T1): carro_id persist through confirmImport; forged carroId rejects whole payload (no insert); no-carro parity.
 
 ---

@@ -214,7 +214,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | UI-08 | Phase 7 | Complete (07-06: skeletons sobre shadcn skeleton + loading.tsx por segmento + gramática empty/error confirmada, 0 spinners) |
 | CAR-01 | Phase 8 | Complete (08-01 substrato + 08-02 camada server + 08-03 UI: CarroForm/CarroCard + /carros lista CRUD + arquivar/desarquivar) |
 | CAR-06 | Phase 8 | Complete (08-03: nav Carros sidebar+bottom-nav + rotas /carros + /carros/[id] sob auth guard) |
-| CAR-02 | Phase 9 | Pending |
+| CAR-02 | Phase 9 | In progress (09-01: contrato server — carroId no transactionSchema + carro_id write/clear + bulkTagCarro + Wave-0 D4/IDOR; UI seletor/extrato/import-review em 09-02/09-03) |
 | CAR-03 | Phase 10 | Pending |
 | CAR-04 | Phase 10 | Pending |
 | CAR-05 | Phase 11 | Pending |
