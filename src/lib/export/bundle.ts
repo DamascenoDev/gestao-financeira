@@ -35,6 +35,13 @@ export interface ExportBundle {
   userId: string
   /** One key per OWNED_TABLES entry → that table's RLS-scoped rows (raw shape). */
   tables: Record<OwnedTable, Row[]>
+  /**
+   * Per-table read errors (MD-02). A single table failing must NOT deny the user
+   * their entire LGPD export: the failing table serializes as an empty array in
+   * `tables` and its cause is recorded here so the partial export is diagnosable.
+   * Absent (or empty) means every table was read successfully.
+   */
+  errors?: Partial<Record<OwnedTable, string>>
   /** Human-readable pt-BR CSV views (BOM + `;` + formatCents) embedded as strings. */
   csv: {
     /** Transactions CSV: resolved category name + Consumo/Alocação Tipo. */
@@ -157,23 +164,34 @@ function stripBomAndHeader(csv: string): string {
  * caller's rows; NO manual user_id filter), then builds the embedded pt-BR CSVs from
  * the already-fetched rows. Returns a single JSON object the client downloads as
  * `meus-dados-{yyyy-MM-dd}.json`.
+ *
+ * Partial-export resilience (MD-02): a single table read failure does NOT deny the
+ * whole export — the failing table is logged server-side, recorded in `bundle.errors`,
+ * and serialized as an empty array, so the user still receives every readable table.
  */
 export async function buildExportBundle(
   supabase: SupabaseClient<Database>,
   userId: string,
 ): Promise<ExportBundle> {
   const tables = {} as Record<OwnedTable, Row[]>
+  const errors: Partial<Record<OwnedTable, string>> = {}
   for (const table of OWNED_TABLES) {
     // Bare select('*') — RLS restricts to the caller. A manual .eq('user_id', …)
     // is the leak Pattern 3 forbids and is intentionally absent.
     const { data, error } = await supabase.from(table).select('*')
     if (error) {
-      throw new Error(`export: failed reading ${table}: ${error.message}`)
+      // MD-02: do NOT abort the whole export on one table's failure. Log the cause
+      // server-side (diagnosable by an operator), record it in `errors`, and treat
+      // the table as empty so the user still gets every readable table.
+      console.error(`export: failed reading ${table}: ${error.message}`)
+      errors[table] = error.message
+      tables[table] = []
+      continue
     }
     tables[table] = (data ?? []) as Row[]
   }
 
-  return {
+  const bundle: ExportBundle = {
     exportedAt: new Date().toISOString(),
     userId,
     tables,
@@ -182,4 +200,7 @@ export async function buildExportBundle(
       mei: buildMeiCsv(tables.mei_invoices, tables.mei_settings, tables.mei_year_flags),
     },
   }
+  // Only attach `errors` when something actually failed (a clean export has no key).
+  if (Object.keys(errors).length > 0) bundle.errors = errors
+  return bundle
 }
