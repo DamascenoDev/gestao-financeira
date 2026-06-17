@@ -97,15 +97,20 @@ async function jwtFor(userId: string): Promise<string> {
  * `{userId}/`), then auth.admin.deleteUser LAST (cascades all 14 tables). Mirrors
  * src/actions/delete-account.ts exactly.
  */
+const STORAGE_PAGE = 1000
+
 async function deleteAccountCore(userId: string): Promise<void> {
-  const { data: files, error: listErr } = await admin.storage
-    .from(STATEMENTS_BUCKET)
-    .list(userId, { limit: 1000 })
-  if (listErr) throw new Error(`storage list failed: ${listErr.message}`)
-  if (files?.length) {
+  // Drain ALL pages under {userId}/ before the irreversible auth delete (HI-01).
+  for (;;) {
+    const { data: files, error: listErr } = await admin.storage
+      .from(STATEMENTS_BUCKET)
+      .list(userId, { limit: STORAGE_PAGE })
+    if (listErr) throw new Error(`storage list failed: ${listErr.message}`)
+    if (!files?.length) break
     const paths = files.map((f) => `${userId}/${f.name}`)
     const { error: rmErr } = await admin.storage.from(STATEMENTS_BUCKET).remove(paths)
     if (rmErr) throw new Error(`storage remove failed: ${rmErr.message}`)
+    if (files.length < STORAGE_PAGE) break
   }
   const { error: delErr } = await admin.auth.admin.deleteUser(userId)
   if (delErr) throw new Error(`deleteUser failed: ${delErr.message}`)

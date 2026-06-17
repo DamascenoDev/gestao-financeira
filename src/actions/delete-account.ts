@@ -23,7 +23,12 @@ import { createClient } from '@/lib/supabase/server'
  *      removed explicitly. Doing it first means a Storage failure leaves the account
  *      fully intact + the whole operation idempotently retryable (remove on absent
  *      paths is a no-op). Current uploads are flat one level under `{userId}/` (A3) —
- *      a single `list` suffices; nested folders would need a recursive walk.
+ *      nested folders would need a recursive walk. ALL pages are drained in a loop
+ *      (HI-01): a single `list` is capped at 1000 objects, so a user with >1000
+ *      statement files would otherwise leave the surplus orphaned in a private bucket
+ *      whose owning auth user no longer exists. We re-list from offset 0 after each
+ *      removal (removed objects shrink the set) and only proceed once the prefix is
+ *      fully drained.
  *   2. `auth.admin.deleteUser(userId)` LAST — the `auth.users ON DELETE CASCADE`
  *      schema atomically deletes all 14 owned tables. We do NOT hand-roll a per-table
  *      DELETE loop (that races RESTRICT FKs — Anti-Pattern T-06-11).
@@ -47,6 +52,9 @@ export type DeleteAccountResult =
 /** The statements bucket name (private; objects keyed under `{userId}/`). */
 const STATEMENTS_BUCKET = 'statements'
 
+/** Storage `list` page size cap (Supabase max per page). */
+const STORAGE_PAGE = 1000
+
 export async function deleteMyAccount(input: {
   confirm: string
 }): Promise<DeleteAccountResult> {
@@ -62,15 +70,21 @@ export async function deleteMyAccount(input: {
 
   const admin = createAdminClient()
 
-  // 3. Storage FIRST — NOT FK-cascaded. List then remove everything under {userId}/.
-  const { data: files, error: listErr } = await admin.storage
-    .from(STATEMENTS_BUCKET)
-    .list(userId, { limit: 1000 })
-  if (listErr) return { ok: false, error: 'falha_storage' } // retryable, account intact
-  if (files?.length) {
+  // 3. Storage FIRST — NOT FK-cascaded. Drain ALL pages under {userId}/ before the
+  // irreversible auth delete (HI-01): a single 1000-cap page would orphan the surplus.
+  // Re-list from offset 0 each pass — removed objects leave the set, so a non-empty
+  // page always means more to remove; an empty page means fully drained.
+  for (;;) {
+    const { data: files, error: listErr } = await admin.storage
+      .from(STATEMENTS_BUCKET)
+      .list(userId, { limit: STORAGE_PAGE })
+    if (listErr) return { ok: false, error: 'falha_storage' } // retryable, account intact
+    if (!files?.length) break // prefix fully drained
     const paths = files.map((f) => `${userId}/${f.name}`)
     const { error: rmErr } = await admin.storage.from(STATEMENTS_BUCKET).remove(paths)
     if (rmErr) return { ok: false, error: 'falha_storage' } // retryable, account intact
+    // Fewer than a full page returned → nothing more to fetch, avoid an extra round-trip.
+    if (files.length < STORAGE_PAGE) break
   }
 
   // 4. Auth LAST — cascades all 14 owned tables via ON DELETE CASCADE.

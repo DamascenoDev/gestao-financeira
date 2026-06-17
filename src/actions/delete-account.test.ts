@@ -73,6 +73,13 @@ beforeEach(() => {
   removeResult = { error: null }
   deleteUserResult = { error: null }
   vi.clearAllMocks()
+  // Restore the default single-page list implementation — tests that exercise the
+  // pagination loop (HI-01) override listSpy with mockImplementation, which clearAllMocks
+  // does NOT reset; re-pin it here so it does not leak into the next test.
+  listSpy.mockImplementation((prefix: string) => {
+    opLog.push(`storage.list:${prefix}`)
+    return listResult
+  })
 })
 
 describe('deleteMyAccount — confirm gate', () => {
@@ -139,6 +146,50 @@ describe('deleteMyAccount — Storage first, auth last', () => {
     expect(result).toEqual({ ok: true })
     expect(removeSpy).not.toHaveBeenCalled()
     expect(deleteUserSpy).toHaveBeenCalledWith('session-user')
+  })
+
+  it('drains ALL Storage pages (>1000 objects) BEFORE the auth delete (HI-01)', async () => {
+    // First two `list` calls return a FULL 1000-object page (forces another pass);
+    // the third returns a short page (drain complete). Every page must be removed
+    // before the irreversible auth delete runs.
+    const fullPage = Array.from({ length: 1000 }, (_, i) => ({ name: `f${i}.ofx` }))
+    const shortPage = [{ name: 'last.ofx' }]
+    const pages = [
+      { data: fullPage, error: null },
+      { data: fullPage, error: null },
+      { data: shortPage, error: null },
+    ]
+    let call = 0
+    listSpy.mockImplementation((prefix: string) => {
+      opLog.push(`storage.list:${prefix}`)
+      return pages[call++] ?? { data: [], error: null }
+    })
+
+    const result = await deleteMyAccount({ confirm: 'APAGAR' })
+    expect(result).toEqual({ ok: true })
+    // Three list pages → three removes, ALL before the single auth delete.
+    expect(listSpy).toHaveBeenCalledTimes(3)
+    expect(removeSpy).toHaveBeenCalledTimes(3)
+    const lastList = opLog.lastIndexOf('storage.list:session-user')
+    const removeCount = opLog.filter((o) => o.startsWith('storage.remove:')).length
+    const authIdx = opLog.indexOf('auth.deleteUser:session-user')
+    expect(removeCount).toBe(3)
+    expect(authIdx).toBeGreaterThan(lastList) // auth delete strictly AFTER the last page
+  })
+
+  it('aborts on a list failure mid-pagination, leaving the account intact (HI-01)', async () => {
+    let call = 0
+    listSpy.mockImplementation((prefix: string) => {
+      opLog.push(`storage.list:${prefix}`)
+      call += 1
+      if (call === 1) {
+        return { data: Array.from({ length: 1000 }, (_, i) => ({ name: `f${i}.ofx` })), error: null }
+      }
+      return { data: null, error: { message: 'list page 2 boom' } }
+    })
+    const result = await deleteMyAccount({ confirm: 'APAGAR' })
+    expect(result).toEqual({ ok: false, error: 'falha_storage' })
+    expect(deleteUserSpy).not.toHaveBeenCalled() // never reached the irreversible delete
   })
 
   it('surfaces falha_delete when the auth delete fails', async () => {
