@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { parseBRLToCents } from '@/lib/money'
 import {
+  assertOwnedCarro,
   assertOwnedCategories,
   assertOwnedReserva,
   isReservaCategory,
@@ -46,6 +47,17 @@ const idSchema = z.string().uuid('Identificador inválido')
 
 function firstIssue(message: string | undefined): string {
   return message ?? 'Dados inválidos'
+}
+
+/**
+ * CAR-02: decode the optional carro choice from FormData exactly like reservaId is
+ * read — '' or absent means "no carro" (null), a uuid means "tag to this carro".
+ * Carro is FREE of category, so this is read on every create/update path that
+ * supports tagging, independent of the Reserva branch.
+ */
+function decodeCarroId(formData: FormData): string | null {
+  const raw = formData.get('carroId')
+  return typeof raw === 'string' && raw !== '' ? raw : null
 }
 
 /** Create a manual expense (data, valor, descrição, categoria) for the user (TXN-01). */
@@ -132,6 +144,9 @@ export async function createTransactionWithReserva(
       ? rawReservaId
       : undefined
 
+  // CAR-02: optional carro tag — null means "no carro" (free of category).
+  const carroId = decodeCarroId(formData)
+
   let amountCents: number
   try {
     amountCents = parseBRLToCents(parsed.data.amount)
@@ -158,6 +173,17 @@ export async function createTransactionWithReserva(
     }
   }
 
+  // CAR-02 / T-09-01: re-derive carro ownership before the carro_id FK write (FKs
+  // are not RLS-aware). WR-04 tri-state: 'error' → generic retry; 'not-owned' →
+  // 'Carro inválido.'. Clearing (carroId null) needs no check — own rows only.
+  if (carroId !== null) {
+    const owned = await assertOwnedCarro(supabase, carroId)
+    if (owned === 'error') {
+      return { error: 'Não foi possível salvar a transação. Tente novamente.' }
+    }
+    if (owned === 'not-owned') return { error: 'Carro inválido.' }
+  }
+
   const { data: inserted, error } = await supabase
     .from('transactions')
     .insert({
@@ -167,6 +193,7 @@ export async function createTransactionWithReserva(
       kind: 'expense',
       occurred_on: parsed.data.occurredOn,
       description: parsed.data.description,
+      carro_id: carroId, // CAR-02: optional carro tag (null = untagged)
     })
     .select('id')
     .single()
@@ -220,6 +247,9 @@ export async function updateTransaction(
       ? rawReservaId
       : undefined
 
+  // CAR-02: optional carro tag — null means "no carro" / clear (free of category).
+  const carroId = decodeCarroId(formData)
+
   let amountCents: number
   try {
     amountCents = parseBRLToCents(parsed.data.amount)
@@ -246,6 +276,17 @@ export async function updateTransaction(
     }
   }
 
+  // CAR-02 / T-09-01: re-derive carro ownership before the carro_id FK write (FKs
+  // are not RLS-aware). WR-04 tri-state: 'error' → generic retry; 'not-owned' →
+  // 'Carro inválido.'. Clearing (carroId null) needs no check — own rows only.
+  if (carroId !== null) {
+    const owned = await assertOwnedCarro(supabase, carroId)
+    if (owned === 'error') {
+      return { error: 'Não foi possível atualizar a transação. Tente novamente.' }
+    }
+    if (owned === 'not-owned') return { error: 'Carro inválido.' }
+  }
+
   const { error } = await supabase
     .from('transactions')
     .update({
@@ -253,6 +294,7 @@ export async function updateTransaction(
       amount_cents: amountCents,
       occurred_on: parsed.data.occurredOn,
       description: parsed.data.description,
+      carro_id: carroId, // CAR-02: optional carro tag (null = untagged/cleared)
     })
     .eq('id', id)
   if (error)

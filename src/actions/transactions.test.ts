@@ -37,6 +37,12 @@ let categoryIsReserva = false
 // Drives assertOwnedReserva: the reserva ids the reservas(id) read sees as owned.
 // null = echo back the queried id (the default "owned" happy path).
 let ownedReservaIds: string[] | null = null
+// Drives assertOwnedCarro (tri-state): the carro ids the carros(id) read sees as
+// owned. null = echo back the queried id (the default 'owned' happy path).
+let ownedCarroIds: string[] | null = null
+// When true, the carros(id) ownership read resolves with a DB error so
+// assertOwnedCarro maps to 'error' (WR-04 transient-failure path).
+let carroOwnershipErrors = false
 
 function makeBuilder(from: string) {
   const record: (typeof calls)[number] = { from, op: '', filters: [] }
@@ -110,6 +116,24 @@ function makeBuilder(from: string) {
         error: null,
       } as QueryResult).then(onF)
     }
+    // assertOwnedCarro tri-state: `from('carros').select('id').eq('id', id)`. Echo
+    // back the queried id as owned unless ownedCarroIds restricts it (mirrors the
+    // reservas path; the live tests/carro-tag-nondestructive.test.ts proves real RLS).
+    // carroOwnershipErrors forces the WR-04 'error' branch (transient DB failure).
+    if (from === 'carros' && record.op === 'select') {
+      if (carroOwnershipErrors) {
+        return Promise.resolve({
+          data: null,
+          error: { code: 'XX000' },
+        } as QueryResult).then(onF)
+      }
+      const queried = record.filters.find(([col]) => col === 'id')?.[1]
+      const owned = ownedCarroIds ?? (queried !== undefined ? [queried] : [])
+      return Promise.resolve({
+        data: owned.map((id) => ({ id })),
+        error: null,
+      } as QueryResult).then(onF)
+    }
     return Promise.resolve(resolveResult).then(onF)
   }
 
@@ -166,7 +190,11 @@ beforeEach(() => {
   ownedCategoryIds = null
   categoryIsReserva = false
   ownedReservaIds = null
+  ownedCarroIds = null
+  carroOwnershipErrors = false
 })
+
+const CARRO_ID = '88888888-8888-4888-8888-888888888888'
 
 // --- createTransaction (TXN-01) --------------------------------------------
 
@@ -372,6 +400,55 @@ describe('createTransactionWithReserva', () => {
     const r = await createTransactionWithReserva(aporteFd())
     expect(r).toEqual({ error: 'Sessão expirada.' })
   })
+
+  // --- carro_id tagging (CAR-02) ---------------------------------------------
+
+  it('writes carro_id when an owned carro is chosen (free of category)', async () => {
+    const r = await createTransactionWithReserva(
+      aporteFd({ reservaId: '', carroId: CARRO_ID }),
+    )
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'transactions' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    expect(insert!.payload).toMatchObject({ carro_id: CARRO_ID })
+  })
+
+  it('inserts carro_id null when no carro is chosen', async () => {
+    const r = await createTransactionWithReserva(aporteFd({ reservaId: '' }))
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'transactions' && c.op === 'insert',
+    )
+    expect((insert!.payload as { carro_id: unknown }).carro_id).toBeNull()
+    // No carro ownership read happens when there is no carro to tag.
+    expect(calls.some((c) => c.from === 'carros')).toBe(false)
+  })
+
+  it('rejects a forged/foreign carro before inserting (IDOR no-write)', async () => {
+    ownedCarroIds = [] // assertOwnedCarro → 'not-owned'
+    const r = await createTransactionWithReserva(
+      aporteFd({ reservaId: '', carroId: CARRO_ID }),
+    )
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(calls.some((c) => c.from === 'transactions' && c.op === 'insert')).toBe(
+      false,
+    )
+  })
+
+  it('returns a generic retry error on a transient carro ownership failure (WR-04)', async () => {
+    carroOwnershipErrors = true // assertOwnedCarro → 'error'
+    const r = await createTransactionWithReserva(
+      aporteFd({ reservaId: '', carroId: CARRO_ID }),
+    )
+    expect(r).toEqual({
+      error: 'Não foi possível salvar a transação. Tente novamente.',
+    })
+    expect(calls.some((c) => c.from === 'transactions' && c.op === 'insert')).toBe(
+      false,
+    )
+  })
 })
 
 // --- updateTransaction (TXN-02) --------------------------------------------
@@ -496,6 +573,87 @@ describe('updateTransaction', () => {
       }),
     )
     expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+
+  // --- carro_id tagging (CAR-02) ---------------------------------------------
+
+  it('writes carro_id when an owned carro is chosen; D4 — other fields unchanged', async () => {
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Atualizado',
+        amount: 'R$ 50,00',
+        categoryId: DEST_CATEGORY,
+        occurredOn: '2026-06-11',
+        carroId: CARRO_ID,
+      }),
+    )
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect(upd!.payload).toMatchObject({
+      carro_id: CARRO_ID,
+      // D4: tagging does not perturb the accounting fields from the inputs.
+      category_id: DEST_CATEGORY,
+      amount_cents: 5000,
+      occurred_on: '2026-06-11',
+      description: 'Atualizado',
+    })
+  })
+
+  it('clears carro_id to null on an explicit empty carroId without an ownership read', async () => {
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Atualizado',
+        amount: 'R$ 50,00',
+        categoryId: DEST_CATEGORY,
+        occurredOn: '2026-06-11',
+        carroId: '',
+      }),
+    )
+    expect(r).toEqual({ ok: true })
+    const upd = calls.find((c) => c.from === 'transactions' && c.op === 'update')
+    expect((upd!.payload as { carro_id: unknown }).carro_id).toBeNull()
+    // Clearing is always allowed on own rows — no assertOwnedCarro call.
+    expect(calls.some((c) => c.from === 'carros')).toBe(false)
+  })
+
+  it('rejects a forged/foreign carro before updating (IDOR no-write)', async () => {
+    ownedCarroIds = [] // assertOwnedCarro → 'not-owned'
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Atualizado',
+        amount: 'R$ 50,00',
+        categoryId: DEST_CATEGORY,
+        occurredOn: '2026-06-11',
+        carroId: CARRO_ID,
+      }),
+    )
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(calls.some((c) => c.from === 'transactions' && c.op === 'update')).toBe(
+      false,
+    )
+  })
+
+  it('returns a generic retry error on a transient carro ownership failure (WR-04)', async () => {
+    carroOwnershipErrors = true // assertOwnedCarro → 'error'
+    const r = await updateTransaction(
+      TX_ID,
+      fd({
+        description: 'Atualizado',
+        amount: 'R$ 50,00',
+        categoryId: DEST_CATEGORY,
+        occurredOn: '2026-06-11',
+        carroId: CARRO_ID,
+      }),
+    )
+    expect(r).toEqual({
+      error: 'Não foi possível atualizar a transação. Tente novamente.',
+    })
+    expect(calls.some((c) => c.from === 'transactions' && c.op === 'update')).toBe(
+      false,
+    )
   })
 })
 
