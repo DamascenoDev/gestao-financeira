@@ -215,7 +215,7 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | CAR-01 | Phase 8 | Complete (08-01 substrato + 08-02 camada server + 08-03 UI: CarroForm/CarroCard + /carros lista CRUD + arquivar/desarquivar) |
 | CAR-06 | Phase 8 | Complete (08-03: nav Carros sidebar+bottom-nav + rotas /carros + /carros/[id] sob auth guard) |
 | CAR-02 | Phase 9 | In progress (09-01: contrato server — carroId no transactionSchema + carro_id write/clear + bulkTagCarro + Wave-0 D4/IDOR; UI seletor/extrato/import-review em 09-02/09-03) |
-| CAR-03 | Phase 10 | Pending |
+| CAR-03 | Phase 10 | In progress (10-02: contrato server — abastecimentoSchema XOR + actions create/update/delete dual IDOR carro_id+transaction_id + sync carro_id no lançamento vinculado + consumo.ts; Wave-0 abastecimento-action.test.ts green; UI form/picker/histórico em 10-03) |
 | CAR-04 | Phase 10 | Complete |
 | CAR-05 | Phase 11 | Pending |
 
