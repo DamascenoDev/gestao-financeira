@@ -206,6 +206,84 @@ export type Database = {
         }
         Relationships: []
       }
+      mei_invoices: {
+        Row: {
+          activity_type: string
+          amount_cents: number
+          created_at: string
+          descricao: string
+          id: string
+          issued_on: string
+          tomador: string
+          user_id: string
+        }
+        Insert: {
+          activity_type: string
+          amount_cents: number
+          created_at?: string
+          descricao?: string
+          id?: string
+          issued_on: string
+          tomador: string
+          user_id: string
+        }
+        Update: {
+          activity_type?: string
+          amount_cents?: number
+          created_at?: string
+          descricao?: string
+          id?: string
+          issued_on?: string
+          tomador?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mei_settings: {
+        Row: {
+          created_at: string
+          id: string
+          mei_start_date: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          mei_start_date: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          mei_start_date?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      mei_year_flags: {
+        Row: {
+          created_at: string
+          has_employee: boolean
+          id: string
+          user_id: string
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          has_employee?: boolean
+          id?: string
+          user_id: string
+          year: number
+        }
+        Update: {
+          created_at?: string
+          has_employee?: boolean
+          id?: string
+          user_id?: string
+          year?: number
+        }
+        Relationships: []
+      }
       merchant_patterns: {
         Row: {
           category_id: string
@@ -551,6 +629,20 @@ export type Database = {
           month_key: string | null
           total_cents: number | null
           user_id: string | null
+        }
+        Relationships: []
+      }
+      v_mei_year_summary: {
+        Row: {
+          applicable_limit_cents: number | null
+          band_ceiling_cents: number | null
+          comercio_cents: number | null
+          gross_cents: number | null
+          has_employee: boolean | null
+          ratio_bp: number | null
+          servicos_cents: number | null
+          user_id: string | null
+          year: number | null
         }
         Relationships: []
       }
