@@ -78,6 +78,16 @@ export type ReviewCategory = {
 }
 
 /**
+ * A carro option for the per-row "Carro" selector (CAR-02). Defined LOCALLY here (NOT
+ * imported from carro-picker.tsx) so Plans 02 and 03 stay file-disjoint + parallel-safe
+ * — both surface the same carro-tagging UX without sharing code.
+ */
+export type CarroOption = { id: string; apelido: string }
+
+/** The sentinel "Nenhum" Select value (empty string is not a valid SelectItem value). */
+const NENHUM_CARRO = '__nenhum__'
+
+/**
  * A pre-persist review row (un-persisted parsed transaction). Client-side state — a
  * stable id (dedupe_key or temp id) feeds TanStack getRowId + the eventual confirm
  * payload. category_id null = memory-miss (unclassified). reserva_id is set when the
@@ -93,6 +103,9 @@ export type ReviewRow = {
   descriptor_norm: string
   category_id: string | null
   reserva_id: string | null
+  // CAR-02: the per-row carro tag chosen in review (null = "Nenhum"/untagged). Free of
+  // category — additive on persist (D4); does NOT affect origem/accent/metas.
+  carro_id: string | null
   origin: 'memória' | 'manual' | 'não classificada'
   is_recurring: boolean
 }
@@ -123,11 +136,13 @@ export function ImportReviewTable({
   initialRows,
   categories,
   reservas = [],
+  carros = [],
 }: {
   statementId: string
   initialRows: ReviewRow[]
   categories: ReviewCategory[]
   reservas?: ReservaOption[]
+  carros?: CarroOption[]
 }) {
   const router = useRouter()
   const [rows, setRows] = React.useState<ReviewRow[]>(initialRows)
@@ -167,6 +182,14 @@ export function ImportReviewTable({
     },
     [],
   )
+
+  /** Tag a row to a carro (or "Nenhum") in client state — sets carro_id ONLY, no
+   *  other field (D4 additive). Mirrors classifyRow but orthogonal to category. */
+  const tagCarroRow = React.useCallback((id: string, carroId: string | null) => {
+    setRows((prev) =>
+      prev.map((r) => (r.id === id ? { ...r, carro_id: carroId } : r)),
+    )
+  }, [])
 
   const visibleRows = React.useMemo(
     () => (onlyUnclassified ? rows.filter((r) => r.category_id === null) : rows),
@@ -276,6 +299,18 @@ export function ImportReviewTable({
         ),
       },
       {
+        id: 'carro',
+        header: 'Carro',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <InlineReviewCarroCell
+            row={row.original}
+            carros={carros}
+            onTag={tagCarroRow}
+          />
+        ),
+      },
+      {
         accessorKey: 'amount_cents',
         header: () => <div className="text-right">Valor</div>,
         cell: ({ row }) => (
@@ -289,7 +324,7 @@ export function ImportReviewTable({
         ),
       },
     ],
-    [categories, reservas, classifyRow],
+    [categories, reservas, classifyRow, carros, tagCarroRow],
   )
 
   const table = useReactTable({
@@ -329,6 +364,7 @@ export function ImportReviewTable({
       descriptor_norm: r.descriptor_norm,
       categoryId: r.category_id,
       reservaId: r.reserva_id ?? undefined,
+      carroId: r.carro_id ?? undefined,
     }))
     confirmImport(statementId, payload)
       .then((result) => {
@@ -479,6 +515,11 @@ export function ImportReviewTable({
                     categories={categories}
                     reservas={reservas}
                     onClassify={classifyRow}
+                  />
+                  <InlineReviewCarroCell
+                    row={r}
+                    carros={carros}
+                    onTag={tagCarroRow}
                   />
                 </div>
               </div>
@@ -647,5 +688,52 @@ function InlineReviewCategoryCell({
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+/**
+ * The inline per-row "Carro" editor (CAR-02) — a small Select tagging the row to a
+ * carro BEFORE persist. LOCAL to this file (no carro-picker.tsx import — Plan 02
+ * builds that in parallel). A leading "Nenhum" item maps to the empty/untagged value;
+ * choosing it clears the tag. Reuses the SAME shadcn Select primitives + Phase-7
+ * grammar already imported here — no new primitive. Orthogonal to category (D4): it
+ * touches carro_id only and never affects origem/accent/valor/metas.
+ */
+function InlineReviewCarroCell({
+  row,
+  carros,
+  onTag,
+}: {
+  row: ReviewRow
+  carros: CarroOption[]
+  onTag: (id: string, carroId: string | null) => void
+}) {
+  function onChange(next: string) {
+    onTag(row.id, next === NENHUM_CARRO ? null : next)
+  }
+
+  return (
+    <Select
+      value={row.carro_id ?? NENHUM_CARRO}
+      onValueChange={(v) => onChange(v ?? NENHUM_CARRO)}
+    >
+      <SelectTrigger
+        size="sm"
+        className="border-transparent bg-transparent hover:border-input"
+        aria-label="Vincular a carro"
+      >
+        <SelectValue placeholder={<span className="text-muted-foreground">Nenhum</span>} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value={NENHUM_CARRO}>
+          <span className="text-muted-foreground">Nenhum</span>
+        </SelectItem>
+        {carros.map((c) => (
+          <SelectItem key={c.id} value={c.id}>
+            {c.apelido}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
   )
 }

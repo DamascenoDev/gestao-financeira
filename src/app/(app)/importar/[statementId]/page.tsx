@@ -2,6 +2,7 @@ import Link from 'next/link'
 
 import {
   ImportReviewTable,
+  type CarroOption,
   type ReviewCategory,
   type ReviewRow,
 } from '@/components/import-review-table'
@@ -146,6 +147,18 @@ export default async function ImportReviewPage({
     )
     .map((r) => ({ id: r.reserva_id, nome: r.nome }))
 
+  // The user's non-archived carros feed the per-row "Carro" selector (CAR-02). RLS
+  // scopes to the owner; mirror the carros page query shape (id + apelido).
+  const { data: carrosData } = await supabase
+    .from('carros')
+    .select('id, apelido')
+    .eq('is_archived', false)
+    .order('apelido', { ascending: true })
+  const carros: CarroOption[] = (carrosData ?? []).map((c) => ({
+    id: c.id,
+    apelido: c.apelido,
+  }))
+
   // Map the persisted parsed rows → the client review grid shape. The amount carries
   // through as integer cents (OFX) / raw BRL (CSV); confirmImport resolves it.
   const reviewRows: ReviewRow[] = parsedRows.map((r, i) => ({
@@ -158,6 +171,7 @@ export default async function ImportReviewPage({
     descriptor_norm: r.descriptor_norm,
     category_id: r.category_id,
     reserva_id: r.reserva_id,
+    carro_id: null, // CAR-02: tagging happens in review; nothing pre-tagged at ingest
     origin: r.category_id === null ? 'não classificada' : 'memória',
     is_recurring: r.is_recurring,
   }))
@@ -170,6 +184,7 @@ export default async function ImportReviewPage({
         initialRows={reviewRows}
         categories={categories}
         reservas={reservas}
+        carros={carros}
       />
     </section>
   )
