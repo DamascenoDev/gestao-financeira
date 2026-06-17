@@ -381,7 +381,8 @@ export function ImportReviewTable({
         </button>
       ) : null}
 
-      <Table>
+      {/* Desktop (≥md): the dense review table — selection/accent/origem frozen. */}
+      <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
             {table.getHeaderGroups()[0]?.headers.map((header) => {
@@ -433,6 +434,63 @@ export function ImportReviewTable({
           ))}
         </TableBody>
       </Table>
+
+      {/* Mobile (<md): one card per parsed row — same cells, only the wrapper
+          changes. Selection reuses the SAME row model so the floating
+          SelectionActionBar keeps working; the memory-miss amber accent
+          (border-l-consumption) + the OriginBadge are preserved on the card.
+          No getRowId/column/action change (behavior frozen). */}
+      <ul className="flex flex-col gap-2 md:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const r = row.original
+          const raw = r.descriptor_raw || '—'
+          return (
+            <li
+              key={row.id}
+              data-state={row.getIsSelected() ? 'selected' : undefined}
+              className={cn(
+                'flex flex-col gap-2 rounded-lg border border-border bg-card p-3 data-[state=selected]:bg-muted',
+                r.category_id === null && 'border-l-2 border-l-consumption',
+              )}
+            >
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(v) => row.toggleSelected(!!v)}
+                  aria-label="Selecionar linha"
+                  className="mt-0.5"
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <div className="flex items-center gap-2">
+                    <span className="block truncate text-sm">{raw}</span>
+                    {r.is_recurring ? <RecorrenteTag /> : null}
+                  </div>
+                  <span className="font-mono text-xs text-muted-foreground">
+                    {r.descriptor_norm}
+                  </span>
+                  <InlineReviewCategoryCell
+                    row={r}
+                    categories={categories}
+                    reservas={reservas}
+                    onClassify={classifyRow}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between pl-7">
+                <div className="flex items-center gap-2">
+                  <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                    {ddMM(r.occurred_on)}
+                  </span>
+                  <OriginBadge
+                    variant={r.category_id === null ? 'não classificada' : r.origin}
+                  />
+                </div>
+                <AmountCell cents={r.amount_cents} kind="expense" signed={false} />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
 
       <SelectionActionBar
         selectedIds={selectedIds}

@@ -371,7 +371,8 @@ export function ExtratoTable({
 
   return (
     <div className="flex flex-col gap-4">
-      <Table>
+      {/* Desktop (≥md): the dense table — behavior/selection/footer frozen. */}
+      <Table className="hidden md:table">
         <TableHeader>
           <TableRow>
             {table.getHeaderGroups()[0]?.headers.map((header) => {
@@ -441,6 +442,68 @@ export function ExtratoTable({
           </TableRow>
         </TableFooter>
       </Table>
+
+      {/* Mobile (<md): one card per row — same cells, only the wrapper changes.
+          Selection (tap-select) reuses the SAME row model so the floating
+          SelectionActionBar keeps working; the per-category totals collapse to a
+          compact list. No column/getRowId/action change (behavior frozen). */}
+      <ul className="flex flex-col gap-2 md:hidden">
+        {table.getRowModel().rows.map((row) => {
+          const r = row.original
+          const text = r.description || '—'
+          return (
+            <li
+              key={row.id}
+              data-state={row.getIsSelected() ? 'selected' : undefined}
+              className="flex flex-col gap-2 rounded-lg border border-border bg-card p-3 data-[state=selected]:bg-muted"
+            >
+              <div className="flex items-start gap-2">
+                <Checkbox
+                  checked={row.getIsSelected()}
+                  onCheckedChange={(v) => row.toggleSelected(!!v)}
+                  aria-label="Selecionar linha"
+                  className="mt-0.5"
+                />
+                <div className="flex min-w-0 flex-1 flex-col gap-1">
+                  <span className="block truncate text-sm">{text}</span>
+                  <InlineCategoryCell
+                    row={r}
+                    categories={categories}
+                    reservas={reservas}
+                  />
+                </div>
+              </div>
+              <div className="flex items-center justify-between pl-7">
+                <span className="font-mono text-sm tabular-nums text-muted-foreground">
+                  {ddMM(r.occurred_on)}
+                </span>
+                <AmountCell cents={r.amount_cents} kind="expense" signed={false} />
+              </div>
+            </li>
+          )
+        })}
+      </ul>
+
+      {/* Mobile totals — the desktop footer collapsed to a compact list. */}
+      <div className="flex flex-col gap-1 rounded-lg border border-border bg-card p-3 md:hidden">
+        {categoryTotals.map((t) => (
+          <div
+            key={t.categoryId ?? 'sem-categoria'}
+            className="flex items-center justify-between gap-2"
+          >
+            <CategoryBadge name={t.name} color={t.color} />
+            <span className="font-mono text-sm font-semibold tabular-nums">
+              {formatCents(t.totalCents)}
+            </span>
+          </div>
+        ))}
+        <div className="mt-1 flex items-center justify-between gap-2 border-t border-border pt-1">
+          <span className="text-sm font-semibold">Total</span>
+          <span className="font-mono text-sm font-semibold tabular-nums">
+            {formatCents(grandTotalCents)}
+          </span>
+        </div>
+      </div>
 
       <SelectionActionBar
         selectedIds={selectedIds}
