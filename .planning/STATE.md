@@ -2,15 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
-status: in_progress
-last_updated: "2026-06-17T17:12:43.000Z"
+current_phase: 10
+current_phase_name: Abastecimento híbrido + consumo
+status: executing
+last_updated: "2026-06-17T17:45:31.359Z"
 last_activity: 2026-06-17
+last_activity_desc: Phase 09 complete, transitioned to Phase 10
 progress:
   total_phases: 4
-  completed_phases: 1
-  total_plans: 3
-  completed_plans: 1
-  percent: 25
+  completed_phases: 2
+  total_plans: 6
+  completed_plans: 6
+  percent: 50
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,10 +29,10 @@ progress:
 
 ## Current Position
 
-Phase: 9
-Plan: 09-01 entregue (Wave 1); próximo 09-02
+Phase: 10 — Abastecimento híbrido + consumo
+Plan: Not started
 Status: 09-01 entregue (contrato server CAR-02 — carroId opcional no transactionSchema; carro_id write/clear em createTransactionWithReserva+updateTransaction com assertOwnedCarro re-derive; bulkTagCarro; Wave-0 D4/IDOR integration green). CAR-02 In progress (contrato server pronto; UI fica em 09-02/09-03).
-Last activity: 2026-06-17
+Last activity: 2026-06-17 — Phase 09 complete, transitioned to Phase 10
 
 ## Performance Metrics
 

@@ -115,7 +115,7 @@ Módulo de veículo. Design aprovado em `docs/superpowers/specs/2026-06-17-modul
 ### Carro
 
 - [x] **CAR-01**: Usuário cadastra, edita e arquiva carro(s); a lista mostra todos os carros não-arquivados (multi-car, escopado por `user_id`).
-- [ ] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
+- [x] **CAR-02**: Usuário etiqueta um lançamento da fatura a um carro (`carro_id`) via formulário de transação e via ação na linha do extrato; etiquetar NÃO altera categoria nem metas do lançamento (lente não-destrutiva).
 - [ ] **CAR-03**: Usuário registra abastecimento (data, odômetro, litros, tanque-cheio?, combustível) com custo vindo de um lançamento vinculado da fatura OU manual — exatamente uma fonte (CHECK XOR), nunca ambas, nunca nenhuma.
 - [ ] **CAR-04**: Sistema calcula consumo km/l pelo método tanque-cheio e R$/km por intervalo, e expõe médias por carro (views `security_invoker`).
 - [ ] **CAR-05**: Detalhe do carro mostra gasto total (manutenção + combustível via `carro_id`), histórico de abastecimentos e gráfico de consumo (km/l ao longo do tempo, recharts).
@@ -220,12 +220,14 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | CAR-05 | Phase 11 | Pending |
 
 **Coverage:**
+
 - v1 requirements: 47 total
 - Mapped to phases: 47 ✓
 - Unmapped: 0 ✓
 - v1.2 (Carro) requirements: 6 total — CAR-01..06 mapeados 6/6 ✓; órfãos 0 ✓
 
 **Por fase:**
+
 - Phase 1 (Fundação): 6 — AUTH-01/02/03/04, CAT-01, SEC-02
 - Phase 2 (Receitas/categorias/lançamentos): 10 — INC-01/02/03/04, CAT-02/03, TXN-01/02/03/04
 - Phase 3 (Metas/aderência/reservas): 9 — BUD-01/02/03/04, RSV-01/02/03/04/05
