@@ -102,7 +102,10 @@ export default async function MeiDashboardPage({
   const limitLabel = limitLabelFor(ano, settings.mei_start_date, isOpeningYear)
   const percentText = ratioBp === null ? '—' : PERCENT_FMT.format(ratioBp / 10000)
   const remainingCents = Math.max(limitCents - grossCents, 0)
-  const overLimit = ratioBp !== null && ratioBp >= 10000
+  // Strictly above the limit (LR-01): exactly-at-limit (ratioBp === 10000) is still
+  // within, so the "Acima do limite" alert copy and the remaining-to-limit line must
+  // stay aligned with meiStatus, which treats <= 100% as âmbar.
+  const overLimit = ratioBp !== null && ratioBp > 10000
   const overBand = status === 'vermelho-fora'
   const noNfs = grossCents === 0
   // Pre-opening edge (LR-03): there is no applicable limit yet (ratioBp === null)

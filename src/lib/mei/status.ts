@@ -26,7 +26,11 @@ export function meiStatus(
 ): MeiStatus {
   if (ratioBp === null) return 'verde' // no applicable limit yet (pre-opening year)
   if (ratioBp < MEI_ALERT_BP) return 'verde' // < 80%
-  if (ratioBp < BP_100) return 'ambar' // 80–100%
+  // Exactly at the ceiling (ratioBp === 10000, gross === applicable to the centavo)
+  // is still WITHIN the limit, not above it: desenquadramento triggers when gross
+  // *exceeds* the limit, not when it equals it (LR-01). The ceiling is a value the
+  // MEI may reach. So the band/over-limit branch fires only strictly above 100%.
+  if (ratioBp <= BP_100) return 'ambar' // 80–100% inclusive → approaching / at limit
   return BigInt(grossCents) <= BigInt(bandCeilingCents)
     ? 'vermelho-banda' // over limit, within +20% → migra Simples ano seguinte
     : 'vermelho-fora' // > +20% → desenquadramento retroativo

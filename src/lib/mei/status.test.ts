@@ -21,8 +21,14 @@ describe('meiStatus (tiered status at the exact bp/band edges)', () => {
     expect(meiStatus(9999, 8_099_000, 9_720_000)).toBe('ambar')
   })
 
-  it('exactly 100% (10000 bp), gross === band ceiling → vermelho-banda', () => {
-    expect(meiStatus(10000, 9_720_000, 9_720_000)).toBe('vermelho-banda')
+  it('exactly 100% (10000 bp), gross === applicable limit → ambar (at limit is still within, LR-01)', () => {
+    // The fiscal ceiling is a value the MEI may REACH; desenquadramento triggers
+    // only when gross *exceeds* the limit. Exactly-at-limit stays âmbar.
+    expect(meiStatus(10000, 8_100_000, 9_720_000)).toBe('ambar')
+  })
+
+  it('just over 100% (10001 bp), within the band (gross ≤ ceiling) → vermelho-banda', () => {
+    expect(meiStatus(10001, 8_100_810, 9_720_000)).toBe('vermelho-banda')
   })
 
   it('over 100% but within the band (gross ≤ ceiling) → vermelho-banda', () => {
@@ -38,7 +44,7 @@ describe('meiStatus (tiered status at the exact bp/band edges)', () => {
   })
 
   it('accepts bigint gross/band (BigInt comparison, no float)', () => {
-    expect(meiStatus(10000, 9_720_000n, 9_720_000n)).toBe('vermelho-banda')
+    expect(meiStatus(11000, 9_720_000n, 9_720_000n)).toBe('vermelho-banda')
     expect(meiStatus(12500, 10_125_000n, 9_720_000n)).toBe('vermelho-fora')
   })
 })
