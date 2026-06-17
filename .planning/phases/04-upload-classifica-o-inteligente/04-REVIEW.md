@@ -27,7 +27,17 @@ findings:
   warning: 4
   info: 3
   total: 8
-status: findings
+status: fixed
+fixed_at: 2026-06-16
+fix_summary:
+  CR-01: fixed
+  WR-01: fixed
+  WR-02: fixed
+  WR-03: fixed
+  WR-04: fixed
+  IN-01: deferred (v1 scope — income out of scope; documented)
+  IN-02: fixed
+  IN-03: fixed
 ---
 
 # Phase 4: Code Review Report — Upload + Classificação por memória
@@ -65,6 +75,8 @@ WR-03).
 ## Critical Issues
 
 ### CR-01: Parsers throw on the first malformed row and the throw escapes `ingestStatement` (one garbage line aborts the whole import + leaks a raw server error)
+
+**Status:** FIXED (4abdb89, 1cf082b) — per-row try/catch in parseOfx/parseCsv skips+counts malformed rows (`ParseResult.dropped`); ingestStatement wraps the parse dispatch so any residual throw becomes the friendly `{ error }`; dropped count surfaced as `summary.descartadas`. Hostile OFX+CSV fixtures + tests prove graceful degradation (good rows kept, bad rows reported, truncated file safe).
 
 **File:** `src/lib/parsers/ofx.ts:21,38` · `src/lib/parsers/csv.ts:19,77` · `src/actions/import.ts:281-298`
 
@@ -125,6 +137,8 @@ Consider surfacing the dropped-row count in `IngestSummary` so a file that parse
 
 ### WR-01: `confirmImport` trusts client-supplied row CONTENT — learning poisoning + dedupe forgery within the user's own data
 
+**Status:** FIXED (13624e6) — confirmImport re-reads the authoritative `statements.parsed_rows` server-side and keys by dedupe_key. The client payload contributes ONLY the user's category/reserva choice; descriptor_norm/amount/occurred_on/dedupe_key come from the persisted parse. A dedupe_key not in the persisted set rejects the whole payload. Tests: tampered descriptor_norm uses persisted content (no poison); forged dedupe_key rejected.
+
 **File:** `src/actions/import.ts:469-643` · `src/lib/schemas/import.ts:34-43`
 
 **Issue:** `confirmImport(statementId, rows)` validates SHAPE (`confirmImportRowSchema`) and
@@ -162,6 +176,8 @@ for (const r of parsedRows) {
 
 ### WR-02: No row-count cap — unbounded jsonb persist + N sequential per-row queries on a hostile file
 
+**Status:** FIXED (4abdb89, 1cf082b) — `MAX_PARSED_ROWS = 10_000` cap in both parsers (`ParseResult.capped`); ingestStatement rejects a capped statement with a friendly message (no silent truncate); the per-row transactions dedupe SELECT (2·N round-trips) is replaced with one `.in('dedupe_key', keys)` batch query.
+
 **File:** `src/lib/parsers/ofx.ts:60-85` · `src/lib/parsers/csv.ts:60-83` · `src/actions/import.ts:309-371`
 
 **Issue:** Neither parser caps the number of rows, and `ingestStatement` then (1) runs a per-row
@@ -190,6 +206,8 @@ const dupSet = new Set((dup ?? []).map((d) => d.dedupe_key))
 
 ### WR-03: Reserva row missing `reservaId` persists the transaction, THEN returns an error (server-side partial state)
 
+**Status:** FIXED (13624e6) — a Reserva-classified (`is_reserva`) row missing its reservaId is now rejected in the up-front validation pass, BEFORE any transaction insert, so the whole payload rejects and no transaction is ever persisted without its aporte ledger entry. Test pins no partial state (no ledger insert / no learn on rejection).
+
 **File:** `src/actions/import.ts:562-599` · `src/lib/ownership.ts:154-156`
 
 **Issue:** Transactions are inserted in the loop at lines 562-573 BEFORE the reserva-aporte sync
@@ -217,6 +235,8 @@ for (const r of parsedRows) {
 
 ### WR-04: `lookupCsvProfile` is exported from a `'use server'` module — it is a callable Server Action, not an internal helper
 
+**Status:** FIXED (bb84036) — relocated to a `import 'server-only'` module (`src/lib/csv-profile.server.ts`) so it is no longer registered as a network-callable Server Action; ingestStatement imports it from there. `server-only` aliased to a no-op in vitest.
+
 **File:** `src/actions/import.ts:414-426`
 
 **Issue:** `lookupCsvProfile` is `export async` inside a `'use server'` file, so Next.js registers
@@ -235,6 +255,8 @@ stay async + DB-touching, relocate it to a non-`'use server'` server-only module
 
 ### IN-01: OFX credits (positive TRNAMT — refunds, PIX received, salary) silently import as `kind: 'expense'`
 
+**Status:** DEFERRED — accepted for v1. The `transactions.kind` CHECK is `in ('expense')` (income is out of v1 scope) and all fixtures are debits. Branching `kind` on the TRNAMT/valor sign (or dropping/flagging positive-TRNAMT rows) is deferred to the income phase. Documented as a known v1 limitation, not addressed by code here.
+
 **File:** `src/lib/parsers/ofx.ts:35-42` · `src/actions/import.ts:544`
 
 **Issue:** `ofxAmountToCents` drops the sign and `confirmImport` hardcodes `kind: 'expense'`. This
@@ -249,6 +271,8 @@ booked as an expense. Document the limitation if accepting.
 
 ### IN-02: `normalizeDescriptor` strips a real trailing 2-letter word as if it were a UF code
 
+**Status:** FIXED (f348bef) — the trailing-token strip is now constrained to the 27 actual UF codes, so a legitimate 2-letter trailing word ('bar xv') is kept. Test pins the no-false-merge behavior.
+
 **File:** `src/lib/normalize.ts:51`
 
 **Issue:** `.replace(/\s+[a-z]{2}\s*$/g, ' ')` removes any trailing 2-letter token, intended for
@@ -261,6 +285,8 @@ an empty/odd key. Deterministic and test-pinned, so low impact, but a known fals
 e.g. `.replace(/\s(?:ac|al|ap|am|ba|ce|df|es|go|ma|mt|ms|mg|pa|pb|pr|pe|pi|rj|rn|rs|ro|rr|sc|sp|se|to)\s*$/,' ')`.
 
 ### IN-03: `lookupMemory` typed with bare `SupabaseClient` (loses the generated `Database` typing)
+
+**Status:** FIXED (e668d34) — `lookupMemory` now takes `SupabaseClient<Database>`, restoring column/row typing on the `merchant_patterns` query.
 
 **File:** `src/lib/classifier/memory.ts:20-22`
 
