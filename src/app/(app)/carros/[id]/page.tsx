@@ -60,7 +60,7 @@ export default async function CarroDetailPage({
   const { data: abastecimentos } = await supabase
     .from('abastecimentos')
     .select(
-      'id, occurred_on, odometro_km, litros, tanque_cheio, combustivel, transaction_id, amount_cents, transactions(amount_cents)',
+      'id, occurred_on, odometro_km, litros, tanque_cheio, combustivel, transaction_id, amount_cents, transactions(id, description, occurred_on, amount_cents)',
     )
     .eq('carro_id', id)
     .order('odometro_km', { ascending: false })
@@ -118,7 +118,12 @@ export default async function CarroDetailPage({
   // attach its interval km/l. supabase-js returns the embedded `transactions` as an
   // object (1:1) — guard the nullable join.
   const abastecimentoRows: AbastecimentoRow[] = (abastecimentos ?? []).map((a) => {
-    const linked = a.transactions as { amount_cents: number } | null
+    const linked = a.transactions as {
+      id: string
+      description: string
+      occurred_on: string
+      amount_cents: number
+    } | null
     // WR-03: distinguish "linked but amount unavailable" (embed null — e.g. the
     // linked tx was deleted) from a real zero. A linked row with no embedded amount
     // renders the sentinel instead of a misleading R$ 0,00.
@@ -127,6 +132,19 @@ export default async function CarroDetailPage({
         ? centsToBigInt(linked.amount_cents)
         : null
       : centsToBigInt(a.amount_cents)
+    // WR-01: the page-level `transacoes` list excludes ALL linked tx ids, so a
+    // fatura-linked row's OWN transaction is hidden from its edit picker. Surface
+    // the row's own linked transaction option so the edit form can render it as the
+    // selected choice (the create form keeps the all-linked-excluded list).
+    const linkedOption: TransacaoOption | null =
+      a.transaction_id && linked
+        ? {
+            id: linked.id,
+            description: linked.description,
+            occurred_on: linked.occurred_on,
+            amount_cents: linked.amount_cents,
+          }
+        : null
     return {
       id: a.id,
       occurred_on: a.occurred_on,
@@ -137,6 +155,7 @@ export default async function CarroDetailPage({
       transaction_id: a.transaction_id,
       custo_cents: custoCents,
       km_por_litro: kmPorLitroById.get(a.id) ?? null,
+      linked_transacao: linkedOption,
     }
   })
 

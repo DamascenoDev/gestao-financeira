@@ -57,6 +57,12 @@ export type AbastecimentoRow = {
   custo_cents: number | bigint | null
   /** km/l do intervalo from v_abastecimento_consumo (null when invalid/open). */
   km_por_litro: number | null
+  /**
+   * The row's OWN linked transaction (when fatura-linked) so the edit picker can
+   * render it as the selected option — the page-level `transacoes` list excludes all
+   * linked ids, which would otherwise hide this row's own choice (WR-01).
+   */
+  linked_transacao: TransacaoOption | null
 }
 
 /** Render a resolved cost, or the sentinel when a linked amount is unavailable (WR-03). */
@@ -105,6 +111,15 @@ function RowActions({
   const [deleteOpen, setDeleteOpen] = React.useState(false)
   const [isPending, startTransition] = React.useTransition()
 
+  // WR-01: the page-level `transacoes` excludes ALL linked tx ids, so this row's own
+  // linked lançamento is missing. Re-add it (deduped) for the edit picker so a
+  // fatura-linked row can see and re-confirm its current selection.
+  const editTransacoes = React.useMemo<TransacaoOption[]>(() => {
+    const own = row.linked_transacao
+    if (!own || transacoes.some((t) => t.id === own.id)) return transacoes
+    return [own, ...transacoes]
+  }, [row.linked_transacao, transacoes])
+
   function onDelete() {
     startTransition(async () => {
       const result = await deleteAbastecimento(row.id)
@@ -143,7 +158,7 @@ function RowActions({
       <AbastecimentoForm
         carroId={carroId}
         combustivelPadrao={combustivelPadrao}
-        transacoes={transacoes}
+        transacoes={editTransacoes}
         edit={toEdit(row)}
         open={editOpen}
         onOpenChange={setEditOpen}
