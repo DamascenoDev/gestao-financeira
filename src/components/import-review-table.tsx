@@ -67,6 +67,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { confirmImport } from '@/actions/import'
+import { CARRO_NONE } from '@/lib/carro'
 import { cn } from '@/lib/utils'
 
 /** A category option for the inline + bulk classify (is_reserva drives the picker). */
@@ -84,8 +85,10 @@ export type ReviewCategory = {
  */
 export type CarroOption = { id: string; apelido: string }
 
-/** The sentinel "Nenhum" Select value (empty string is not a valid SelectItem value). */
-const NENHUM_CARRO = '__nenhum__'
+/** WR-04: the shared "Nenhum" Select sentinel (empty string is not a valid SelectItem
+ *  value). Imported from lib/carro.ts so it agrees with CarroPicker + SelectionActionBar
+ *  and cannot drift (it used to be a divergent `__nenhum__` literal). Never persisted. */
+const NENHUM_CARRO = CARRO_NONE
 
 /**
  * A pre-persist review row (un-persisted parsed transaction). Client-side state — a

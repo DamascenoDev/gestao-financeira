@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 
+import { CARRO_NONE } from '@/lib/carro'
 import {
   Field,
   FieldDescription,
@@ -18,10 +19,10 @@ import {
 
 export type CarroOption = { id: string; apelido: string }
 
-/** Sentinel value for the "Nenhum" (clear) option — Radix Select forbids an empty
- * string item value, so the clear option carries this token and is decoded back to
- * '' (none) in onChange. */
-const NONE = '__none__'
+/** WR-04: the shared "Nenhum" (clear) sentinel — Radix Select forbids an empty-string
+ * item value, so the clear option carries this token and is decoded back to '' (none)
+ * in onChange. Hoisted to lib/carro.ts so it cannot drift across components. */
+const NONE = CARRO_NONE
 
 /**
  * CarroPicker (CAR-02) — the optional "Carro" selector. Mirrors ReservaPicker's

@@ -3,6 +3,7 @@
 import * as React from 'react'
 import { useTransition } from 'react'
 
+import { CARRO_NONE } from '@/lib/carro'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -15,9 +16,6 @@ import { cn } from '@/lib/utils'
 
 export type SelectionCategory = { id: string; name: string }
 export type SelectionCarro = { id: string; apelido: string }
-
-/** Sentinel for the "Nenhum" (unlink) carro option — Radix forbids empty item values. */
-const CARRO_NONE = '__none__'
 
 /**
  * SelectionActionBar — a SELF-CONTAINED bulk-reclassify bar (UI-SPEC §3). Takes
