@@ -1,0 +1,587 @@
+'use client'
+
+import {
+  flexRender,
+  getCoreRowModel,
+  getSortedRowModel,
+  useReactTable,
+  type ColumnDef,
+  type RowSelectionState,
+  type SortingState,
+} from '@tanstack/react-table'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { toast } from 'sonner'
+
+import { AmountCell } from '@/components/amount-cell'
+import { CategoryBadge } from '@/components/category-badge'
+import { ImportSummaryHeader, type ImportSummary } from '@/components/import-summary-header'
+import { OriginBadge } from '@/components/origin-badge'
+import { RecorrenteTag } from '@/components/recorrente-tag'
+import { ReservaPicker, type ReservaOption } from '@/components/reserva-picker'
+import {
+  SelectionActionBar,
+  type SelectionCategory,
+} from '@/components/selection-action-bar'
+import { SuggestionSlot } from '@/components/suggestion-slot'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
+import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
+import { confirmImport } from '@/actions/import'
+import { cn } from '@/lib/utils'
+
+/** A category option for the inline + bulk classify (is_reserva drives the picker). */
+export type ReviewCategory = {
+  id: string
+  name: string
+  color: string | null
+  isReserva?: boolean
+}
+
+/**
+ * A pre-persist review row (un-persisted parsed transaction). Client-side state — a
+ * stable id (dedupe_key or temp id) feeds TanStack getRowId + the eventual confirm
+ * payload. category_id null = memory-miss (unclassified). reserva_id is set when the
+ * chosen category is the Reserva one (RSV-06).
+ */
+export type ReviewRow = {
+  id: string
+  dedupe_key: string
+  occurred_on: string // yyyy-MM-dd
+  amount: number | string // integer cents (OFX) or raw BRL (CSV) — confirmImport resolves
+  amount_cents: number // for display only
+  descriptor_raw: string
+  descriptor_norm: string
+  category_id: string | null
+  reserva_id: string | null
+  origin: 'memória' | 'manual' | 'não classificada'
+  is_recurring: boolean
+}
+
+/** "dd/MM" from a yyyy-MM-dd civil date (no tz ambiguity). */
+function ddMM(occurredOn: string): string {
+  const [, m, d] = occurredOn.split('-')
+  return `${d}/${m}`
+}
+
+/**
+ * ImportReviewTable (UI-SPEC §3) — the core pre-persist review grid. A SIBLING of
+ * ExtratoTable: @tanstack/react-table, getRowId by the parsed row's stable key, the
+ * SAME checkbox/select model, the SAME inline CategoryBadge Select cell, and the SAME
+ * focused "Qual reserva?" dialog (ReservaPicker) when a row is classified into the
+ * Reserva category. Operates on UN-PERSISTED rows held in client state — NOTHING is
+ * written to transactions until "Confirmar importação".
+ *
+ * Memory-miss (unclassified) rows get a `border-l-2 border-l-consumption` accent +
+ * an amber "Não classificada" OriginBadge so they are scannable in a dense grid;
+ * classifying drops the accent and flips Origem to `manual`. Bulk-classify reuses the
+ * SelectionActionBar verbatim (label "Classificar", Reserva excluded — same rule as
+ * Extrato). On confirm, confirmImport persists + learns; on success a toast + route
+ * to /extrato. K>0 raises a non-blocking "Importar sem classificar?" guard.
+ */
+export function ImportReviewTable({
+  statementId,
+  initialRows,
+  categories,
+  reservas = [],
+}: {
+  statementId: string
+  initialRows: ReviewRow[]
+  categories: ReviewCategory[]
+  reservas?: ReservaOption[]
+}) {
+  const router = useRouter()
+  const [rows, setRows] = React.useState<ReviewRow[]>(initialRows)
+  const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
+  const [sorting, setSorting] = React.useState<SortingState>([
+    { id: 'occurred_on', desc: true },
+  ])
+  const [onlyUnclassified, setOnlyUnclassified] = React.useState(false)
+  const [isConfirming, setIsConfirming] = React.useState(false)
+  const [guardOpen, setGuardOpen] = React.useState(false)
+
+  // The Reserva category is NOT a valid bulk target (the bulk path can't collect a
+  // per-row reservaId for the aporte) — drop it from the picker, same rule as Extrato.
+  const selectCategories: SelectionCategory[] = React.useMemo(
+    () =>
+      categories
+        .filter((c) => !c.isReserva)
+        .map((c) => ({ id: c.id, name: c.name })),
+    [categories],
+  )
+
+  /** Classify a row in client state (inline pick or bulk). Flips origem + accent. */
+  const classifyRow = React.useCallback(
+    (id: string, categoryId: string, reservaId: string | null) => {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id
+            ? {
+                ...r,
+                category_id: categoryId,
+                reserva_id: reservaId,
+                origin: 'manual',
+              }
+            : r,
+        ),
+      )
+    },
+    [],
+  )
+
+  const visibleRows = React.useMemo(
+    () => (onlyUnclassified ? rows.filter((r) => r.category_id === null) : rows),
+    [rows, onlyUnclassified],
+  )
+
+  const summary: ImportSummary = React.useMemo(
+    () => ({
+      total: initialRows.length,
+      // M (novas) is authoritative only after confirm; pre-confirm we surface the
+      // parsed total as the candidate count. Duplicates were pre-marked at ingest and
+      // are not in this grid (they collapse on confirm), so novas == total here.
+      novas: rows.length,
+      naoClassificadas: rows.filter((r) => r.category_id === null).length,
+      duplicadas: Math.max(0, initialRows.length - rows.length),
+    }),
+    [rows, initialRows.length],
+  )
+
+  const columns = React.useMemo<ColumnDef<ReviewRow>[]>(
+    () => [
+      {
+        id: 'select',
+        enableSorting: false,
+        header: ({ table }) => (
+          <Checkbox
+            checked={table.getIsAllRowsSelected()}
+            indeterminate={
+              table.getIsSomeRowsSelected() && !table.getIsAllRowsSelected()
+            }
+            onCheckedChange={(v) => table.toggleAllRowsSelected(!!v)}
+            aria-label="Selecionar todas"
+          />
+        ),
+        cell: ({ row }) => (
+          <Checkbox
+            checked={row.getIsSelected()}
+            onCheckedChange={(v) => row.toggleSelected(!!v)}
+            aria-label="Selecionar linha"
+          />
+        ),
+      },
+      {
+        accessorKey: 'occurred_on',
+        header: 'Data',
+        cell: ({ row }) => (
+          <span className="font-mono text-sm tabular-nums text-muted-foreground">
+            {ddMM(row.original.occurred_on)}
+          </span>
+        ),
+      },
+      {
+        accessorKey: 'descriptor_raw',
+        header: 'Descritor',
+        enableSorting: false,
+        cell: ({ row }) => {
+          const raw = row.original.descriptor_raw || '—'
+          return (
+            <div className="flex flex-col gap-0.5">
+              <div className="flex items-center gap-2">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger
+                      render={
+                        <span className="block max-w-[28ch] truncate text-sm">
+                          {raw}
+                        </span>
+                      }
+                    />
+                    <TooltipContent>{raw}</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                {row.original.is_recurring ? <RecorrenteTag /> : null}
+              </div>
+              <span className="font-mono text-xs text-muted-foreground">
+                {row.original.descriptor_norm}
+              </span>
+            </div>
+          )
+        },
+      },
+      {
+        accessorKey: 'category_id',
+        header: 'Categoria',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <InlineReviewCategoryCell
+            row={row.original}
+            categories={categories}
+            reservas={reservas}
+            onClassify={classifyRow}
+          />
+        ),
+      },
+      {
+        id: 'origin',
+        header: 'Origem',
+        enableSorting: false,
+        cell: ({ row }) => (
+          <OriginBadge
+            variant={
+              row.original.category_id === null
+                ? 'não classificada'
+                : row.original.origin
+            }
+          />
+        ),
+      },
+      {
+        accessorKey: 'amount_cents',
+        header: () => <div className="text-right">Valor</div>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <AmountCell
+              cents={row.original.amount_cents}
+              kind="expense"
+              signed={false}
+            />
+          </div>
+        ),
+      },
+    ],
+    [categories, reservas, classifyRow],
+  )
+
+  const table = useReactTable({
+    data: visibleRows,
+    columns,
+    state: { rowSelection, sorting },
+    getRowId: (r) => r.id, // stable parsed-row key (dedupe_key/temp id)
+    enableRowSelection: true,
+    onRowSelectionChange: setRowSelection,
+    onSortingChange: setSorting,
+    getCoreRowModel: getCoreRowModel(),
+    getSortedRowModel: getSortedRowModel(),
+  })
+
+  const selectedIds = Object.keys(rowSelection)
+
+  async function applyBulk(categoryId: string) {
+    const n = selectedIds.length
+    for (const id of selectedIds) {
+      // Bulk excludes Reserva (no per-row reservaId), so reserva_id is null here.
+      classifyRow(id, categoryId, null)
+    }
+    toast.success(
+      `${n} ${n === 1 ? 'transação classificada' : 'transações classificadas'}`,
+    )
+    return { ok: true } as const
+  }
+
+  function runConfirm() {
+    setIsConfirming(true)
+    const payload = rows.map((r) => ({
+      id: r.id,
+      dedupe_key: r.dedupe_key,
+      occurred_on: r.occurred_on,
+      amount: r.amount,
+      descriptor_raw: r.descriptor_raw,
+      descriptor_norm: r.descriptor_norm,
+      categoryId: r.category_id,
+      reservaId: r.reserva_id ?? undefined,
+    }))
+    confirmImport(statementId, payload)
+      .then((result) => {
+        if ('error' in result) {
+          toast.error(result.error)
+          setIsConfirming(false)
+          return
+        }
+        toast.success(
+          `${result.imported} ${result.imported === 1 ? 'transação importada' : 'transações importadas'}`,
+        )
+        router.push('/extrato')
+      })
+      .catch(() => {
+        toast.error('Não foi possível importar as transações. Tente de novo.')
+        setIsConfirming(false)
+      })
+  }
+
+  function onConfirmClick() {
+    const k = rows.filter((r) => r.category_id === null).length
+    if (k > 0) {
+      setGuardOpen(true)
+      return
+    }
+    runConfirm()
+  }
+
+  const unclassifiedCount = rows.filter((r) => r.category_id === null).length
+
+  return (
+    <div className="flex flex-col gap-4">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <ImportSummaryHeader
+          summary={summary}
+          onFilterUnclassified={() => setOnlyUnclassified((v) => !v)}
+        />
+        <Button type="button" onClick={onConfirmClick} disabled={isConfirming}>
+          {isConfirming ? 'Importando…' : 'Confirmar importação'}
+        </Button>
+      </div>
+
+      {onlyUnclassified ? (
+        <button
+          type="button"
+          onClick={() => setOnlyUnclassified(false)}
+          className="w-fit text-xs text-muted-foreground hover:underline"
+        >
+          Mostrando apenas não classificadas — ver todas
+        </button>
+      ) : null}
+
+      <Table>
+        <TableHeader>
+          <TableRow>
+            {table.getHeaderGroups()[0]?.headers.map((header) => {
+              const canSort = header.column.getCanSort()
+              return (
+                <TableHead
+                  key={header.id}
+                  className={cn(
+                    header.column.id === 'select' && 'w-10',
+                    header.column.id === 'occurred_on' && 'w-16',
+                    canSort && 'cursor-pointer select-none',
+                  )}
+                  onClick={
+                    canSort ? header.column.getToggleSortingHandler() : undefined
+                  }
+                >
+                  {header.isPlaceholder
+                    ? null
+                    : flexRender(
+                        header.column.columnDef.header,
+                        header.getContext(),
+                      )}
+                  {canSort
+                    ? { asc: ' ↑', desc: ' ↓' }[
+                        header.column.getIsSorted() as string
+                      ] ?? null
+                    : null}
+                </TableHead>
+              )
+            })}
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {table.getRowModel().rows.map((row) => (
+            <TableRow
+              key={row.id}
+              data-state={row.getIsSelected() ? 'selected' : undefined}
+              className={cn(
+                row.original.category_id === null &&
+                  'border-l-2 border-l-consumption',
+              )}
+            >
+              {row.getVisibleCells().map((cell) => (
+                <TableCell key={cell.id} className="py-2">
+                  {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                </TableCell>
+              ))}
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+
+      <SelectionActionBar
+        selectedIds={selectedIds}
+        categories={selectCategories}
+        onApply={applyBulk}
+        onClear={() => setRowSelection({})}
+      />
+
+      <AlertDialog open={guardOpen} onOpenChange={setGuardOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Importar sem classificar?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Há {unclassifiedCount} transações não classificadas. Elas serão
+              importadas sem categoria e você pode classificá-las depois no extrato.
+              Confirmar mesmo assim?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Voltar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                setGuardOpen(false)
+                runConfirm()
+              }}
+            >
+              Confirmar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  )
+}
+
+/**
+ * The inline Categoria editor — mirrors ExtratoTable's InlineCategoryCell but mutates
+ * CLIENT state (nothing persisted until confirm). Choosing the Reserva category opens
+ * the focused "Qual reserva?" dialog; on confirm the row is flagged as an aporte (the
+ * ledger entry is created at Confirmar, not here). When empty, shows the inert
+ * SuggestionSlot + an amber "Classificar" affordance.
+ */
+function InlineReviewCategoryCell({
+  row,
+  categories,
+  reservas,
+  onClassify,
+}: {
+  row: ReviewRow
+  categories: ReviewCategory[]
+  reservas: ReservaOption[]
+  onClassify: (id: string, categoryId: string, reservaId: string | null) => void
+}) {
+  const current = categories.find((c) => c.id === row.category_id)
+  const [pendingCategoryId, setPendingCategoryId] = React.useState<string | null>(
+    null,
+  )
+  const [reservaId, setReservaId] = React.useState('')
+  const [reservaError, setReservaError] = React.useState<string | undefined>()
+
+  function onChange(next: string) {
+    if (!next || next === row.category_id) return
+    const target = categories.find((c) => c.id === next)
+    if (target?.isReserva) {
+      setPendingCategoryId(next)
+      setReservaId('')
+      setReservaError(undefined)
+      return
+    }
+    onClassify(row.id, next, null)
+  }
+
+  function confirmReserva() {
+    if (!reservaId) {
+      setReservaError('Selecione uma reserva.')
+      return
+    }
+    if (pendingCategoryId) {
+      onClassify(row.id, pendingCategoryId, reservaId)
+      setPendingCategoryId(null)
+    }
+  }
+
+  return (
+    <div className="flex flex-col gap-1">
+      <Select value={row.category_id ?? null} onValueChange={(v) => onChange(v ?? '')}>
+        <SelectTrigger
+          size="sm"
+          className="border-transparent bg-transparent hover:border-input"
+          aria-label="Classificar"
+        >
+          <SelectValue
+            placeholder={
+              <span className="text-consumption">Classificar</span>
+            }
+          >
+            {current ? (
+              <CategoryBadge name={current.name} color={current.color} />
+            ) : null}
+          </SelectValue>
+        </SelectTrigger>
+        <SelectContent>
+          {categories.map((c) => (
+            <SelectItem key={c.id} value={c.id}>
+              <CategoryBadge name={c.name} color={c.color} />
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      {row.category_id === null ? <SuggestionSlot /> : null}
+
+      <Dialog
+        open={pendingCategoryId !== null}
+        onOpenChange={(o) => {
+          if (!o) setPendingCategoryId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Qual reserva?</DialogTitle>
+            <DialogDescription>
+              Classificar como Reserva registra este lançamento como aporte.
+            </DialogDescription>
+          </DialogHeader>
+          <ReservaPicker
+            id="import-reserva"
+            reservas={reservas}
+            value={reservaId}
+            onChange={(v) => {
+              setReservaId(v)
+              setReservaError(undefined)
+            }}
+            error={reservaError}
+          />
+          <DialogFooter className="mt-6">
+            <DialogClose
+              render={
+                <Button type="button" variant="outline">
+                  Cancelar
+                </Button>
+              }
+            />
+            <Button type="button" onClick={confirmReserva}>
+              Confirmar aporte
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
