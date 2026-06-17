@@ -4,6 +4,7 @@ import { ArrowDownCircle, FileText, LayoutDashboard, PiggyBank, ReceiptText, Shi
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 
+import { BrandMark } from '@/components/brand-mark'
 import {
   Sidebar,
   SidebarContent,
@@ -38,7 +39,8 @@ export function AppSidebar() {
     <Sidebar collapsible="icon">
       <SidebarHeader>
         <div className="flex items-center gap-2 px-2 py-1.5">
-          <span className="text-sm font-semibold group-data-[collapsible=icon]:hidden">
+          <BrandMark size={24} />
+          <span className="font-heading text-sm font-semibold group-data-[collapsible=icon]:hidden">
             Gestão Financeira
           </span>
         </div>
@@ -55,7 +57,7 @@ export function AppSidebar() {
                     <SidebarMenuButton
                       isActive={isActive}
                       tooltip={item.label}
-                      className="data-active:bg-muted data-active:text-primary"
+                      className="relative transition-colors data-active:bg-sidebar-accent data-active:text-primary data-active:font-medium data-active:before:absolute data-active:before:inset-y-1 data-active:before:left-0 data-active:before:w-0.5 data-active:before:rounded-full data-active:before:bg-primary"
                       render={
                         <Link href={item.href}>
                           <item.icon className="size-4" />
