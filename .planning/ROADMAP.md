@@ -86,7 +86,7 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
   4. Usuário sobe uma fatura real (OFX/CSV) em produção, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando ao vivo — core value provado
   5. `v_abastecimento_consumo` em produção computa km/l e R$/km corretos no edge same-odometer (WR-02 fechado); SUMMARYs das fases 9/10 trazem `requirements_completed`
 
-**Plans**: 3/7 plans executed
+**Plans**: 3/11 plans executed (12-08..12-11 = gap-closure fixes for live-verify defects G-01..G-06, recorded in 12-VERIFICATION.md)
 
 Plans:
 **Wave 1**
@@ -116,6 +116,24 @@ Plans:
 **Wave 7** *(blocked on Wave 6 completion)*
 
 - [ ] 12-07-PLAN.md — live-verify LGPD export + type-to-confirm delete + deployed-bundle secret gate (executes 06-05; DATA-01/02 + SEC-01)
+
+**Gap closure** *(local code fixes for the 6 live-verify defects G-01..G-06; verified LOCALLY — vitest/tsc/build — then redeploy + re-run waves 4-7 against the clean bundle. D-08 superseded for this cycle.)*
+
+**Wave 8**
+
+- [ ] 12-08-PLAN.md — G-01 (systemic): Select trigger renders the item LABEL not the raw value/`__none__` — items label-map at every value≠label call site + render test (gap_closure, autonomous)
+
+**Wave 9**
+
+- [ ] 12-09-PLAN.md — G-02+G-03+G-04 dashboard adherence cluster: truncate long labels (no bar overlap), render zero-spend metas, calm under-teto reads "Dentro"; RED→GREEN unit tests on adherence.ts (gap_closure, autonomous; re-verifies BUD-02)
+
+**Wave 10**
+
+- [ ] 12-10-PLAN.md — G-05: delete affordance for receitas (confirmed Excluir → existing deleteOccurrence action; recurring-vs-avulsa copy) (gap_closure, autonomous; re-verifies INC-02)
+
+**Wave 11** *(depends on 12-08 — shared edits to transacao-form/nf-form)*
+
+- [ ] 12-11-PLAN.md — G-06: replace native `<input type=date>` with a pt-BR dd/mm/aaaa BrDateField (ISO storage kept) across all 6 forms + round-trip test (gap_closure, autonomous)
 
 ### Phase 13: PDF de Fatura
 
