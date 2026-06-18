@@ -44,6 +44,9 @@ export interface RawTransaction {
   descriptor_norm: string
   /** OFX bank-stable id (best dedupe basis); absent for CSV. */
   fitid?: string
+  /** PDF estorno/credit marker; absent (⇒ expense) for OFX/CSV. The sign/effect
+   *  derives from kind, never the (always-positive) amount_cents. */
+  kind?: 'expense' | 'credit'
 }
 
 /** Classification origin for the review row + persisted classification_source. */
