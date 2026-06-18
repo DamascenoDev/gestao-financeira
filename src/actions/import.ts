@@ -20,6 +20,11 @@ import {
 import { parseCsv, parseCsvRaw, readCsvHeaders } from '@/lib/parsers/csv'
 import { parseOfx } from '@/lib/parsers/ofx'
 import {
+  extractPdfText,
+  findStatementVencimento,
+  parseSantanderText,
+} from '@/lib/parsers/pdf'
+import {
   MAX_PARSED_ROWS,
   type ParsedReviewRow,
   type RawTransaction,
@@ -100,8 +105,8 @@ const EXTRATO_PATH = '/extrato'
 const RESERVAS_PATH = '/reservas'
 const DASHBOARD_PATH = '/dashboard'
 
-/** Only OFX and CSV are accepted (the bucket path ext + the parser dispatch key). */
-const extSchema = z.enum(['ofx', 'csv'])
+/** OFX, CSV and PDF are accepted (the bucket path ext + the parser dispatch key). */
+const extSchema = z.enum(['ofx', 'csv', 'pdf'])
 
 /** A non-empty original filename; defaults handled by the caller. */
 const filenameSchema = z.string().min(1, 'Informe o nome do arquivo').max(255)
@@ -186,7 +191,7 @@ export async function createSignedStatementUpload(
   }
   const parsedExt = extSchema.safeParse(ext.toLowerCase())
   if (!parsedExt.success) {
-    return { error: 'Formato não suportado. Envie um arquivo OFX ou CSV.' }
+    return { error: 'Formato não suportado. Envie um arquivo OFX, CSV ou PDF.' }
   }
 
   const supabase = await createClient()
@@ -235,14 +240,20 @@ export async function ingestStatement(
   // caller's uid is rejected before we ever touch Storage.
   if (!path.startsWith(`${userId}/`)) return { error: 'Caminho inválido.' }
 
-  const ext = path.toLowerCase().endsWith('.csv') ? 'csv' : 'ofx'
+  // 3-way ext detection (Plan 13-03): `.csv` → csv, `.pdf` → pdf, else ofx.
+  const lowerPath = path.toLowerCase()
+  const ext = lowerPath.endsWith('.csv')
+    ? 'csv'
+    : lowerPath.endsWith('.pdf')
+      ? 'pdf'
+      : 'ofx'
 
   // Download the object the browser uploaded direct to Storage.
   const { data: blob, error: dlError } = await supabase.storage
     .from(BUCKET)
     .download(path)
   if (dlError || !blob) {
-    return { error: 'Não foi possível ler este arquivo. Verifique se é um extrato OFX/CSV válido e tente de novo.' }
+    return { error: 'Não foi possível ler este arquivo. Verifique se é um extrato OFX, CSV ou PDF válido e tente de novo.' }
   }
   const bytes = Buffer.from(await blob.arrayBuffer())
   const hash = contentHash(bytes)
@@ -285,24 +296,53 @@ export async function ingestStatement(
   }
 
   const statementId = inserted.id
-  const text = decodeStatement(bytes)
 
   // Parse by extension. CSV needs a mapping; resolve it from the argument, a saved
   // profile, or auto-map — else return the needsMapping branch.
   //
   // CR-01: the parsers skip malformed rows internally, but belt-and-suspenders we
   // wrap the dispatch so ANY residual throw becomes the documented friendly
-  // { error } instead of escaping the 'use server' boundary as an opaque 500.
+  // { error } instead of escaping the 'use server' boundary as an opaque 500. The
+  // PDF extraction lives INSIDE this wrapper too (T-13-06 / V12): a pdf.js throw
+  // degrades to the same friendly { error }, never a 500.
+  //
+  // Pitfall 7: decodeStatement (latin1) is CSV/OFX-only — PDF text is already
+  // Unicode (pdf.js), so it must NOT pass through the latin1 heuristic.
   let rawRows: RawTransaction[]
   let dropped: number
   let capped: boolean
   try {
-    if (ext === 'ofx') {
+    if (ext === 'pdf') {
+      // PDF (PDF-02/04): extract straight from the buffer (no decodeStatement). An
+      // empty/whitespace extract is the image-only HARD BLOCK (PDF-04) — DISTINCT
+      // from a text-present 0-row parse, which flows to the review grid below.
+      const pdfTextContent = await extractPdfText(bytes)
+      if (pdfTextContent.trim().length === 0) {
+        return {
+          error:
+            'Não foi possível ler o texto deste PDF — provavelmente é uma imagem/digitalização. ' +
+            'Envie o extrato em CSV ou OFX desse banco.',
+        }
+      }
+      const venc = findStatementVencimento(pdfTextContent) ?? {
+        // No full DD/MM/YYYY anchor (layout drift): fall back to today's civil
+        // month/year so the tx DD/MM still resolve. Honest counts + the review
+        // grid remain the safety net (D-01); we never silently drop the file.
+        month: new Date().getMonth() + 1,
+        year: new Date().getFullYear(),
+      }
+      const result = parseSantanderText(pdfTextContent, venc)
+      rawRows = result.rows
+      dropped = result.dropped
+      capped = result.capped
+    } else if (ext === 'ofx') {
+      const text = decodeStatement(bytes)
       const result = parseOfx(text)
       rawRows = result.rows
       dropped = result.dropped
       capped = result.capped
     } else {
+      const text = decodeStatement(bytes)
       const headers = readCsvHeaders(text)
       let resolved: CsvMapping | undefined = mapping
       if (!resolved) {
@@ -324,7 +364,7 @@ export async function ingestStatement(
   } catch {
     return {
       error:
-        'Não foi possível ler este arquivo. Verifique se é um extrato OFX/CSV válido e tente de novo.',
+        'Não foi possível ler este arquivo. Verifique se é um extrato OFX, CSV ou PDF válido e tente de novo.',
     }
   }
 
