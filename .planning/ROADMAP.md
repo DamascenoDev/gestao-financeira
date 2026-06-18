@@ -178,7 +178,7 @@ Phases execute in numeric order: … → 11 → 12 → 13. Decimal phases (e.g. 
 | 10. Abastecimento híbrido + consumo | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 11. Detalhe do carro + gráfico de consumo | v1.2 | 4/4 | Complete | 2026-06-17 |
 | 12. Produção & Live-Verify | v1.3 | 11/11 | Complete   | 2026-06-18 |
-| 13. PDF de Fatura | v1.3 | 4/4 | Complete   | 2026-06-18 |
+| 13. PDF de Fatura | v1.3 | 4/4 | Complete    | 2026-06-18 |
 
 ## Deferred (cross-milestone)
 

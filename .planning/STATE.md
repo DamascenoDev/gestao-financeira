@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
 current_phase: 13
-current_phase_name: pdf-de-fatura
-status: executing
-stopped_at: "Phase 13 code complete; 2 human gates pending (13-02 db push → 13-04 real-PDF verify)"
-last_updated: "2026-06-18T17:22:23.871Z"
+status: verifying
+stopped_at: Phase 13 UI-SPEC approved
+last_updated: "2026-06-18T18:45:47.263Z"
 last_activity: 2026-06-18
-last_activity_desc: "Phase 13 — 13-01 (parser) + 13-03 (ingest wiring) complete; 13-02 + 13-04 code done, mid-flight at human gates: (1) 13-02 supabase db push local+prod + gen types, then (2) 13-04 real local Santander PDF end-to-end verify. All code green: tsc clean, build OK, 784 tests pass."
+last_activity_desc: Phase 13 complete
 progress:
   total_phases: 2
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 15
-  completed_plans: 13
-  percent: 50
+  completed_plans: 15
+  percent: 100
+current_phase_name: pdf-de-fatura
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 13 (pdf-de-fatura) — EXECUTING (code complete; 2 human gates pending)
-Plan: 4 of 4 (all code written; 13-02 + 13-04 mid-flight at human gates)
+Phase: 13
+Plan: Not started
 Status: 13-02 LOCAL schema applied — migrations 0031 (transactions.kind→credit) + 0032 (statements.format→pdf, added during Gate-2 retest) applied via `supabase migration up --local` and verified in pg_constraint. PROD `supabase db push` (0031+0032) + `npm run gen:types` still pending (user, needs creds — Gate 1 prod half). 13-04 ready to re-test locally end-to-end (Gate 2). Held executors: 13-02=a60156b92d4c7e106, 13-04=a5b3a6997f96083e5.
-Last activity: 2026-06-18 — 13-01 (parser/TDD) + 13-03 (ingest wiring) complete with SUMMARYs; 13-02 (migration 0031 written, push pending) + 13-04 (UI + route code done, real-PDF verify pending) mid-flight. Gate-2 found+fixed a blocking bug: PDF upload failed in the Next server because pdf-parse was bundled (worker/font path break) — added serverExternalPackages:['pdf-parse'] (c008e76) + surfaced the swallowed error + server message in the UI (e90ee53). Parser proven against real Santander faturas (98/116 rows). User must restart `npm run dev` (config change) and re-test Gate 2.
+Last activity: 2026-06-18 — Phase 13 complete
 
 ## Performance Metrics
 
