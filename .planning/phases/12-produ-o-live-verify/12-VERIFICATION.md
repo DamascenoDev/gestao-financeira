@@ -80,3 +80,26 @@ run because gap G-01 (Select) is systemic and would contaminate their selects/pi
 - **Fix target:** replace the native date input with a pt-BR-formatted date field (masked input or the
   existing date-picker component formatted via date-fns/`Intl` `pt-BR`), and audit every date surface to
   confirm dd/mm/aaaa. Keep storage as ISO `yyyy-MM-dd`.
+
+### G-07 — [MED] Import review grid carro select shows `__none__` (G-01 residual)
+- **Observed (prod):** in `/importar/[id]` review grid, the per-row "Vincular a carro" column renders
+  `__none__` instead of "Nenhum".
+- **Root cause:** `src/components/import-review-table.tsx` → `InlineReviewCarroCell` (~line 705) uses
+  `<SelectValue placeholder=…>` with NO Base UI `items` map, so the trigger shows the raw `NENHUM_CARRO`
+  sentinel. The 12-08 G-01 fix covered transacao-form/carro-picker/reserva-picker/selection-action-bar/
+  nf-form/category-delete-dialog but NOT this import-grid cell. (The grid's CategoryCell is fine — it
+  renders the label correctly.)
+- **Fix target:** give the `InlineReviewCarroCell` `<Select>` an `items` value→label map
+  (`{ [NENHUM_CARRO]: 'Nenhum', ...carros→apelido }`) exactly like the 12-08 call sites.
+
+### G-08 — [MED] "0 transações importadas" toast on re-confirm of an already-imported statement
+- **Observed (prod):** confirming an import whose rows are all already in the DB shows the toast
+  "0 transações importadas", which reads like a failure. (The real import of 22 transactions succeeded;
+  the user re-confirmed an already-imported statement → dedup `23505` skipped all 22 → imported=0.)
+- **Root cause:** `import-review-table.tsx:380` always renders `${result.imported} … transações
+  importadas`; when `imported === 0 && duplicated > 0` it produces "0 transações importadas". The
+  result already carries `duplicated`.
+- **Fix target:** branch the toast — when `imported === 0 && duplicated > 0`, show e.g. "Todas as
+  {duplicated} transações já estavam no extrato" (reuse the page's existing all-duplicate copy tone);
+  optionally surface duplicated count on partial imports. ALSO verify (defensive) that the first,
+  genuine import reports the correct count (insertedByKey populated from the insert-return).
