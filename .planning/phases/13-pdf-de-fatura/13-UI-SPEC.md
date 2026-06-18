@@ -1,10 +1,11 @@
 ---
 phase: 13
 slug: pdf-de-fatura
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (detected — locked since Phase 7 v1.1 "Identidade visual")
 created: 2026-06-18
+reviewed_at: 2026-06-18
 ---
 
 # Phase 13 — UI Design Contract
