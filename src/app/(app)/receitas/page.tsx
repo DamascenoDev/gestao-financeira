@@ -1,8 +1,6 @@
 import { AmountCell } from '@/components/amount-cell'
-import { EditOccurrenceDialog } from '@/components/receita-form'
-import { ReceitaForm } from '@/components/receita-form'
+import { ReceitaForm, ReceitaRowActions } from '@/components/receita-form'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
 import {
   Empty,
   EmptyContent,
@@ -125,16 +123,11 @@ export default async function ReceitasPage({
                     />
                   </TableCell>
                   <TableCell className="text-right">
-                    <EditOccurrenceDialog
+                    <ReceitaRowActions
                       occurrenceId={row.id}
                       templateId={row.template_id}
                       monthKey={mes}
                       currentAmount={centsToEditableBRL(row.amount_cents)}
-                      trigger={
-                        <Button type="button" size="sm" variant="ghost">
-                          Editar
-                        </Button>
-                      }
                     />
                   </TableCell>
                 </TableRow>
