@@ -65,6 +65,20 @@ let signedUrlResult: QueryResult = {
 const ofxBytes = (name: string): Uint8Array =>
   new Uint8Array(readFileSync(join(process.cwd(), 'tests/fixtures', name)))
 
+// PDF seam (Plan 13-03): mock the 13-01 extractor so the action tests drive the
+// image-only-vs-0-rows distinction deterministically without a real PDF buffer.
+// `pdfText` is what extractPdfText returns; parseSantanderText runs for real (pure)
+// over that text, so a text-present-but-0-matching-lines string exercises the
+// real 0-row review path (NOT the image-only block).
+let pdfText = ''
+vi.mock('@/lib/parsers/pdf', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/lib/parsers/pdf')>()
+  return {
+    ...actual,
+    extractPdfText: vi.fn(async () => pdfText),
+  }
+})
+
 // A minimal chainable builder modelling the calls import.ts makes per table.
 function makeBuilder(from: string) {
   let op = ''
@@ -279,6 +293,7 @@ beforeEach(() => {
   learnedPatterns.length = 0
   ledgerInserts.length = 0
   transactionInserts.length = 0
+  pdfText = ''
 })
 
 // --- createSignedStatementUpload (IMP-01) ----------------------------------
@@ -293,10 +308,22 @@ describe('createSignedStatementUpload', () => {
     expect(call.endsWith('.ofx')).toBe(true)
   })
 
-  it('rejects an ext outside {ofx,csv}', async () => {
-    const r = await createSignedStatementUpload('x.pdf', 'pdf')
+  it('rejects an ext outside {ofx,csv,pdf}', async () => {
+    const r = await createSignedStatementUpload('x.xml', 'xml')
     expect('error' in r).toBe(true)
     expect(storageApi.createSignedUploadUrl).not.toHaveBeenCalled()
+  })
+
+  it('accepts pdf as a valid ext (Plan 13-03) — mints a {user_id}/ scoped URL', async () => {
+    signedUrlResult = {
+      data: { path: 'user-1/uuid.pdf', token: 'tok', signedUrl: 'http://signed' },
+      error: null,
+    }
+    const r = await createSignedStatementUpload('fatura.pdf', 'pdf')
+    expect('path' in r).toBe(true)
+    const call = storageApi.createSignedUploadUrl.mock.calls[0]![0]
+    expect(call.startsWith('user-1/')).toBe(true)
+    expect(call.endsWith('.pdf')).toBe(true)
   })
 
   it('gates on an absent session', async () => {
@@ -384,6 +411,44 @@ describe('ingestStatement', () => {
     claimsSub = null
     const r = await ingestStatement('user-1/x.ofx', 'x.ofx')
     expect(r).toEqual({ error: 'Sessão expirada.' })
+  })
+
+  // --- PDF dispatch branch (Plan 13-03, PDF-04) ----------------------------
+
+  it('routes a .pdf path through the PDF branch and parses the extracted text', async () => {
+    // Any bytes — extractPdfText is mocked; pdfText drives the parse.
+    downloadBytes = new Uint8Array([1, 2, 3])
+    pdfText = readFileSync(
+      join(process.cwd(), 'tests/fixtures', 'santander-sample.txt'),
+      'utf8',
+    )
+    const r = await ingestStatement('user-1/fatura.pdf', 'fatura.pdf')
+    if (!('rows' in r) || !r.rows) throw new Error('expected review rows for a text PDF')
+    expect(r.rows.length).toBeGreaterThan(0)
+    expect(r.statementId).toBeTruthy()
+  })
+
+  it('image-only PDF (empty/whitespace text) HARD-BLOCKS with a CSV/OFX-steering error', async () => {
+    downloadBytes = new Uint8Array([1, 2, 3])
+    pdfText = '   \n\t  \n' // whitespace only ⇒ image-only signal
+    const r = await ingestStatement('user-1/fatura.pdf', 'fatura.pdf')
+    expect('error' in r).toBe(true)
+    if ('error' in r) {
+      // Steers to CSV/OFX (PDF-04) — distinct from a 0-row review.
+      expect(r.error).toMatch(/CSV|OFX/)
+      expect(r.error.toLowerCase()).toMatch(/imagem|digitaliza/)
+    }
+  })
+
+  it('text-present PDF with 0 matching lines is NOT a block — shows the review screen with 0 rows', async () => {
+    downloadBytes = new Uint8Array([1, 2, 3])
+    // Real text, but no line matches the Santander TX regex → 0 rows, NOT an error.
+    pdfText = 'Algum texto extraído sem nenhuma linha de transação reconhecível.'
+    const r = await ingestStatement('user-1/fatura.pdf', 'fatura.pdf')
+    expect('error' in r).toBe(false)
+    if (!('rows' in r)) throw new Error('expected a review result, not an error')
+    expect(r.rows).toEqual([])
+    expect(r.summary.total).toBe(0)
   })
 })
 
