@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
-status: planning
-last_updated: "2026-06-18T10:21:21.488Z"
+status: ready_to_plan
+last_updated: "2026-06-18T11:00:00.000Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 0
+  total_phases: 2
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,14 +22,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** **Milestone v1.2 "Carro" FECHADO 2026-06-18** (code-complete no stack local; fases 8-11; CAR-01..06 6/6; audit ship-ready em `milestones/v1.2-MILESTONE-AUDIT.md`; sem tag git — não deployado). Aguardando próximo milestone (`/gsd-new-milestone`). **Backlog aberto (não bloqueia o close):** 6 walkthroughs `autonomous:false` de deploy remoto + verify ao vivo (01-04, 02-05, 03-06, 04-04, 05-04, 06-05), pendentes das credenciais — candidato natural a "deploy & ship". Tech-debt: WR-02 (migration 0029 futura).
+- **Current focus:** **Milestone v1.3 "Produção & PDF" — roadmap criado 2026-06-18 (Phases 12-13, granularity standard).** Phase 12 = Produção & Live-Verify: sequencia e executa os 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05) contra o Supabase pessoal + Vercel reais, fecha WR-02 (migration 0029) ANTES de migrar dados, e prova o core value ao vivo (DEPLOY-01..05 + DEBT-01/02). Phase 13 = PDF de Fatura: spike pdf-parse v2 `getTable`/`unpdf` contra amostras reais do Santander (`fixtures/faturas-pdf/santander/`) → extrator → review grid (nunca auto-commit) → pipeline existente (PDF-01..05). **Phase 12 é gated nas credenciais do usuário.** Próximo passo: `/gsd-plan-phase 12`.
 
 ## Current Position
 
-Phase: Not started (defining requirements)
-Plan: —
-Status: Defining requirements
-Last activity: 2026-06-18 — Milestone v1.3 started
+Phase: 12 of 13 (Produção & Live-Verify) — não iniciada
+Plan: — (roadmap criado, planejamento pendente)
+Status: Ready to plan
+Last activity: 2026-06-18 — Roadmap v1.3 criado (Phases 12-13); 12/12 requisitos mapeados
 
 ## Performance Metrics
 
@@ -112,6 +112,7 @@ Last activity: 2026-06-18 — Milestone v1.3 started
 
 ### Blockers
 
+- **Phase 12 gated nas credenciais do usuário (Supabase pessoal + Vercel + chave IA/AI Gateway).** Os 6 walkthroughs diferidos viram a Phase 12 deste milestone; rodam em ordem (01-04 → 02-05 → 03-06 → 04-04 → 05-04 → 06-05) quando o usuário tiver as credenciais à mão. Não é gap de implementação — é etapa de credencial/deploy. `07-07` (verify visual LOCAL) NÃO entra no backlog de deploy.
 - **01-04 ADIADO (decisão do usuário, 2026-06-16):** plano `autonomous:false` de deploy — credenciais do Supabase remoto + Vercel + verificação no browser. Código da Fase 1 está provado no stack LOCAL. Fases 2-5 serão construídas/testadas contra o Supabase local; todo o wiring remoto + deploy fica para o fim, quando o usuário tiver as credenciais à mão. NÃO é gap de implementação — é etapa de credencial/deploy pendente.
 
 ## Session Continuity

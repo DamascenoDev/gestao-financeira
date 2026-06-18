@@ -58,24 +58,24 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPLOY-01 | TBD | Pending |
-| DEPLOY-02 | TBD | Pending |
-| DEPLOY-03 | TBD | Pending |
-| DEPLOY-04 | TBD | Pending |
-| DEPLOY-05 | TBD | Pending |
-| PDF-01 | TBD | Pending |
-| PDF-02 | TBD | Pending |
-| PDF-03 | TBD | Pending |
-| PDF-04 | TBD | Pending |
-| PDF-05 | TBD | Pending |
-| DEBT-01 | TBD | Pending |
-| DEBT-02 | TBD | Pending |
+| DEPLOY-01 | Phase 12 | Pending |
+| DEPLOY-02 | Phase 12 | Pending |
+| DEPLOY-03 | Phase 12 | Pending |
+| DEPLOY-04 | Phase 12 | Pending |
+| DEPLOY-05 | Phase 12 | Pending |
+| PDF-01 | Phase 13 | Pending |
+| PDF-02 | Phase 13 | Pending |
+| PDF-03 | Phase 13 | Pending |
+| PDF-04 | Phase 13 | Pending |
+| PDF-05 | Phase 13 | Pending |
+| DEBT-01 | Phase 12 | Pending |
+| DEBT-02 | Phase 12 | Pending |
 
 **Coverage:**
 - v1.3 requirements: 12 total
-- Mapped to phases: 0 (roadmap pendente)
-- Unmapped: 12 ⚠️
+- Mapped to phases: 12 (Phase 12: DEPLOY-01..05 + DEBT-01 + DEBT-02; Phase 13: PDF-01..05) ✓
+- Unmapped: 0
 
 ---
 *Requirements defined: 2026-06-18*
-*Last updated: 2026-06-18 after milestone v1.3 definition*
+*Last updated: 2026-06-18 after v1.3 roadmap — 12/12 requirements mapped (Phase 12 deploy+debt, Phase 13 PDF)*
