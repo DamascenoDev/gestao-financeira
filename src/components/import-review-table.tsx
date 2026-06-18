@@ -120,6 +120,23 @@ function ddMM(occurredOn: string): string {
 }
 
 /**
+ * G-08: the confirm-success toast message (presentation-only — confirmImport's persist
+ * logic is untouched). Pure + exported so the three outcomes are pinned without
+ * rendering the whole grid:
+ *  - all-duplicate re-confirm (imported 0, duplicated >0) → the calm "já estavam" copy
+ *    matching the page's all-duplicate empty state (NOT the failure-looking "0 importadas")
+ *  - partial import (imported >0, duplicated >0) → count + "(N já existiam)"
+ *  - clean import (duplicated 0) → the plain "{n} transação(ões) importada(s)"
+ */
+export function confirmToastMessage(imported: number, duplicated: number): string {
+  if (imported === 0 && duplicated > 0) {
+    return `Todas as ${duplicated} transações já estavam no extrato`
+  }
+  const base = `${imported} ${imported === 1 ? 'transação importada' : 'transações importadas'}`
+  return duplicated > 0 ? `${base} (${duplicated} já existiam)` : base
+}
+
+/**
  * ImportReviewTable (UI-SPEC §3) — the core pre-persist review grid. A SIBLING of
  * ExtratoTable: @tanstack/react-table, getRowId by the parsed row's stable key, the
  * SAME checkbox/select model, the SAME inline CategoryBadge Select cell, and the SAME
@@ -376,9 +393,10 @@ export function ImportReviewTable({
           setIsConfirming(false)
           return
         }
-        toast.success(
-          `${result.imported} ${result.imported === 1 ? 'transação importada' : 'transações importadas'}`,
-        )
+        // G-08: presentation-only branch via the pinned pure helper (confirmImport
+        // logic untouched). An all-duplicate re-confirm no longer reads as the
+        // failure-looking "0 transações importadas".
+        toast.success(confirmToastMessage(result.imported, result.duplicated))
         // WR-04: reset the in-flight flag BEFORE the soft navigation. router.push
         // is a client-side push; if it is slow/intercepted or the user navigates
         // back to this still-mounted tree, leaving isConfirming=true would leave
@@ -717,6 +735,15 @@ function InlineReviewCarroCell({
 
   return (
     <Select
+      // G-07: pass the value→label `items` map so Base UI's collapsed trigger renders
+      // the LABEL ("Nenhum"/apelido), not the raw sentinel/uuid (same proven 12-08 G-01
+      // fix as CarroPicker). Without this, an untagged row showed the literal `__none__`.
+      items={
+        {
+          [NENHUM_CARRO]: 'Nenhum',
+          ...Object.fromEntries(carros.map((c) => [c.id, c.apelido])),
+        } as Record<string, string>
+      }
       value={row.carro_id ?? NENHUM_CARRO}
       onValueChange={(v) => onChange(v ?? NENHUM_CARRO)}
     >
