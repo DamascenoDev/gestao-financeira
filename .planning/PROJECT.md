@@ -16,9 +16,18 @@ Onze fases construídas e verificadas no stack local (v1.0 fases 1-6 = core ledg
 
 **Não deployado.** Toda a fase remota — wiring do Supabase pessoal + deploy Vercel + verificação ao vivo no browser — está nos 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05), pendentes das credenciais do usuário. Nenhuma tag git criada até o release real.
 
-## Next Milestone Goals
+## Current Milestone: v1.3 Produção & PDF
 
-A definir (`/gsd-new-milestone`). Candidatos: **(a) Deploy & shipping** — executar os 6 walkthroughs remotos, subir o app de fato e validar o core value em produção; **(b)** PDF de fatura (adiado do v1); **(c)** correção da tech-debt WR-02 (migration 0029) + qualquer feature nova.
+**Goal:** Subir o app pra produção (Supabase pessoal + Vercel), validar o core value ao vivo, e adicionar upload de fatura em PDF.
+
+**Target features:**
+- **Deploy remoto** — wiring do Supabase pessoal + deploy Vercel (os 6 walkthroughs `autonomous:false` diferidos: 01-04, 02-05, 03-06, 04-04, 05-04, 06-05)
+- **Live-verify do core value** — fatura real em produção → classificação memória/IA → aderência metas, confirmado no browser
+- **PDF de fatura** — extração de transações de PDF (pdf-parse v2 `getTable`, unpdf fallback; **review grid antes de persistir, nunca auto-commit de linha PDF**; spike com amostras reais)
+- **WR-02 fix** — migration 0029 (edge same-odometer no `v_abastecimento_consumo`)
+- **Doc hygiene** — `requirements_completed` no frontmatter dos SUMMARY (CAR-02/03/04)
+
+**Done:** app no ar (Supabase pessoal + Vercel prod) **e** core value provado ao vivo (fatura real classificada + metas), PDF de fatura funcionando com review humano. Tag git v1.3 no release real.
 
 **Design seed (v1.2, concluído):** `docs/superpowers/specs/2026-06-17-modulo-carro-design.md`. Módulo autocontido espelhando o MEI.
 
@@ -113,4 +122,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 after v1.2 milestone — "Carro" code-complete no stack local (fases 8-11, CAR-01..06 6/6, audit ship-ready). Onze fases construídas/verificadas localmente; app ainda não deployado (6 walkthroughs remotos diferidos). Sem tag git até o release real. Próximo: `/gsd-new-milestone` (deploy/shipping é o candidato natural).*
+*Last updated: 2026-06-18 — start milestone v1.3 "Produção & PDF". Escopo: deploy remoto (6 walkthroughs diferidos) + live-verify do core value + PDF de fatura + WR-02 (migration 0029) + doc hygiene. Onze fases code-complete no stack local; este milestone leva o app ao ar de verdade e adiciona o PDF adiado do v1.*
