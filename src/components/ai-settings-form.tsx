@@ -156,7 +156,9 @@ export function AiSettingsForm({ provider, hasKey }: AiSettingsFormProps) {
             }
           >
             <SelectTrigger id="ai-provider" className="w-full">
-              <SelectValue />
+              {/* Base UI Select renders the raw value unless given explicit
+                  children — show the friendly label, not "gemini" (G-01 pattern). */}
+              <SelectValue>{PROVIDER_LABEL[selectedProvider]}</SelectValue>
             </SelectTrigger>
             <SelectContent>
               {AI_PROVIDERS.map((p) => (
