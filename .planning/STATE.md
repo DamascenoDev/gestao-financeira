@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.3
-milestone_name: Produção & PDF
-current_phase: 13
-status: Awaiting next milestone
-stopped_at: v1.3 milestone shipped + archived (tag v1.3)
-last_updated: "2026-06-18T19:13:15.046Z"
+milestone: v1.4
+milestone_name: IA de Classificação (BYOK)
+status: planning
+last_updated: "2026-06-18T19:35:47.943Z"
 last_activity: 2026-06-18
-last_activity_desc: Milestone v1.3 completed and archived
 progress:
-  total_phases: 2
-  completed_phases: 2
-  total_plans: 15
-  completed_plans: 15
-  percent: 100
-current_phase_name: pdf-de-fatura
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,10 +26,10 @@ current_phase_name: pdf-de-fatura
 
 ## Current Position
 
-Phase: Milestone v1.3 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-18 — Milestone v1.3 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-18 — Milestone v1.4 started
 
 ## Deferred Items
 

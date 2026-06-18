@@ -27,12 +27,23 @@ Suíte ~761 testes, `tsc --noEmit` + `npm run build` limpos. Auditoria do milest
 
 </details>
 
-## Next Milestone Goals
+## Current Milestone: v1.4 IA de Classificação (BYOK)
 
-Próximo milestone definido via `/gsd-new-milestone`. Candidatos conhecidos:
-- **v1.4 IA de classificação** — wire AI SDK + Gemini 2.5 Flash-Lite via AI Gateway no seam `suggestCategory()` já pronto (memory-first, IA só no miss, confirmação antes de virar padrão).
-- **Limpeza de dívida v1.3** — redeploy G-07/G-08, walkthroughs MEI/LGPD ao vivo, VALIDATION.md de Nyquist.
-- **PDF avançado (se necessário)** — parser por banco / OCR só se um banco real do usuário falhar no getText.
+**Goal:** Ligar classificação assistida por IA no seam `suggestCategory()` já pronto — memory-first, IA só no cache-miss, usuário confirma antes de virar padrão — com BYOK multi-provedor (Gemini/Claude/DeepSeek) configurável numa Settings UI com chave criptografada; e quitar a dívida carregada do v1.3.
+
+**Target features:**
+- **Settings UI BYOK** — escolher provedor (Gemini/Claude/DeepSeek) + colar chave própria; chave criptografada at-rest (Supabase Vault), escopo `user_id` + RLS; botão testar conexão.
+- **IA no seam `suggestCategory()`** — memory-first (zero IA p/ merchant conhecido), IA só p/ descritor novo, batch dos não-vistos por upload numa chamada, `validateSuggestion` enum-constrained (Zod), `SuggestionSlot` na review grid.
+- **Confirmação humana no loop** — sugestão IA aparece na review grid → confirmo → vira padrão na memória → auto-classifica próximas faturas. Nunca auto-commit.
+- **Guardrails custo/erro** — memory-first; fallback gracioso sem chave / erro de provedor (cai no pick manual).
+- **Dívida v1.3** — redeploy fixes G-07/G-08; walkthroughs hands-on MEI (12-06) + LGPD (12-07); VALIDATION.md de Nyquist (Phases 12 + 13).
+
+**Decisões deste milestone:**
+- Multi-provedor via pacotes `@ai-sdk` diretos (não AI Gateway) — habilita BYOK-por-provedor-pessoal (chave colada no app, não no dashboard Vercel).
+- Modelos default sugeridos: Gemini 2.5 Flash-Lite / Claude Haiku / DeepSeek-chat (texto curto, barato) — research confirma IDs/preços atuais.
+- Cripto da chave: default Supabase Vault (research valida vs pgcrypto/app-layer).
+
+Candidato deferido: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
 
 ## Requirements
 
@@ -55,7 +66,9 @@ Próximo milestone definido via `/gsd-new-milestone`. Candidatos conhecidos:
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- [ ] **Classificação assistida por IA** (deferida p/ v1.4 — CLS-AI): para estabelecimento novo a IA sugere categoria, eu confirmo, vira padrão salvo na memória e auto-classifica nas próximas faturas. O seam `suggestCategory()` + o `validateSuggestion` enum wrapper + o `SuggestionSlot` já estão prontos (additivo). NÃO construída no v1 — o core value shipou **memory-only**.
+- [ ] **Classificação assistida por IA** (v1.4 — CLS-AI): para estabelecimento novo a IA sugere categoria, eu confirmo, vira padrão salvo na memória e auto-classifica nas próximas faturas. Wire no seam `suggestCategory()` + `validateSuggestion` enum wrapper + `SuggestionSlot` já prontos (additivo). Memory-first, IA só no cache-miss, confirmação antes de virar padrão.
+- [ ] **BYOK multi-provedor** (v1.4): Settings UI escolhe provedor (Gemini/Claude/DeepSeek) + cola a própria chave; chave criptografada at-rest (Supabase Vault) escopada `user_id` + RLS; testar conexão. Pacotes `@ai-sdk` diretos.
+- [ ] **Dívida v1.3** (v1.4): redeploy G-07/G-08, walkthroughs MEI (12-06) + LGPD (12-07) ao vivo, VALIDATION.md de Nyquist (Phases 12 + 13).
 
 ### Out of Scope
 
@@ -124,4 +137,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 after v1.3 "Produção & PDF" milestone — SHIPPED. App no ar (Supabase sa-east-1 + Vercel gru1), core value memory-only provado ao vivo, PDF de fatura entregue, WR-02 fechado. Tag git v1.3. Auditoria `tech_debt` (12/12 reqs; dívida em STATE.md Deferred Items). Próximo milestone via `/gsd-new-milestone` (candidato: v1.4 IA de classificação).*
+*Last updated: 2026-06-18 — milestone v1.4 "IA de Classificação (BYOK)" iniciado via `/gsd-new-milestone`. Foco: wire IA no seam `suggestCategory()` (memory-first, confirmação humana) + BYOK multi-provedor (Gemini/Claude/DeepSeek, Settings UI com chave criptografada) + quitar dívida v1.3. Fases continuam a partir de 14.*
