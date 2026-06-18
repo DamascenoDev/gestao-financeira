@@ -503,7 +503,20 @@ describe('confirmImport', () => {
   const RESERVA_CAT = '33333333-3333-4333-8333-333333333333'
   const RESERVA = '44444444-4444-4444-8444-444444444444'
 
-  function row(over: Partial<Record<string, unknown>> = {}) {
+  type ConfirmRow = {
+    id: string
+    dedupe_key: string
+    occurred_on: string
+    amount: number | string
+    descriptor_raw: string
+    descriptor_norm: string
+    categoryId: string | null
+    reservaId?: string
+    carroId?: string | null
+    // Plan 13-03: the PDF estorno marker, server-persisted on base (not client).
+    kind?: 'expense' | 'credit'
+  }
+  function row(over: Partial<ConfirmRow> = {}): ConfirmRow {
     return {
       id: crypto.randomUUID(),
       dedupe_key: `ofx:${crypto.randomUUID()}`,

@@ -688,7 +688,11 @@ export async function confirmImport(
       statement_id: statementId,
       category_id: r.categoryId, // unclassified persists category-less (honest)
       amount_cents: amountCents,
-      kind: 'expense',
+      // WR-01: kind is server-derived from the authoritative persisted base row
+      // (the PDF parser sets 'credit' for an estorno), NEVER the client payload.
+      // Defaults to 'expense' for OFX/CSV rows (no kind). Relies on the live
+      // transactions.kind CHECK accepting 'credit' (Plan 13-02, depends_on).
+      kind: r.base.kind ?? 'expense',
       occurred_on: r.base.occurred_on,
       description: r.base.descriptor_raw,
       descriptor_norm: r.base.descriptor_norm,
