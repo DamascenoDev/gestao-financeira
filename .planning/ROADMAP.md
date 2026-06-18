@@ -149,14 +149,14 @@ Plans:
   4. PDF sem texto extraível (image-only/escaneado) mostra mensagem clara orientando CSV/OFX daquele banco; nunca produz resultado vazio silencioso
   5. Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória → IA no caso novo) e contam nas metas, idêntico a CSV/OFX
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 **UI hint**: yes
 
 Plans:
 
 - [x] 13-01-PLAN.md — Santander PDF text parser (getText, not getTable) + `kind?` on RawTransaction + synthetic fixture + TDD [Wave 1]
 - [ ] 13-02-PLAN.md — [BLOCKING] migration 0031 widening transactions.kind to accept 'credit' + schema push (local + prod) [Wave 1]
-- [ ] 13-03-PLAN.md — wire 'pdf' into ingestStatement (extSchema/dispatch/image-only block) + kind threading + Node runtime pin [Wave 2]
+- [x] 13-03-PLAN.md — wire 'pdf' into ingestStatement (extSchema/dispatch/image-only block) + kind threading + Node runtime pin [Wave 2]
 - [ ] 13-04-PLAN.md — uploader accepts .pdf + review grid delete-row + honest counters + estorno color + empty states [Wave 2]
 
 ## Progress
@@ -178,7 +178,7 @@ Phases execute in numeric order: … → 11 → 12 → 13. Decimal phases (e.g. 
 | 10. Abastecimento híbrido + consumo | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 11. Detalhe do carro + gráfico de consumo | v1.2 | 4/4 | Complete | 2026-06-17 |
 | 12. Produção & Live-Verify | v1.3 | 11/11 | Complete   | 2026-06-18 |
-| 13. PDF de Fatura | v1.3 | 1/4 | In Progress|  |
+| 13. PDF de Fatura | v1.3 | 2/4 | In Progress|  |
 
 ## Deferred (cross-milestone)
 

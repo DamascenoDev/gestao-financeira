@@ -6,14 +6,14 @@ current_phase: 13
 current_phase_name: pdf-de-fatura
 status: executing
 stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-06-18T17:07:00.674Z"
+last_updated: "2026-06-18T17:22:23.871Z"
 last_activity: 2026-06-18
 last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 2
   completed_phases: 1
   total_plans: 15
-  completed_plans: 12
+  completed_plans: 13
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 13 (pdf-de-fatura) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-18 — Phase 13 execution started
 
@@ -49,6 +49,7 @@ Last activity: 2026-06-18 — Phase 13 execution started
 | Phase 12 P03 | ~5 min | 1 tasks | 1 files |
 | Phase 12 P12-10 | 8 min | 2 tasks | 3 files |
 | Phase 13 P01 | 4min | 3 tasks | 6 files |
+| Phase 13 P03 | 8min | 3 tasks | 3 files |
 
 ### Plan Execution Log
 
@@ -128,7 +129,7 @@ Last activity: 2026-06-18 — Phase 13 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-18T17:06:43.119Z
+**Last session:** 2026-06-18T17:21:15.344Z
 **Stopped at:** Phase 13 UI-SPEC approved
 **Resume file:** .planning/phases/13-pdf-de-fatura/13-UI-SPEC.md
 
@@ -200,3 +201,6 @@ Last activity: 2026-06-18 — Phase 13 execution started
 - [Phase ?]: WR-02 fix: anchor v_abastecimento_consumo interval bounds on the prior full-tank fill's full ordering tuple via Postgres row-value comparison (12-01 / DEBT-01)
 - [Phase ?]: Phase 12 production deploy executed via the Vercel dashboard (Git import from origin/main @ 40b19ab), not the CLI; no .vercel/ dir in the repo is expected.
 - [Phase ?]: ONE deploy for the whole phase (D-08): waves 3-7 verify against this single bundle; downstream plans must NOT re-deploy.
+- [Phase 13]: 13-03: Confirm schema left without a kind field — client payload does not carry kind; server reads it from r.base (WR-01). No dead schema surface.
+- [Phase 13]: 13-03: Runtime-pinned synchronous server action (runtime=nodejs + maxDuration=30 on /importar), NOT a Route Handler — spike measured PDF parse 24-182 ms (D-08). No route.ts added.
+- [Phase 13]: 13-03: PDF image-only hard block kept DISTINCT from a text-present 0-row parse; decodeStatement latin1 confined to ofx/csv branches (Pitfall 7).
