@@ -11,11 +11,11 @@ Requisitos deste milestone. Cada um mapeia para uma fase do ROADMAP.
 
 Levar o app (11 fases code-complete no stack local) ao ar de verdade e provar o core value ao vivo. Executa os 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05; verificar também 07-07).
 
-- [ ] **DEPLOY-01**: Supabase pessoal remoto provisionado — migrations 0001-0028 aplicadas no projeto remoto, RLS ativo em todas as tabelas, typed client sem drift
-- [ ] **DEPLOY-02**: App deployado na Vercel (produção) com env vars/secrets configurados (Supabase URL + anon/service keys, chave do provedor de IA / AI Gateway), `maxDuration` nas rotas de parsing
+- [ ] **DEPLOY-01**: Supabase pessoal remoto provisionado (região São Paulo `sa-east-1`) — migrations 0001-0029 aplicadas no projeto remoto (inclui a 0029 do WR-02), RLS ativo em todas as tabelas, typed client sem drift
+- [ ] **DEPLOY-02**: App deployado na Vercel (produção, região `gru1`) com env vars configuradas (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_SECRET_KEY` se usado), `maxDuration` nas rotas de parsing. (Sem chave de IA — classificação por IA deferida, ver Future.)
 - [ ] **DEPLOY-03**: Usuário loga em produção com sua conta pessoal; sessão persiste entre refresh; RLS isola os dados (nenhum acesso cross-user)
 - [ ] **DEPLOY-04**: Upload de fatura grava no Storage privado por `user_id` em produção (Storage RLS), e o parsing server-side roda no runtime Node da Vercel a partir do buffer
-- [ ] **DEPLOY-05**: Core value verificado ao vivo em produção — usuário sobe uma fatura real, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando
+- [ ] **DEPLOY-05**: Core value verificado ao vivo em produção — usuário sobe uma fatura real (OFX/CSV), vê a classificação por **memória** (estabelecimento conhecido auto-classifica; novo = pick manual que vira padrão aprendido — **IA deferida, ver Future**) e a aderência às metas (mensal **e** anual) funcionando
 
 ### PDF de Fatura
 
@@ -25,7 +25,7 @@ Trazer o upload de fatura em PDF, adiado do v1. Tratado como **best-effort com c
 - [ ] **PDF-02**: Sistema extrai as linhas de transação do PDF (`pdf-parse` v2 `getTable`; `unpdf` como fallback de texto) e normaliza para o shape canônico (data, descrição, valor em centavos inteiros)
 - [ ] **PDF-03**: Transações extraídas do PDF aparecem no review grid editável **antes** de persistir; nenhuma linha derivada de PDF é auto-commitada — usuário corrige/confirma primeiro
 - [ ] **PDF-04**: PDF sem texto extraível (image-only/escaneado) → mensagem clara orientando CSV/OFX daquele banco; nunca produz resultado vazio silencioso
-- [ ] **PDF-05**: Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória → IA no caso novo) e contam nas metas, idêntico a CSV/OFX
+- [ ] **PDF-05**: Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória; IA deferida) e contam nas metas, idêntico a CSV/OFX
 
 ### Tech Debt & Housekeeping
 
@@ -37,6 +37,10 @@ Fechar dívidas aceitas no encerramento do v1.2, de preferência antes de migrar
 ## Future Requirements
 
 Reconhecidos mas fora deste milestone.
+
+### Classificação por IA (deferida para v1.4)
+
+- **CLS-AI**: Classificação assistida por IA no caso de estabelecimento novo — wire AI SDK + Gemini 2.5 Flash-Lite via AI Gateway no seam `suggestCategory()` já existente (memory-first, IA só no miss, confirmação humana antes de virar padrão). O seam, o `validateSuggestion` enum wrapper e o `SuggestionSlot` já estão prontos → additivo. NÃO construída no v1 (CLS-02 deferido); descoberta na discuss da Phase 12 — o "core value" do v1.3 é memory-only.
 
 ### PDF avançado
 
