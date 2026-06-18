@@ -82,7 +82,9 @@ describe('ReceitaRowActions', () => {
     fireEvent.click(screen.getByText('Excluir'))
     // The confirm action button inside the AlertDialog (role=button, name "Excluir").
     const confirmButtons = screen.getAllByRole('button', { name: 'Excluir' })
-    fireEvent.click(confirmButtons[confirmButtons.length - 1])
+    const confirmButton = confirmButtons.at(-1)
+    if (!confirmButton) throw new Error('confirm button not found')
+    fireEvent.click(confirmButton)
 
     expect(deleteOccurrence).toHaveBeenCalledWith('occ-9')
   })

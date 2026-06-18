@@ -2,6 +2,7 @@
 
 import * as React from 'react'
 import { useTransition } from 'react'
+import { MoreHorizontalIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { monthLabel } from '@/lib/month'
@@ -9,9 +10,20 @@ import { isValidMoney, MoneyInput } from '@/components/money-input'
 import {
   createAdhocIncome,
   createIncomeTemplate,
+  deleteOccurrence,
   updateOccurrence,
   updateTemplate,
 } from '@/actions/incomes'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -23,6 +35,12 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
 import {
   Field,
   FieldError,
@@ -223,6 +241,8 @@ export function EditOccurrenceDialog({
   monthKey,
   currentAmount,
   trigger,
+  open: openProp,
+  onOpenChange,
 }: {
   occurrenceId: string
   /** Null for an avulsa — then only the "só neste mês" path applies. */
@@ -230,9 +250,24 @@ export function EditOccurrenceDialog({
   monthKey: string
   /** Raw pt-BR string to prefill (already formatted upstream). */
   currentAmount: string
-  trigger: React.ReactElement
+  /**
+   * Optional trigger. Omit it when the dialog is driven externally (controlled
+   * via open/onOpenChange — e.g. hosted by ReceitaRowActions' "Editar" item).
+   */
+  trigger?: React.ReactElement
+  /** Controlled open state (when hosted). Falls back to internal state. */
+  open?: boolean
+  onOpenChange?: (open: boolean) => void
 }) {
-  const [open, setOpen] = React.useState(false)
+  const [internalOpen, setInternalOpen] = React.useState(false)
+  const open = openProp ?? internalOpen
+  const setOpen = React.useCallback(
+    (next: boolean) => {
+      onOpenChange?.(next)
+      if (openProp === undefined) setInternalOpen(next)
+    },
+    [onOpenChange, openProp],
+  )
   const [isPending, startTransition] = useTransition()
   const [amount, setAmount] = React.useState(currentAmount)
   const [error, setError] = React.useState<string | null>(null)
@@ -271,7 +306,7 @@ export function EditOccurrenceDialog({
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
-      <DialogTrigger render={trigger} />
+      {trigger ? <DialogTrigger render={trigger} /> : null}
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Editar receita</DialogTitle>
@@ -314,5 +349,103 @@ export function EditOccurrenceDialog({
         </DialogFooter>
       </DialogContent>
     </Dialog>
+  )
+}
+
+/**
+ * Per-row actions for the receitas table (G-05): an "Ações" DropdownMenu with
+ * Editar (opens the existing EditOccurrenceDialog) and a destructive Excluir
+ * (an AlertDialog confirm → deleteOccurrence). Mirrors NfRowActions.
+ *
+ * Recurring-vs-avulsa semantics in the confirm copy:
+ *  - templateId !== null (recorrente): the delete removes ONLY this month's
+ *    materialized occurrence. The template is untouched and ensureMonthOccurrences
+ *    re-materializes the row when the month is re-opened — the copy says so.
+ *  - templateId === null (avulsa): the occurrence is removed outright.
+ */
+export function ReceitaRowActions({
+  occurrenceId,
+  templateId,
+  monthKey,
+  currentAmount,
+}: {
+  occurrenceId: string
+  /** Null for an avulsa — recurring otherwise. Drives the confirm copy. */
+  templateId: string | null
+  monthKey: string
+  /** Raw pt-BR string to prefill the edit dialog (already formatted upstream). */
+  currentAmount: string
+}) {
+  const [editOpen, setEditOpen] = React.useState(false)
+  const [deleteOpen, setDeleteOpen] = React.useState(false)
+  const [isPending, startTransition] = useTransition()
+
+  function onDelete() {
+    startTransition(async () => {
+      const result = await deleteOccurrence(occurrenceId)
+      if ('error' in result) {
+        toast.error(result.error)
+        return
+      }
+      toast.success(`Receita de ${monthLabel(monthKey)} excluída.`)
+      setDeleteOpen(false)
+    })
+  }
+
+  return (
+    <>
+      <DropdownMenu>
+        <DropdownMenuTrigger
+          render={
+            <Button type="button" variant="ghost" size="icon-sm" aria-label="Ações">
+              <MoreHorizontalIcon />
+            </Button>
+          }
+        />
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setEditOpen(true)}>
+            Editar
+          </DropdownMenuItem>
+          <DropdownMenuItem
+            variant="destructive"
+            onClick={() => setDeleteOpen(true)}
+          >
+            Excluir
+          </DropdownMenuItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      <EditOccurrenceDialog
+        occurrenceId={occurrenceId}
+        templateId={templateId}
+        monthKey={monthKey}
+        currentAmount={currentAmount}
+        open={editOpen}
+        onOpenChange={setEditOpen}
+      />
+
+      <AlertDialog open={deleteOpen} onOpenChange={setDeleteOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir receita</AlertDialogTitle>
+            <AlertDialogDescription>
+              {templateId
+                ? `Isto remove a receita recorrente apenas em ${monthLabel(monthKey)}. O template não é alterado e a ocorrência pode voltar ao reabrir o mês.`
+                : 'Esta ação não pode ser desfeita.'}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={isPending}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              variant="destructive"
+              disabled={isPending}
+              onClick={onDelete}
+            >
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   )
 }
