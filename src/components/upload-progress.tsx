@@ -19,7 +19,7 @@ export type UploadPhase = 'enviando' | 'processando' | 'erro'
 const PHASE_LABEL: Record<UploadPhase, string> = {
   enviando: 'Enviando…',
   processando: 'Processando…',
-  erro: 'Não foi possível ler este arquivo. Verifique se é um extrato OFX/CSV válido e tente de novo.',
+  erro: 'Não foi possível ler este arquivo. Verifique se é um extrato OFX, CSV ou PDF válido e tente de novo.',
 }
 
 export function UploadProgress({
@@ -27,6 +27,7 @@ export function UploadProgress({
   phase,
   percent,
   onRetry,
+  message,
 }: {
   filename: string
   phase: UploadPhase
@@ -34,6 +35,12 @@ export function UploadProgress({
   percent: number
   /** Retry handler for the error state (resets to the dropzone). */
   onRetry?: () => void
+  /**
+   * Server-provided error message for the `erro` phase (e.g. the image-only PDF
+   * steering). When present it overrides the generic default so the specific,
+   * actionable reason reaches the user instead of being masked.
+   */
+  message?: string
 }) {
   const indeterminate = phase === 'processando'
   const isError = phase === 'erro'
@@ -66,7 +73,7 @@ export function UploadProgress({
         aria-live="polite"
       >
         {indeterminate ? <Loader2 className="size-4 animate-spin" aria-hidden /> : null}
-        <span>{PHASE_LABEL[phase]}</span>
+        <span>{isError && message ? message : PHASE_LABEL[phase]}</span>
       </div>
 
       {isError && onRetry ? (

@@ -35,7 +35,7 @@ function fileExt(name: string): 'ofx' | 'csv' | 'pdf' | null {
 
 type Stage =
   | { kind: 'idle' }
-  | { kind: 'busy'; phase: UploadPhase; filename: string; percent: number }
+  | { kind: 'busy'; phase: UploadPhase; filename: string; percent: number; message?: string }
 
 type MapperState = {
   open: boolean
@@ -51,8 +51,8 @@ export function ImportUploader() {
   const [mapper, setMapper] = React.useState<MapperState | null>(null)
   const [savingProfile, setSavingProfile] = React.useState(false)
 
-  const setError = React.useCallback((filename: string) => {
-    setStage({ kind: 'busy', phase: 'erro', filename, percent: 0 })
+  const setError = React.useCallback((filename: string, message?: string) => {
+    setStage({ kind: 'busy', phase: 'erro', filename, percent: 0, message })
   }, [])
 
   const routeToReview = React.useCallback(
@@ -69,7 +69,7 @@ export function ImportUploader() {
       path: string,
     ) => {
       if ('error' in result) {
-        setError(filename)
+        setError(filename, result.error)
         return
       }
       if ('needsMapping' in result) {
@@ -195,6 +195,7 @@ export function ImportUploader() {
           filename={stage.filename}
           phase={stage.phase}
           percent={stage.percent}
+          message={stage.message}
           onRetry={() => {
             setStage({ kind: 'idle' })
             setMapper(null)
