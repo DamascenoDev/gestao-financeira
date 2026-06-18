@@ -1,16 +1,20 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.4
-milestone_name: IA de Classificação (BYOK)
-status: planning
-last_updated: "2026-06-18T20:00:23.000Z"
+milestone_name: IA de Classificação
+current_phase: 14
+current_phase_name: Key Storage + BYOK Settings
+status: executing
+stopped_at: Phase 14 code-complete (5/5 plans, LOCAL-verified); PROD push of 0033 deferred (human)
+last_updated: "2026-06-18T21:30:36.050Z"
 last_activity: 2026-06-18
+last_activity_desc: Phase 14 execution started
 progress:
   total_phases: 4
-  completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
-  percent: 0
+  completed_phases: 1
+  total_plans: 5
+  completed_plans: 5
+  percent: 25
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -22,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** v1.4 IA de Classificação (BYOK) — roadmap criado (Phases 14–17, 17/17 reqs mapeados). Próximo: planejar a Phase 14 (Key Storage + BYOK Settings, raiz da cadeia storage→AI→grid) via `/gsd-plan-phase 14`. Phase 17 (dívida v1.3) é isolada/human-verify. See ROADMAP.md + PROJECT.md (updated 2026-06-18).
+- **Current focus:** Phase 14 — Key Storage + BYOK Settings
 
 ## Current Position
 
-Phase: 14 of 17 (Key Storage + BYOK Settings) — not yet planned
-Plan: —
-Status: Roadmap complete — ready to plan Phase 14
-Last activity: 2026-06-18 — v1.4 roadmap created (Phases 14–17; BYOK-01..05 → P14 · CLSAI-01..06 → P15 · CLSAI-07/08 → P16 · DEBT-03..06 → P17)
+Phase: 14 (Key Storage + BYOK Settings) — EXECUTING
+Plan: 1 of 5
+Status: Executing Phase 14
+Last activity: 2026-06-18 — Phase 14 execution started
 
 Progress: [░░░░░░░░░░] 0% (v1.4 phases)
 
@@ -146,9 +150,9 @@ Items acknowledged and deferred at v1.3 milestone close on 2026-06-18 (audit sta
 
 ## Session Continuity
 
-**Last session:** 2026-06-18T17:21:15.344Z
-**Stopped at:** Phase 13 UI-SPEC approved
-**Resume file:** .planning/phases/13-pdf-de-fatura/13-UI-SPEC.md
+**Last session:** 2026-06-18T21:30:36.042Z
+**Stopped at:** Phase 14 code-complete (5/5 plans, LOCAL-verified); PROD push of 0033 deferred (human)
+**Resume file:** .planning/phases/14-key-storage-byok-settings/14-VERIFICATION.md
 
 **Última sessão (2026-06-17) — Completed 11-02-PLAN.md — KPIs no CarroCard da lista /carros + wiring do RSC (não-worktree, sequencial em `main`, Wave 1, depends_on []).** Completa a promessa diferida da Phase 8 (card identity-only) com a metade-lista do CAR-05.2: gasto total + km/l médio por card, lidos da view `v_carro_resumo` existente. **Task 1 (commit `58a0f2c`, feat, TDD RED+GREEN):** `src/components/carro-card.tsx` — `CarroCardData` ganha `gastoTotalCents: number | null` + `kmPorLitroMedio: number | null`; abaixo do bloco identidade/badges, um KPI strip aditivo `<dl className="flex flex-wrap gap-x-6 gap-y-1">` com dois itens (label `text-xs text-muted-foreground` sobre valor `font-mono text-sm font-semibold tabular-nums`), espelhando a gramática de totais rotulados do `ReceitaGastoChart`, foreground neutro (sem gold, nunca vermelho). **Null discipline (D4):** gasto null → `'—'` (nunca `formatCents(0)`/`R$ 0,00`); km/l via `kmPorLitroKpiLabel` (helper local que anexa ` km/l` ao `kmPerLitroLabel` congelado `'12,4'` só p/ valor real, deixando `'—'` puro — nunca `0 km/l`); o strip nunca é escondido. Identidade (link apelido `/carros/{id}`, modelo·placa·ano, badges combustível/Arquivado, dropdown Editar/Arquivar) intocada. `src/components/carro-card-kpis.test.tsx` (mock `@/actions/carros`): non-null format (`formatCents` + `12,4 km/l`), null → dois `'—'` SEM `R$ 0,00`/`0 km/l`, link de identidade intacto — 3 testes green. **Task 2 (commit `759a757`, feat):** `src/app/(app)/carros/page.tsx` — segunda leitura RLS-scoped aditiva `supabase.from('v_carro_resumo').select('carro_id, gasto_total_cents, km_por_litro_medio')` (`security_invoker`, sem `.eq`), `Map` por `carro_id` anexado por carro; **0-gasto coalescido pela view → null → `'—'`** (nunca `R$ 0,00`), km/l passa null adiante; falha na leitura de KPI degrada p/ KPIs null (cards renderizam identidade + `'—'`) — nunca falha a página; filtro arquivados/ordem/empty/error inalterados. **Desvios:** 3 auto-fix. **[Rule 3 - Blocking]:** teste movido p/ `src/components/*.test.tsx` (o glob `tests/**` do vitest casa só `.ts`, não `.tsx` — mesma correção do 11-01). **[Rule 1 - Bug]:** o plano implicava `kmPerLitroLabel(12.4) === '12,4 km/l'`, mas o helper congelado retorna `'12,4'`; a unidade é anexada no componente via `kmPorLitroKpiLabel` e o teste casa o gasto com regex tolerante a NBSP (`/R\$\s*3\.240,00/`) em vez de literal frágil. **[Rule 3 - Blocking]:** estender o tipo compartilhado `CarroCardData` quebrou a compilação do header de `[id]/page.tsx` (fora dos dois arquivos do plano) — null-filled os dois campos novos lá com comentário apontando p/ o Plan 03 (KPIs do detalhe). **Gates:** `npm test -- carro-card` 3 green; `tsc --noEmit` limpo; `npm run build` exit 0 (`/carros` + `/carros/[id]` compilam); suíte completa **732 passed/85 files** (de 729, +3; sem recorrência do flake `reserva-saida`). **Sem stubs** na superfície /carros (o null-fill do `[id]` é hand-off documentado p/ Plan 03). **Sem threat flags** — única superfície nova é uma 2ª leitura da `v_carro_resumo` existente (`security_invoker`, RLS-scoped pelo `createClient()` server, nunca `admin.ts`/service-role/env), zero view/migração nova (T-11-03 mitigate / T-11-04 accept). **CAR-05 In progress** — metade-lista entregue; o detalhe `/carros/[id]` enriquecido (KPI cards + agregação categoria + wiring chart) fica em 11-03 e o human-verify em 11-04. Sem push remoto. **Próxima ação:** executar 11-03 (página de detalhe enriquecida).
 
