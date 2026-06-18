@@ -228,6 +228,11 @@ export function NfForm({
             <Field data-invalid={!!errors.activityType}>
               <FieldLabel htmlFor="nf-activity">Tipo de atividade</FieldLabel>
               <Select
+                items={
+                  Object.fromEntries(
+                    ATIVIDADE_OPTIONS.map((o) => [o.value, o.label]),
+                  ) as Record<string, string>
+                }
                 value={activityType}
                 onValueChange={(v) => {
                   if (v) setActivityType(v as MeiActivityType)

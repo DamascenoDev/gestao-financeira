@@ -164,6 +164,11 @@ export function CategoryDeleteDialog({
                   Reatribuir transações para
                 </span>
                 <Select
+                  items={
+                    Object.fromEntries(
+                      reassignTargets.map((t) => [t.id, t.name]),
+                    ) as Record<string, string>
+                  }
                   value={target}
                   onValueChange={(v) => setTarget(v ?? '')}
                 >

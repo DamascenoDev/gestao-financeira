@@ -79,7 +79,15 @@ export function ReservaPicker({
         </div>
       ) : (
         <div className="flex items-center gap-2">
-          <Select value={value || null} onValueChange={(v) => onChange(v ?? '')}>
+          <Select
+            items={
+              Object.fromEntries(
+                reservas.map((r) => [r.id, r.nome]),
+              ) as Record<string, string>
+            }
+            value={value || null}
+            onValueChange={(v) => onChange(v ?? '')}
+          >
             <SelectTrigger
               id={id}
               className="w-full"

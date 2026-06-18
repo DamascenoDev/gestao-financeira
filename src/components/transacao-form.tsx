@@ -246,6 +246,11 @@ export function TransacaoForm({
             <Field data-invalid={!!errors.categoryId}>
               <FieldLabel htmlFor="tx-category">Categoria</FieldLabel>
               <Select
+                items={
+                  Object.fromEntries(
+                    categories.map((c) => [c.id, c.name]),
+                  ) as Record<string, string>
+                }
                 value={categoryId || null}
                 onValueChange={(v) => {
                   const next = v ?? ''

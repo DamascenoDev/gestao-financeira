@@ -55,6 +55,12 @@ export function CarroPicker({
       <FieldLabel htmlFor={id}>Carro</FieldLabel>
 
       <Select
+        items={
+          {
+            [NONE]: 'Nenhum',
+            ...Object.fromEntries(carros.map((c) => [c.id, c.apelido])),
+          } as Record<string, string>
+        }
         value={value ? value : NONE}
         onValueChange={(v) => onChange(v === NONE ? '' : (v ?? ''))}
       >

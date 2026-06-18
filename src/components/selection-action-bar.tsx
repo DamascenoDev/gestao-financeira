@@ -101,7 +101,15 @@ export function SelectionActionBar({
         {n} {n === 1 ? 'selecionada' : 'selecionadas'}
       </span>
 
-      <Select value={categoryId || null} onValueChange={(v) => setCategoryId(v ?? '')}>
+      <Select
+        items={
+          Object.fromEntries(
+            categories.map((c) => [c.id, c.name]),
+          ) as Record<string, string>
+        }
+        value={categoryId || null}
+        onValueChange={(v) => setCategoryId(v ?? '')}
+      >
         <SelectTrigger className="min-w-48" size="sm">
           <SelectValue placeholder="Reclassificar para…" />
         </SelectTrigger>
@@ -126,6 +134,14 @@ export function SelectionActionBar({
       {onApplyCarro ? (
         <>
           <Select
+            items={
+              {
+                [CARRO_NONE]: 'Nenhum (desvincular)',
+                ...Object.fromEntries(
+                  (carros ?? []).map((c) => [c.id, c.apelido]),
+                ),
+              } as Record<string, string>
+            }
             value={carroValue || null}
             onValueChange={(v) => setCarroValue(v ?? '')}
           >
