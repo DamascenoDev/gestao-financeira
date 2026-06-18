@@ -361,7 +361,12 @@ export async function ingestStatement(
       dropped = result.dropped
       capped = result.capped
     }
-  } catch {
+  } catch (err) {
+    // Best-effort parsing: a residual throw becomes the friendly { error } instead
+    // of an opaque 500. Log it server-side so a real failure (e.g. a bundler/worker
+    // resolution issue in a PDF dependency) is diagnosable rather than silently
+    // swallowed — the message the user sees is intentionally generic.
+    console.error(`[ingestStatement] parse failed (ext=${ext}, file=${originalFilename}):`, err)
     return {
       error:
         'Não foi possível ler este arquivo. Verifique se é um extrato OFX, CSV ou PDF válido e tente de novo.',
