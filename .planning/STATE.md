@@ -2,9 +2,9 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
-current_phase: 3
+current_phase: 13
 status: Awaiting next milestone
-stopped_at: Phase 13 UI-SPEC approved
+stopped_at: v1.3 milestone shipped + archived (tag v1.3)
 last_updated: "2026-06-18T19:13:15.046Z"
 last_activity: 2026-06-18
 last_activity_desc: Milestone v1.3 completed and archived
@@ -26,7 +26,7 @@ current_phase_name: pdf-de-fatura
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 13 — pdf-de-fatura
+- **Current focus:** Planning next milestone — `/gsd-new-milestone` (candidato v1.4: IA de classificação no seam `suggestCategory()`). v1.3 shipped: app no ar (Supabase sa-east-1 + Vercel gru1) + core value memory-only + PDF de fatura. See PROJECT.md (updated 2026-06-18) + MILESTONES.md.
 
 ## Current Position
 
