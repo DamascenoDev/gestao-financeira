@@ -526,6 +526,9 @@ describe('confirmImport', () => {
       amount_cents: r.amount as number,
       descriptor_raw: r.descriptor_raw as string,
       descriptor_norm: r.descriptor_norm as string,
+      // WR-01: kind is server-persisted authoritative content (PDF estorno marker),
+      // read by confirmImport from base — NEVER from the client payload.
+      ...(r.kind ? { kind: r.kind as string } : {}),
       category_id: null,
       reserva_id: null,
       classification_source: null,
@@ -578,6 +581,39 @@ describe('confirmImport', () => {
     const learned = learnedPatterns[0] as { descriptor_norm: string; category_id: string }
     expect(learned.descriptor_norm).toBe('mercado abc')
     expect(learned.category_id).toBe(CAT)
+  })
+
+  it('persists a server-derived estorno kind ("credit") from base, not the client payload', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    // base.kind === 'credit' (the persisted authoritative row); the client payload
+    // carries NO kind — the server reads it from base (WR-01).
+    const estorno = row({ descriptor_norm: 'estorno loja', kind: 'credit' })
+    persist(estorno)
+    insertedDedupeKeys = new Set([estorno.dedupe_key])
+
+    // The client payload deliberately omits kind.
+    const { kind: _omit, ...clientRow } = estorno
+    void _omit
+    const r = await confirmImport(STMT, [clientRow])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const insert = transactionInserts[0] as { kind: string }
+    expect(insert.kind).toBe('credit')
+  })
+
+  it('defaults a normal compra row to kind "expense" (no base.kind)', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    const compra = row({ descriptor_norm: 'mercado abc' }) // no kind
+    persist(compra)
+    insertedDedupeKeys = new Set([compra.dedupe_key])
+
+    const r = await confirmImport(STMT, [compra])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const insert = transactionInserts[0] as { kind: string }
+    expect(insert.kind).toBe('expense')
   })
 
   it('an unclassified-only payload learns nothing', async () => {
