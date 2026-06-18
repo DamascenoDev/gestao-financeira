@@ -31,8 +31,8 @@ Trazer o upload de fatura em PDF, adiado do v1. Tratado como **best-effort com c
 
 Fechar dívidas aceitas no encerramento do v1.2, de preferência antes de migrar dados para produção.
 
-- [ ] **DEBT-01** (WR-02): migration 0029 corrige o edge same-odometer em `v_abastecimento_consumo` (km/l não subestima / R$/km não superestima quando dois tanques cheios compartilham o mesmo odômetro)
-- [ ] **DEBT-02**: frontmatter dos SUMMARY das fases 9/10 inclui `requirements_completed` para CAR-02/03/04 (rastreabilidade correta)
+- [x] **DEBT-01** (WR-02): migration 0029 corrige o edge same-odometer em `v_abastecimento_consumo` (km/l não subestima / R$/km não superestima quando dois tanques cheios compartilham o mesmo odômetro)
+- [x] **DEBT-02**: frontmatter dos SUMMARY das fases 9/10 inclui `requirements_completed` para CAR-02/03/04 (rastreabilidade correta)
 
 ## Future Requirements
 
@@ -72,10 +72,11 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | PDF-03 | Phase 13 | Pending |
 | PDF-04 | Phase 13 | Pending |
 | PDF-05 | Phase 13 | Pending |
-| DEBT-01 | Phase 12 | Pending |
-| DEBT-02 | Phase 12 | Pending |
+| DEBT-01 | Phase 12 | Complete |
+| DEBT-02 | Phase 12 | Complete |
 
 **Coverage:**
+
 - v1.3 requirements: 12 total
 - Mapped to phases: 12 (Phase 12: DEPLOY-01..05 + DEBT-01 + DEBT-02; Phase 13: PDF-01..05) ✓
 - Unmapped: 0

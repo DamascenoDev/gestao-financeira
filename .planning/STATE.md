@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
 current_phase: 12
-current_phase_name: Produção & Live-Verify
+current_phase_name: produ-o-live-verify
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-06-18T11:37:37.245Z"
+last_updated: "2026-06-18T11:51:02.728Z"
 last_activity: 2026-06-18
-last_activity_desc: Roadmap v1.3 criado (Phases 12-13); 12/12 requisitos mapeados
+last_activity_desc: Phase 12 execution started
 progress:
   total_phases: 2
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 7
+  completed_plans: 1
   percent: 0
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** **Milestone v1.3 "Produção & PDF" — roadmap criado 2026-06-18 (Phases 12-13, granularity standard).** Phase 12 = Produção & Live-Verify: sequencia e executa os 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05) contra o Supabase pessoal + Vercel reais, fecha WR-02 (migration 0029) ANTES de migrar dados, e prova o core value ao vivo (DEPLOY-01..05 + DEBT-01/02). Phase 13 = PDF de Fatura: spike pdf-parse v2 `getTable`/`unpdf` contra amostras reais do Santander (`fixtures/faturas-pdf/santander/`) → extrator → review grid (nunca auto-commit) → pipeline existente (PDF-01..05). **Phase 12 é gated nas credenciais do usuário.** Próximo passo: `/gsd-plan-phase 12`.
+- **Current focus:** Phase 12 — produ-o-live-verify
 
 ## Current Position
 
-Phase: 12 of 13 (Produção & Live-Verify) — não iniciada
-Plan: — (roadmap criado, planejamento pendente)
+Phase: 12 (produ-o-live-verify) — EXECUTING
+Plan: 2 of 7
 Status: Ready to execute
-Last activity: 2026-06-18 — Roadmap v1.3 criado (Phases 12-13); 12/12 requisitos mapeados
+Last activity: 2026-06-18 — Phase 12 execution started
 
 ## Performance Metrics
 
@@ -44,6 +44,7 @@ Last activity: 2026-06-18 — Roadmap v1.3 criado (Phases 12-13); 12/12 requisit
 | v1 requirements | 47 (todos mapeados/Complete exceto CLS-02 deferred) |
 | v1.2 requirements | 6 (CAR-01 + CAR-02 + CAR-04 + CAR-06 Complete; CAR-03 In progress server contract; CAR-05 In progress — lista /carros (11-02) + detalhe /carros/[id] enriquecido (11-03) entregues, falta só o human-verify (11-04); mapeados 6/6) |
 | Plans complete | 33 |
+| Phase 12 P12-01 | 5m | 2 tasks | 8 files |
 
 ### Plan Execution Log
 
@@ -121,7 +122,7 @@ Last activity: 2026-06-18 — Roadmap v1.3 criado (Phases 12-13); 12/12 requisit
 
 ## Session Continuity
 
-**Last session:** 2026-06-18T10:52:26.080Z
+**Last session:** 2026-06-18T11:50:05.435Z
 **Stopped at:** Phase 12 context gathered
 **Resume file:** .planning/phases/12-produ-o-live-verify/12-CONTEXT.md
 
@@ -187,3 +188,7 @@ Last activity: 2026-06-18 — Roadmap v1.3 criado (Phases 12-13); 12/12 requisit
 ## Operator Next Steps
 
 - Start the next milestone with /gsd-new-milestone
+
+## Decisions
+
+- [Phase ?]: WR-02 fix: anchor v_abastecimento_consumo interval bounds on the prior full-tank fill's full ordering tuple via Postgres row-value comparison (12-01 / DEBT-01)
