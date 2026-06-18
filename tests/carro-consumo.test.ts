@@ -30,8 +30,17 @@ let admin: SupabaseClient
 let userA: { id: string; jwt: string }
 
 // Carro 1: the clean happy-path interval (12.5 km/l). Carro 2: the bad-data guard.
+// Carro 3 (WR-02 / DEBT-01): two tanque_cheio fills sharing the EXACT same odometro_km.
 let carroHappyId: string
 let carroGuardId: string
+let carroSameOdoId: string
+
+// WR-02 fixture liters/cost: the closing fill of the ONLY valid interval (30000→30500)
+// is L2/C2; its SIBLING at the same odometer (30500) is L3/C3 and must NOT be swept in.
+const SAME_ODO_L2 = 40 // closing fill of the 30000→30500 interval
+const SAME_ODO_C2 = 24000 // cents — its cost
+const SAME_ODO_L3 = 25 // sibling fill at the SAME odometer — must be excluded
+const SAME_ODO_C3 = 15000 // cents — sibling cost, must be excluded
 
 async function createUser(prefix: string): Promise<{ id: string; jwt: string }> {
   const email = `${prefix}-${crypto.randomUUID()}@example.test`
@@ -129,6 +138,52 @@ beforeAll(async () => {
     },
   ])
   if (guardAbErr) throw new Error(`seed guard abastecimentos failed: ${guardAbErr.message}`)
+
+  // ── Carro 3 (WR-02 / DEBT-01 same-odometer sweep-in): THREE tanque_cheio fills
+  //    where fill #2 and fill #3 share the EXACT same odometro_km (30500). The ONLY
+  //    valid interval is 30000→30500. The bug (0028): the closing-fill subquery bounds
+  //    on `odometro_km <= 30500`, sweeping the sibling fill #3's liters AND cost into
+  //    that interval — understating km/l and overstating R$/km. The fix anchors the
+  //    interval membership on the prior full-tank fill's IDENTITY (ordering tuple), so
+  //    only fill #2's L2/C2 count toward the interval, never fill #3's L3/C3. ──
+  const { data: sameOdo, error: sameOdoErr } = await a
+    .from('carros')
+    .insert({ user_id: userA.id, apelido: 'Onix' })
+    .select('id')
+    .single()
+  if (sameOdoErr || !sameOdo) throw new Error(`seed same-odo carro failed: ${sameOdoErr?.message}`)
+  carroSameOdoId = sameOdo.id
+
+  const { error: sameOdoAbErr } = await a.from('abastecimentos').insert([
+    {
+      user_id: userA.id,
+      carro_id: carroSameOdoId,
+      occurred_on: '2026-05-01',
+      odometro_km: 30000, // opening full tank — no prior interval
+      litros: 30,
+      tanque_cheio: true,
+      amount_cents: 18000,
+    },
+    {
+      user_id: userA.id,
+      carro_id: carroSameOdoId,
+      occurred_on: '2026-05-15',
+      odometro_km: 30500, // closing fill of the ONLY valid interval (30000→30500)
+      litros: SAME_ODO_L2,
+      tanque_cheio: true,
+      amount_cents: SAME_ODO_C2,
+    },
+    {
+      user_id: userA.id,
+      carro_id: carroSameOdoId,
+      occurred_on: '2026-05-16',
+      odometro_km: 30500, // SIBLING at the EXACT same odometer — must NOT be swept in
+      litros: SAME_ODO_L3,
+      tanque_cheio: true,
+      amount_cents: SAME_ODO_C3,
+    },
+  ])
+  if (sameOdoAbErr) throw new Error(`seed same-odo abastecimentos failed: ${sameOdoAbErr.message}`)
 })
 
 afterAll(async () => {
@@ -215,5 +270,32 @@ describe('preco_litro is derived, never stored (D2 / CONTEXT)', () => {
     const { error } = await a.from('abastecimentos').select('preco_litro').limit(1)
     // Selecting a non-existent column must error (column absent), proving it is not stored.
     expect(error).not.toBeNull()
+  })
+})
+
+describe('v_abastecimento_consumo same-odometer sweep-in guard (WR-02, DEBT-01)', () => {
+  it('does not sweep a sibling fill at the same odometer into the prior interval', async () => {
+    const a = userClient(userA.jwt, config) // RLS-active read (security_invoker scopes to A)
+    const { data, error } = await a
+      .from('v_abastecimento_consumo')
+      .select('km_rodados, litros_intervalo, custo_intervalo_cents, km_por_litro, reais_por_km')
+      .eq('carro_id', carroSameOdoId)
+    expect(error).toBeNull()
+    // The 30000→30500 interval is the ONLY surfaced row: the 30500→30500 sibling has a
+    // zero odometer delta and is dropped by the WR-06 km_rodados>0 guard.
+    expect((data ?? []).length).toBe(1)
+
+    const row = data![0]!
+    expect(Number(row.km_rodados)).toBe(500)
+
+    // The closing fill's OWN liters/cost count toward its interval; the sibling at the
+    // SAME odometer does NOT. (Bug on 0028: litros = L2+L3, custo = C2+C3.)
+    expect(Number(row.litros_intervalo)).toBe(SAME_ODO_L2)
+    expect(Number(row.custo_intervalo_cents)).toBe(SAME_ODO_C2)
+
+    // Therefore km/l is 500/L2 (NOT understated by the sibling's liters) and R$/km is
+    // C2/500 (NOT overstated by the sibling's cost).
+    expect(Number(row.km_por_litro)).toBeCloseTo(500 / SAME_ODO_L2, 4) // 12.5
+    expect(Number(row.reais_por_km)).toBeCloseTo(SAME_ODO_C2 / 500, 4) // 48
   })
 })
