@@ -54,7 +54,7 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
 
 **Phase Numbering:** continuação sequencial — v1.2 terminou na Phase 11, então v1.3 começa na Phase 12. Integer phases (12, 13) = trabalho planejado; decimal phases (12.1, 12.2) = inserções urgentes (marked INSERTED), aparecem na ordem numérica entre os inteiros.
 
-- [ ] **Phase 12: Produção & Live-Verify** — Sobe o app (Supabase pessoal + Vercel), corrige WR-02, e prova o core value ao vivo em produção
+- [x] **Phase 12: Produção & Live-Verify** — Sobe o app (Supabase pessoal + Vercel), corrige WR-02, e prova o core value ao vivo em produção (completed 2026-06-18)
 - [ ] **Phase 13: PDF de Fatura** — Upload de fatura em PDF (spike Santander → extrator → review grid → pipeline existente), best-effort com confirmação humana
 
 ## Phase Details
@@ -86,7 +86,7 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
   4. Usuário sobe uma fatura real (OFX/CSV) em produção, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando ao vivo — core value provado
   5. `v_abastecimento_consumo` em produção computa km/l e R$/km corretos no edge same-odometer (WR-02 fechado); SUMMARYs das fases 9/10 trazem `requirements_completed`
 
-**Plans**: 9/11 plans executed
+**Plans**: 11/11 plans complete
 
 Plans:
 **Wave 1**
@@ -111,11 +111,11 @@ Plans:
 
 **Wave 6** *(blocked on Wave 5 completion)*
 
-- [ ] 12-06-PLAN.md — live-verify MEI module end-to-end in production (executes 05-04; MEI-01..06)
+- [x] 12-06-PLAN.md — live-verify MEI module end-to-end in production (executes 05-04; MEI-01..06)
 
 **Wave 7** *(blocked on Wave 6 completion)*
 
-- [ ] 12-07-PLAN.md — live-verify LGPD export + type-to-confirm delete + deployed-bundle secret gate (executes 06-05; DATA-01/02 + SEC-01)
+- [x] 12-07-PLAN.md — live-verify LGPD export + type-to-confirm delete + deployed-bundle secret gate (executes 06-05; DATA-01/02 + SEC-01)
 
 **Gap closure** *(local code fixes for the 6 live-verify defects G-01..G-06; verified LOCALLY — vitest/tsc/build — then redeploy + re-run waves 4-7 against the clean bundle. D-08 superseded for this cycle.)*
 
@@ -174,7 +174,7 @@ Phases execute in numeric order: … → 11 → 12 → 13. Decimal phases (e.g. 
 | 9. Etiquetar gastos da fatura ao carro | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 10. Abastecimento híbrido + consumo | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 11. Detalhe do carro + gráfico de consumo | v1.2 | 4/4 | Complete | 2026-06-17 |
-| 12. Produção & Live-Verify | v1.3 | 9/11 | In Progress|  |
+| 12. Produção & Live-Verify | v1.3 | 11/11 | Complete   | 2026-06-18 |
 | 13. PDF de Fatura | v1.3 | 0/TBD | Not started | - |
 
 ## Deferred (cross-milestone)
