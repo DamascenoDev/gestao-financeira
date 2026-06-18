@@ -43,13 +43,22 @@ run because gap G-01 (Select) is systemic and would contaminate their selects/pi
 - **Fix target:** truncate the category label (`truncate` + `min-w-0`) in `adherence-row.tsx` /
   `category-badge.tsx`, or widen/clamp column 1.
 
-### G-03 — [MED] Teto meta with zero spend in the period is omitted from the dashboard
+### G-03 — REOPENED → fixed by migration 0030 (remote stale view)
 - **Observed (prod):** a teto set on Transporte (10%) with no Transporte spend does NOT appear in the
   adherence list → looks like "meta não configurada" (the user's bug #1). Confirmed: setting an
   Alimentação teto DID appear once Alimentação had a R$50 gasto.
-- **Root cause:** the adherence list is spend-driven; a meta with zero realized spend produces no row.
-- **Fix target:** render every category that has a meta set, even at 0 spend (0% / "Dentro"/"Abaixo"),
-  so a saved meta is always visible. Confirm against the `v_adherence_month` / `v_adherence_ytd` source.
+- **Root cause (CORRECTED):** the repo's `v_adherence_month`/`v_adherence_ytd` are ALREADY income-driven
+  (0014 was created spend-driven in `bd768f0`, then revised income-driven in `fabc0a4`). The remote
+  (pre-existing/legacy project, D-10) had 0014 applied at the OLD spend-driven state, so 12-02's
+  `supabase db push` skipped re-running 0014 (already in remote migration history). Production therefore
+  still serves the stale SPEND-DRIVEN view → a teto with zero spend produces no row. Local + repo are
+  correct; only the remote view is stale.
+- **Fix:** new migration `supabase/migrations/0030_adherence_views_refresh.sql` DROP+CREATEs both views
+  with the current income-driven bodies (byte-for-byte from 0014, `security_invoker = true` preserved).
+  A higher migration number is the only thing `db push` will apply to refresh the stale remote view.
+  Verified: `supabase db reset` clean (0001..0030), `vitest run` 756/756 GREEN, `tsc --noEmit` clean.
+- **Remaining action (user):** run `supabase db push` against the remote. DB-ONLY change — NO app
+  redeploy needed.
 
 ### G-04 — [LOW] Status label "No limite" at 2,8% of a 30% teto is misleading
 - **Observed (prod):** Alimentação at 2,8% of a 30% teto shows status "No limite" (suggests near the cap).
