@@ -48,3 +48,8 @@ next-env.d.ts
 
 # test coverage
 /coverage
+
+# PDF de fatura — amostras REAIS (dado financeiro pessoal). NUNCA comitar/pushar.
+# README é rastreado; os PDFs ficam fora do git.
+/fixtures/faturas-pdf/**/*.pdf
+/fixtures/faturas-pdf/**/*.PDF
