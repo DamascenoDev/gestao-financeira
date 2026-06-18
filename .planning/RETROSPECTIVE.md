@@ -43,6 +43,46 @@
 
 ---
 
+## Milestone: v1.3 — Produção & PDF
+
+**Shipped:** 2026-06-18 (app live in production — first git tag)
+**Phases:** 2 (12–13) | **Plans:** 15 | **Tasks:** 18 | **Commits:** 76 (single-day sprint)
+
+### What Was Built
+- Production deploy — Supabase pessoal remoto (`sa-east-1`, migrations 0001-0030, RLS), Vercel (`gru1`, `maxDuration`), executing the six deferred `autonomous:false` walkthroughs (01-04…06-05) as one phase; login/session/RLS-isolation verified live (Phase 12, DEPLOY-01/02/03).
+- Live core-value proof — real OFX in prod → server parse → review → **memory** classification → goal adherence monthly+annual, driven through the real browser (Phase 12, DEPLOY-04/05).
+- 8 live-verify defects (G-01..G-08) — Base UI Select label-map, adherence truncation + stale-remote-view refresh (0030), calm under-teto copy, receitas delete, pt-BR `BrDateField`, honest import toast — via gap plans 12-08..12-11 + quick task + migration 0030.
+- PDF de fatura — Santander parser (`getText`), third `ingestStatement` dispatch branch, image-only hard block, server-derived estorno `kind`, migrations 0031/0032, five review-UI surfaces (Phase 13, PDF-01..05).
+
+### What Worked
+- **Live-verify via Chrome DevTools MCP against the real prod URL.** Driving the actual deployed app — not just tests — is what *proved* the core value AND surfaced an 8-item punch-list (US date inputs, Select sentinel, stale remote view, missing receita delete) that static review and local tests had missed.
+- **New format = parser + dispatch branch + CHECK widening, never a fork.** PDF reused the OFX/CSV pipeline verbatim; the only additions were one parser, one branch, two idempotent CHECK widenings, and UI. The integration check confirmed zero parallel path / review bypass.
+- **Spike-before-build de-risked PDF.** The Santander spike chose `getText` over `getTable` and pinned the Node runtime before any build commitment — no serverless PDF foot-guns.
+- **Deferred walkthroughs sequenced, not re-planned.** The six `autonomous:false` deploy plans ran in order as Phase 12 instead of being rewritten — the deferral held its value.
+
+### What Was Inefficient
+- **Stale remote migration state (D-10/G-03).** The pre-existing remote had 0014 applied at its old spend-driven body, so `db push` skipped re-running it → production served a stale adherence view (a teto with zero spend vanished). Required a higher-numbered no-op-bump migration (0030) purely to force the refresh.
+- **"No redeploy" (D-08) broke on the first bug.** The single-deploy contract was optimistic; gap closure forced redeploy cycles anyway, and two cosmetic fixes (G-07/G-08) shipped GREEN locally but were never redeployed — a deferred item at close.
+- **Checkbox/proven drift again.** DEPLOY-04/05 (and PDF-03) stayed `[ ]`/Pending after being proven live; the milestone audit had to reconcile VERIFICATION + SUMMARY vs REQUIREMENTS. Same thin-audit-trail issue flagged in v1.2 — recurred.
+
+### Patterns Established
+- **Live-verify-via-MCP is the verification spine for a deploy milestone** — the prod browser is the source of truth, not the local suite.
+- **A higher-numbered no-op-bump migration is the only lever to refresh a stale remote view** that `db push` already considers applied (body changed, number didn't).
+- **Server-derived `kind` read from the persisted base row, never the client payload** (WR-01 discipline extended to estorno→credit).
+
+### Key Lessons
+1. **Drive the real deployed app.** Live-verify found 8 defects local tests + static review missed; budget a verification phase that actually clicks through prod.
+2. **A legacy remote DB diverges from repo migration history.** `db push` won't re-run an "applied" migration whose body changed — bump the number to force it. Provision fresh, or audit remote migration state before trusting `db push`.
+3. **Reconcile checkboxes at phase close, not milestone close.** Proven≠checked drift cost an audit reconciliation for the second milestone running — flip the requirement state in the same commit that proves it.
+4. **"No redeploy" is not a safe contract once live-verifying.** Plan for redeploy cycles when gaps surface; don't strand GREEN fixes undeployed.
+
+### Cost Observations
+- Single-day sprint (2026-06-18, ~8h), 76 commits, 100 files (+7829/-128).
+- Model mix: not instrumented.
+- Suite ~735 → ~761 tests. Only new deps: `pdf-parse` v2 + `unpdf` (PDF extraction).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -50,14 +90,18 @@
 | Milestone | Sessions | Phases | Key Change |
 |-----------|----------|--------|------------|
 | v1.2 Carro | ~2 | 4 | First milestone formally audited + archived via the GSD lifecycle; clone-proven-grammar kept it zero-new-dep |
+| v1.3 Produção & PDF | ~1 build + close | 2 | App went LIVE (first git tag); live-verify-via-MCP became the verification spine; new format (PDF) folded into the existing pipeline |
 
 ### Cumulative Quality
 
 | Milestone | Tests | Zero-Dep Additions |
 |-----------|-------|--------------------|
 | v1.2 Carro | ~735 | Yes (no new npm deps) |
+| v1.3 Produção & PDF | ~761 | No — added `pdf-parse` v2 + `unpdf` (PDF only) |
 
 ### Top Lessons (Verified Across Milestones)
 
 1. Front-load irreversible schema/invariants into a BLOCKING substrate phase; everything downstream consumes a stable contract.
 2. Clone the proven grammar over inventing new UI — fewer decisions, fewer regressions, no new deps.
+3. Reconcile requirement checkboxes in the same commit that proves them — proven≠checked drift forced an audit reconciliation in BOTH v1.2 and v1.3.
+4. Drive the real deployed app to verify — live-verify caught defects that local tests + static review missed.
