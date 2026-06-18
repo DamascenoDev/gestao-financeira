@@ -18,7 +18,7 @@ import { cn } from '@/lib/utils'
  * too large) — never the unclassified attention signal.
  */
 
-const ACCEPTED_EXTS = ['ofx', 'csv'] as const
+const ACCEPTED_EXTS = ['ofx', 'csv', 'pdf'] as const
 const DEFAULT_MAX_BYTES = 4.5 * 1024 * 1024 // 4.5MB (the function-body limit ceiling)
 
 function fileExt(name: string): string {
@@ -52,7 +52,7 @@ export function UploadDropzone({
     (file: File) => {
       const ext = fileExt(file.name)
       if (!ACCEPTED_EXTS.includes(ext as (typeof ACCEPTED_EXTS)[number])) {
-        setError('Formato não suportado. Envie um arquivo OFX ou CSV.')
+        setError('Formato não suportado. Envie um arquivo OFX, CSV ou PDF.')
         return
       }
       if (file.size > maxBytes) {
@@ -107,15 +107,18 @@ export function UploadDropzone({
             Selecionar arquivo
           </Button>
           <p className="text-muted-foreground text-xs">
-            ou arraste aqui · OFX (recomendado) ou CSV · até {limit}
+            ou arraste aqui · OFX (recomendado), CSV ou PDF · até {limit}
+          </p>
+          <p className="text-muted-foreground text-xs">
+            PDF é leitura aproximada — revise as linhas antes de salvar.
           </p>
         </div>
         <input
           ref={inputRef}
           type="file"
-          accept=".ofx,.csv"
+          accept=".ofx,.csv,.pdf"
           className="sr-only"
-          aria-label="Selecionar arquivo OFX ou CSV"
+          aria-label="Selecionar arquivo OFX, CSV ou PDF"
           disabled={disabled}
           onChange={handleInputChange}
         />

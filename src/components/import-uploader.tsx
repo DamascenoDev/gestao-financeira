@@ -26,10 +26,10 @@ import { createClient } from '@/lib/supabase/client'
  * router.push('/importar/' + statementId). Parse-failure → the error block + retry.
  */
 
-function fileExt(name: string): 'ofx' | 'csv' | null {
+function fileExt(name: string): 'ofx' | 'csv' | 'pdf' | null {
   const dot = name.lastIndexOf('.')
   const ext = dot === -1 ? '' : name.slice(dot + 1).toLowerCase()
-  if (ext === 'ofx' || ext === 'csv') return ext
+  if (ext === 'ofx' || ext === 'csv' || ext === 'pdf') return ext
   return null
 }
 
