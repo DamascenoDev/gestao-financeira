@@ -79,9 +79,9 @@ export function CategoryBadge({
   className?: string
 }) {
   return (
-    <span className={cn('inline-flex items-center gap-2', className)}>
+    <span className={cn('inline-flex min-w-0 items-center gap-2', className)}>
       <CategoryDot color={color} />
-      <span className="truncate">{name}</span>
+      <span className="min-w-0 truncate">{name}</span>
       {kind ? <KindBadge kind={kind} /> : null}
     </span>
   )

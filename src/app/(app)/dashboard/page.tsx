@@ -24,7 +24,11 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
-import { directionForKind, type Direction } from '@/lib/adherence'
+import {
+  directionForKind,
+  shouldRenderMetaRow,
+  type Direction,
+} from '@/lib/adherence'
 import { centsToBigInt } from '@/lib/money'
 import {
   currentYear,
@@ -152,10 +156,17 @@ function RowList({
   periodLabel: string
   noReceitaCopy: string
 }) {
-  // Empty (metas defined, no receita this period): the division-by-zero guard surfaced
-  // as copy, never NaN% — every row carries adherence_bp === null when income is 0.
-  const semReceita =
-    incomeCents <= 0n || rows.every((r) => r.adherenceBp === null)
+  // G-03: a saved meta is always visible when there is income — even at zero realized
+  // spend (the income-driven view materializes a realized-0 row, which `buildRows`
+  // pushes unconditionally). Every row here carries a meta (it comes from
+  // budget_targets), so the list-vs-"sem receita" decision is exactly the tested
+  // `shouldRenderMetaRow` rule: render the list when there is a meta row AND income;
+  // otherwise (no income → the % meta is undefined) surface the "sem receita" copy
+  // instead of NaN%. Single tested rule, shared with the unit suite.
+  const semReceita = !shouldRenderMetaRow({
+    hasMeta: rows.length > 0,
+    incomeCents,
+  })
 
   return (
     <div className="flex flex-col gap-4">
