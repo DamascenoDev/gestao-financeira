@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "14.5"
-  }
   graphql_public: {
     Tables: {
       [_ in never]: never
@@ -105,6 +100,33 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      ai_settings: {
+        Row: {
+          created_at: string
+          key_secret_id: string
+          model: string
+          provider: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          key_secret_id: string
+          model: string
+          provider: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          key_secret_id?: string
+          model?: string
+          provider?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
       }
       budget_targets: {
         Row: {
@@ -833,6 +855,7 @@ export type Database = {
       }
     }
     Functions: {
+      get_ai_api_key: { Args: never; Returns: string }
       reassign_and_delete_category: {
         Args: { dst: string; src: string }
         Returns: undefined
@@ -845,6 +868,11 @@ export type Database = {
           p_reserva_id: string
         }
         Returns: string
+      }
+      remove_ai_api_key: { Args: never; Returns: undefined }
+      save_ai_api_key: {
+        Args: { p_key: string; p_model: string; p_provider: string }
+        Returns: undefined
       }
     }
     Enums: {
@@ -981,3 +1009,4 @@ export const Constants = {
     Enums: {},
   },
 } as const
+

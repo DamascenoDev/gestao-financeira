@@ -118,10 +118,16 @@ grant execute on function public.get_ai_api_key() to authenticated;
 -- is handed straight to Vault — it is NEVER persisted in an app column. Steps:
 --   (a) guard: caller authenticated + provider is one of the two launch providers;
 --   (b) read the caller's OLD key_secret_id (if any);
---   (c) vault.create_secret(p_key, <stable name>) → new_sid;
---   (d) upsert ai_settings (one row per user) pointing at new_sid;
---   (e) delete the OLD Vault secret if it existed — rotation, so no orphaned
---       decryptable ciphertext is left behind (Pitfall 4).
+--   (c) delete the OLD Vault secret FIRST if it existed — rotation, so no orphaned
+--       decryptable ciphertext is left behind (Pitfall 4). The delete must precede
+--       the create: vault.secrets has a UNIQUE index on `name` (secrets_name_idx)
+--       and the secret name is stable per-user+provider, so re-saving the SAME
+--       provider would otherwise collide with the still-present old secret and the
+--       whole RPC would abort. Deleting first is safe because (1) the caller already
+--       supplied the new plaintext (p_key), so nothing is lost, and (2) the entire
+--       function runs in one transaction — any later failure rolls the delete back.
+--   (d) vault.create_secret(p_key, <stable name>) → new_sid;
+--   (e) upsert ai_settings (one row per user) pointing at new_sid.
 create or replace function public.save_ai_api_key(
   p_provider text,
   p_model    text,
@@ -146,6 +152,13 @@ begin
 
   select key_secret_id into old_sid from public.ai_settings where user_id = uid;
 
+  -- Rotate-then-create: drop the OLD ciphertext BEFORE creating the new secret so a
+  -- same-provider re-save does not collide with the stable secret name on the UNIQUE
+  -- vault.secrets.name index. Safe inside this single txn (rolls back on later error).
+  if old_sid is not null then
+    delete from vault.secrets where id = old_sid;   -- rotate: drop the old ciphertext
+  end if;
+
   -- 2-arg create_secret (secret, name): name is a stable, per-user+provider label.
   -- Verified local API: vault.create_secret(new_secret, new_name) returns uuid.
   new_sid := vault.create_secret(p_key, 'ai_key:' || uid::text || ':' || p_provider);
@@ -157,10 +170,6 @@ begin
         model         = excluded.model,
         key_secret_id = excluded.key_secret_id,
         updated_at    = now();
-
-  if old_sid is not null then
-    delete from vault.secrets where id = old_sid;   -- rotate: drop the old ciphertext
-  end if;
 end;
 $$;
 revoke all on function public.save_ai_api_key(text, text, text) from public, anon;
