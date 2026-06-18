@@ -21,12 +21,13 @@ import type { Database } from '@/types/database.types'
 
 type CategoryRow = Database['public']['Tables']['categories']['Row']
 
-/** The summary jsonb Plan 02 persisted on the statement (N/M/K/J). */
+/** The summary jsonb Plan 02 persisted on the statement (N/M/K/J + descartadas). */
 interface PersistedSummary {
   total: number
   novas: number
   naoClassificadas: number
   duplicadas: number
+  descartadas: number
 }
 
 /**
@@ -90,6 +91,7 @@ export default async function ImportReviewPage({
     novas: 0,
     naoClassificadas: 0,
     duplicadas: 0,
+    descartadas: 0,
   }) as unknown as PersistedSummary
 
   // Re-upload / all-duplicates: nothing new to confirm. Show the duplicate empty state.
@@ -182,6 +184,15 @@ export default async function ImportReviewPage({
       <ImportReviewTable
         statementId={statement.id}
         initialRows={reviewRows}
+        serverSummary={{
+          total: summary.total,
+          novas: summary.novas,
+          naoClassificadas: summary.naoClassificadas,
+          duplicadas: summary.duplicadas,
+          // Older persisted summaries may predate the descartadas field — coalesce so
+          // the grid never renders `undefined` for J.
+          descartadas: summary.descartadas ?? 0,
+        }}
         categories={categories}
         reservas={reservas}
         carros={carros}

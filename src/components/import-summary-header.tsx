@@ -27,6 +27,12 @@ export interface ImportSummary {
   naoClassificadas: number
   /** J — pre-marked duplicates (dedupe_key already present). */
   duplicadas: number
+  /**
+   * Descartadas — rows the extractor intentionally skipped (saldo/total/headers/
+   * malformed). Server-provided + fixed; calm/muted, NEVER an error. Distinct from
+   * `duplicadas` and stable across client-side row deletes.
+   */
+  descartadas: number
 }
 
 export function ImportSummaryHeader({
@@ -39,7 +45,7 @@ export function ImportSummaryHeader({
   onFilterUnclassified?: () => void
   className?: string
 }) {
-  const { total, novas, naoClassificadas: k, duplicadas } = summary
+  const { total, novas, naoClassificadas: k, duplicadas, descartadas } = summary
 
   // Re-upload zero-state: nothing new in this file.
   if (novas === 0 && total > 0 && duplicadas === total) {
@@ -100,6 +106,13 @@ export function ImportSummaryHeader({
       <span className="text-muted-foreground">
         <span className="font-mono font-semibold tabular-nums">{duplicadas}</span>{' '}
         duplicadas ignoradas
+      </span>
+      <span aria-hidden className="text-muted-foreground">
+        ·
+      </span>
+      <span className="text-muted-foreground">
+        <span className="font-mono font-semibold tabular-nums">{descartadas}</span>{' '}
+        descartadas
       </span>
     </div>
   )

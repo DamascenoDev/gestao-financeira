@@ -9,6 +9,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
+import { Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -111,6 +112,21 @@ export type ReviewRow = {
   carro_id: string | null
   origin: 'memória' | 'manual' | 'não classificada'
   is_recurring: boolean
+  /**
+   * PDF estorno/credit marker (D-06 / UI-SPEC §Color). DISTINCT from
+   * RawTransaction.kind — this client type does NOT inherit the parser contract, so
+   * the route's reviewRows.map() threads `r.kind ?? 'expense'` here. A `credit` row
+   * renders the income-green money token (never red); OFX/CSV rows stay `'expense'`.
+   * Optional so the type is back-compat (absent ⇒ treated as expense at every read
+   * site); the route threads it explicitly for the estorno-green wiring.
+   */
+  kind?: 'expense' | 'credit'
+  /**
+   * Foreign-currency flag (D-06, A1 LOW confidence — layout unobserved). When true,
+   * the descriptor shows a muted `convertido` suffix (amount_cents is the BRL-converted
+   * value). Optional/graceful: the grid must not break when absent.
+   */
+  is_foreign?: boolean
 }
 
 /** "dd/MM" from a yyyy-MM-dd civil date (no tz ambiguity). */
@@ -154,12 +170,20 @@ export function confirmToastMessage(imported: number, duplicated: number): strin
 export function ImportReviewTable({
   statementId,
   initialRows,
+  serverSummary,
   categories,
   reservas = [],
   carros = [],
 }: {
   statementId: string
   initialRows: ReviewRow[]
+  /**
+   * The server-persisted N/M/K/J/descartadas summary (from `statements.summary`).
+   * `duplicadas` + `descartadas` are read from HERE — never from the
+   * `initialRows.length - rows.length` delta — so deleting a grid row does NOT
+   * mis-count as a duplicate/descartada (RESEARCH Open Question 4 bug-fix).
+   */
+  serverSummary: ImportSummary
   categories: ReviewCategory[]
   reservas?: ReservaOption[]
   carros?: CarroOption[]
@@ -211,6 +235,30 @@ export function ImportReviewTable({
     )
   }, [])
 
+  /**
+   * Delete a spurious review row from CLIENT state (D-02). Mirrors tagCarroRow: a
+   * setRows filter + a sonner undo toast (no AlertDialog modal — fast cleanup is the
+   * central PDF mechanism; the undo toast is the safety net). NOTHING is persisted —
+   * confirm only sends the surviving rows. The deleted row is neither a duplicate nor
+   * a descartada, so the server-sourced counts (summary memo) are untouched. The
+   * undo re-inserts the captured row verbatim.
+   */
+  const deleteRow = React.useCallback((id: string) => {
+    setRows((prev) => {
+      const removed = prev.find((r) => r.id === id)
+      const next = prev.filter((r) => r.id !== id)
+      if (removed) {
+        toast('Linha removida', {
+          action: {
+            label: 'Desfazer',
+            onClick: () => setRows((p) => [...p, removed]),
+          },
+        })
+      }
+      return next
+    })
+  }, [])
+
   const visibleRows = React.useMemo(
     () => (onlyUnclassified ? rows.filter((r) => r.category_id === null) : rows),
     [rows, onlyUnclassified],
@@ -220,13 +268,17 @@ export function ImportReviewTable({
     () => ({
       total: initialRows.length,
       // M (novas) is authoritative only after confirm; pre-confirm we surface the
-      // parsed total as the candidate count. Duplicates were pre-marked at ingest and
-      // are not in this grid (they collapse on confirm), so novas == total here.
+      // current grid size as the candidate count (deleting a spurious row lowers it).
       novas: rows.length,
       naoClassificadas: rows.filter((r) => r.category_id === null).length,
-      duplicadas: Math.max(0, initialRows.length - rows.length),
+      // BUG FIX (RESEARCH Open Question 4): duplicadas + descartadas read from the
+      // SERVER-provided summary, NOT the initialRows.length - rows.length delta. A
+      // user-deleted grid row is neither a duplicate nor a descartada, so these counts
+      // stay STABLE across deletes (delete-row only shrinks `novas`/the confirm payload).
+      duplicadas: serverSummary.duplicadas,
+      descartadas: serverSummary.descartadas,
     }),
-    [rows, initialRows.length],
+    [rows, initialRows.length, serverSummary.duplicadas, serverSummary.descartadas],
   )
 
   const columns = React.useMemo<ColumnDef<ReviewRow>[]>(
@@ -283,6 +335,9 @@ export function ImportReviewTable({
                   </Tooltip>
                 </TooltipProvider>
                 {row.original.is_recurring ? <RecorrenteTag /> : null}
+                {row.original.is_foreign ? (
+                  <span className="text-xs text-muted-foreground">convertido</span>
+                ) : null}
               </div>
               <span className="font-mono text-xs text-muted-foreground">
                 {row.original.descriptor_norm}
@@ -337,14 +392,36 @@ export function ImportReviewTable({
           <div className="text-right">
             <AmountCell
               cents={row.original.amount_cents}
-              kind="expense"
+              // Estorno/credit renders the income-green money token (UI-SPEC §Color),
+              // never red. row.original.kind is threaded from the persisted row by the
+              // route's reviewRows.map() (Task 3); OFX/CSV rows default to 'expense'.
+              kind={row.original.kind === 'credit' ? 'income' : 'expense'}
               signed={false}
             />
           </div>
         ),
       },
+      {
+        id: 'actions',
+        enableSorting: false,
+        header: () => <span className="sr-only">Ações</span>,
+        cell: ({ row }) => (
+          <div className="text-right">
+            <Button
+              type="button"
+              variant="ghost"
+              size="icon"
+              className="text-muted-foreground hover:text-destructive"
+              aria-label="Remover linha"
+              onClick={() => deleteRow(row.original.id)}
+            >
+              <Trash2 className="size-4" aria-hidden />
+            </Button>
+          </div>
+        ),
+      },
     ],
-    [categories, reservas, classifyRow, carros, tagCarroRow],
+    [categories, reservas, classifyRow, carros, tagCarroRow, deleteRow],
   )
 
   const table = useReactTable({
@@ -456,6 +533,7 @@ export function ImportReviewTable({
                   className={cn(
                     header.column.id === 'select' && 'w-10',
                     header.column.id === 'occurred_on' && 'w-16',
+                    header.column.id === 'actions' && 'w-10',
                     canSort && 'cursor-pointer select-none',
                   )}
                   onClick={
@@ -527,6 +605,11 @@ export function ImportReviewTable({
                   <div className="flex items-center gap-2">
                     <span className="block truncate text-sm">{raw}</span>
                     {r.is_recurring ? <RecorrenteTag /> : null}
+                    {r.is_foreign ? (
+                      <span className="text-xs text-muted-foreground">
+                        convertido
+                      </span>
+                    ) : null}
                   </div>
                   <span className="font-mono text-xs text-muted-foreground">
                     {r.descriptor_norm}
@@ -553,7 +636,23 @@ export function ImportReviewTable({
                     variant={r.category_id === null ? 'não classificada' : r.origin}
                   />
                 </div>
-                <AmountCell cents={r.amount_cents} kind="expense" signed={false} />
+                <div className="flex items-center gap-1">
+                  <AmountCell
+                    cents={r.amount_cents}
+                    kind={r.kind === 'credit' ? 'income' : 'expense'}
+                    signed={false}
+                  />
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="icon"
+                    className="text-muted-foreground hover:text-destructive"
+                    aria-label="Remover linha"
+                    onClick={() => deleteRow(r.id)}
+                  >
+                    <Trash2 className="size-4" aria-hidden />
+                  </Button>
+                </div>
               </div>
             </li>
           )
