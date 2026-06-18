@@ -10,6 +10,7 @@ import {
   adherenceStatus,
   adherenceTokens,
   formatBpAsPercent,
+  shouldRenderMetaRow,
   type Direction,
 } from './adherence'
 
@@ -76,6 +77,40 @@ describe('adherenceTokens — every status resolves a fill/text/label', () => {
       expect(t.label).toBeTruthy()
     })
   }
+})
+
+describe('adherenceTokens — calm under-teto copy (G-04)', () => {
+  it('a teto well under its cap reads a calm "Dentro", not "No limite"', () => {
+    // 280 bp = 2,8% of the meta — a low-utilization teto must NOT imply "at the cap".
+    expect(adherenceTokens(adherenceStatus(280, 'teto')).label).toBe('Dentro')
+  })
+  it('zero spend under a teto is calm "Dentro"', () => {
+    expect(adherenceTokens(adherenceStatus(0, 'teto')).label).toBe('Dentro')
+  })
+  it('the other status labels are unchanged', () => {
+    expect(adherenceTokens(adherenceStatus(8000, 'teto')).label).toBe('Aproximando')
+    expect(adherenceTokens(adherenceStatus(10000, 'teto')).label).toBe('Estourou')
+    expect(adherenceTokens(adherenceStatus(0, 'alvo')).label).toBe('Abaixo')
+    expect(adherenceTokens(adherenceStatus(8000, 'alvo')).label).toBe('Quase lá')
+    expect(adherenceTokens(adherenceStatus(10000, 'alvo')).label).toBe('Atingido')
+    expect(adherenceTokens(adherenceStatus(null, 'teto')).label).toBe('Sem receita')
+  })
+})
+
+describe('shouldRenderMetaRow — a saved meta is visible when there is income (G-03)', () => {
+  it('meta + income, even at zero spend → rendered', () => {
+    expect(shouldRenderMetaRow({ hasMeta: true, incomeCents: 100000 })).toBe(true)
+  })
+  it('meta but no income → not rendered (the % meta is undefined → sem-receita copy)', () => {
+    expect(shouldRenderMetaRow({ hasMeta: true, incomeCents: 0 })).toBe(false)
+  })
+  it('income but no meta → not rendered', () => {
+    expect(shouldRenderMetaRow({ hasMeta: false, incomeCents: 100000 })).toBe(false)
+  })
+  it('accepts bigint income', () => {
+    expect(shouldRenderMetaRow({ hasMeta: true, incomeCents: 100000n })).toBe(true)
+    expect(shouldRenderMetaRow({ hasMeta: true, incomeCents: 0n })).toBe(false)
+  })
 })
 
 describe('formatBpAsPercent — never NaN%/Infinity%', () => {
