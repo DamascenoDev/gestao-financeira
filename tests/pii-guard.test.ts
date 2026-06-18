@@ -1,9 +1,13 @@
-// 6-W0-08 (SEC-01 / SEC-03 / Pitfall 6) — PII→AI egress guard. Locks the deferred-
-// LLM seam closed: (a) package.json has NO `ai`/`@ai-sdk*` dependency, (b)
-// suggestCategory returns null for every input, (c) the classifier path makes no
-// network call. If someone wires the deferred LLM (CLS-02) and merchant descriptors
-// start egressing to a third party, this test goes RED — an LGPD/SEC-03 regression
-// the phase exists to prevent. GREEN now (no AI dep today).
+// 6-W0-08 (SEC-01 / SEC-03 / Pitfall 6) — PII→AI egress guard. Keeps the classifier
+// path PII-safe across the v1.4 BYOK rollout: (a) the only AI deps are the BYOK
+// providers Gemini + Claude (no `ai` umbrella, DeepSeek stays OUT — deferred), (b)
+// suggestCategory returns null for every input (Phase 14 does NOT wire the real call —
+// that is Phase 15), (c) the classifier path makes no network call. v1.4 Phase 14
+// intentionally installs @ai-sdk/google + @ai-sdk/anthropic for the BYOK Settings
+// test-connection; the PII contract is now enforced by the seam (suggestCategory sends
+// ONLY descriptorNorm, human-confirm before learn) + the guards below, NOT by the
+// absence of an AI dependency. If someone wires the LLM such that descriptors start
+// egressing without that contract, (b)/(c) go RED — an LGPD/SEC-03 regression.
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
 import { readFileSync } from 'node:fs'
@@ -23,10 +27,16 @@ const CATEGORIES = [
 ]
 
 describe('PII→AI egress guard (SEC-03 / 6-W0-08)', () => {
-  it('package.json has NO `ai` and no `@ai-sdk*` dependency (CLS-02 stays deferred)', () => {
+  it('AI deps are limited to the BYOK provider set (no `ai` umbrella, no DeepSeek)', () => {
     const deps = { ...pkg.dependencies, ...pkg.devDependencies }
-    const offenders = Object.keys(deps).filter((d) => d === 'ai' || d.startsWith('@ai-sdk'))
-    expect(offenders).toEqual([])
+    const aiDeps = Object.keys(deps)
+      .filter((d) => d === 'ai' || d.startsWith('@ai-sdk'))
+      .sort()
+    // v1.4 BYOK (Phase 14) intentionally installs Gemini + Claude. The `ai` umbrella is
+    // NOT a dependency (providers are instantiated directly per BYOK key), and DeepSeek
+    // stays OUT (deferred — json_object gap + model-id churn). This catches an accidental
+    // re-add of the umbrella or a non-approved provider.
+    expect(aiDeps).toEqual(['@ai-sdk/anthropic', '@ai-sdk/google'])
   })
 
   it('suggestCategory returns null for an ordinary descriptor', async () => {
