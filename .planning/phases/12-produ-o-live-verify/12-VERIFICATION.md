@@ -81,7 +81,7 @@ run because gap G-01 (Select) is systemic and would contaminate their selects/pi
   existing date-picker component formatted via date-fns/`Intl` `pt-BR`), and audit every date surface to
   confirm dd/mm/aaaa. Keep storage as ISO `yyyy-MM-dd`.
 
-### G-07 — [MED] Import review grid carro select shows `__none__` (G-01 residual)
+### G-07 — fixed (local, GREEN) — needs redeploy [MED] Import review grid carro select shows `__none__` (G-01 residual)
 - **Observed (prod):** in `/importar/[id]` review grid, the per-row "Vincular a carro" column renders
   `__none__` instead of "Nenhum".
 - **Root cause:** `src/components/import-review-table.tsx` → `InlineReviewCarroCell` (~line 705) uses
@@ -91,8 +91,12 @@ run because gap G-01 (Select) is systemic and would contaminate their selects/pi
   renders the label correctly.)
 - **Fix target:** give the `InlineReviewCarroCell` `<Select>` an `items` value→label map
   (`{ [NENHUM_CARRO]: 'Nenhum', ...carros→apelido }`) exactly like the 12-08 call sites.
+- **Resolution (quick-task 20260618-import-grid-gaps, commit `2ae93fb`):** `items` map added to
+  `InlineReviewCarroCell` `<Select>` — collapsed trigger now renders "Nenhum"/apelido, never the raw
+  sentinel. Contract pinned by the existing `select-value-label.test.tsx` (identical Base UI fix).
+  GREEN locally (`vitest` 761/761, `tsc --noEmit` clean, `npm run build` OK). **Needs redeploy.**
 
-### G-08 — [MED] "0 transações importadas" toast on re-confirm of an already-imported statement
+### G-08 — fixed (local, GREEN) — needs redeploy [MED] "0 transações importadas" toast on re-confirm of an already-imported statement
 - **Observed (prod):** confirming an import whose rows are all already in the DB shows the toast
   "0 transações importadas", which reads like a failure. (The real import of 22 transactions succeeded;
   the user re-confirmed an already-imported statement → dedup `23505` skipped all 22 → imported=0.)
@@ -103,3 +107,13 @@ run because gap G-01 (Select) is systemic and would contaminate their selects/pi
   {duplicated} transações já estavam no extrato" (reuse the page's existing all-duplicate copy tone);
   optionally surface duplicated count on partial imports. ALSO verify (defensive) that the first,
   genuine import reports the correct count (insertedByKey populated from the insert-return).
+- **Resolution (quick-task 20260618-import-grid-gaps, commit `2ae93fb`):** confirm-success toast now
+  branches via the pure exported `confirmToastMessage(imported, duplicated)` helper:
+  `imported===0 && duplicated>0` → "Todas as {duplicated} transações já estavam no extrato"; partial →
+  "{n} transações importadas ({d} já existiam)"; clean → unchanged "{n} transação(ões) importada(s)".
+  `confirmImport` persist/dedup logic untouched (presentation-only). Pinned by
+  `import-review-confirm-toast.test.tsx` (5 cases). **Defensive note:** the first genuine import
+  reports correctly — `confirmImport` builds `imported = insertedByKey.size` from the per-row insert's
+  RETURNING `dedupe_key` (only freshly-inserted rows populate the map; `23505` dedup-skips are excluded),
+  so a clean 22-row import yields `imported=22, duplicated=0` → "22 transações importadas".
+  GREEN locally (`vitest` 761/761, `tsc --noEmit` clean, `npm run build` OK). **Needs redeploy.**
