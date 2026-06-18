@@ -26,7 +26,7 @@ export function directionForKind(kind: 'consumo' | 'alocacao'): Direction {
  */
 export type AdherenceStatus =
   | 'sem-receita'
-  | 'no-limite' // teto < 80%
+  | 'no-limite' // teto < 80% (calm, under cap)
   | 'aproximando' // teto 80–100%
   | 'estourou' // teto ≥ 100%
   | 'abaixo' // alvo < 80%
@@ -73,7 +73,7 @@ export type AdherenceTokens = {
 
 const STATUS_TOKENS: Record<AdherenceStatus, AdherenceTokens> = {
   // teto (consumo): amber while under, fuller amber near, red over.
-  'no-limite': { fill: 'bg-consumption', text: 'text-muted-foreground', label: 'No limite' },
+  'no-limite': { fill: 'bg-consumption', text: 'text-muted-foreground', label: 'Dentro' },
   aproximando: { fill: 'bg-consumption', text: 'text-consumption', label: 'Aproximando' },
   estourou: { fill: 'bg-destructive', text: 'text-destructive', label: 'Estourou' },
   // alvo (alocação): muted while far, indigo near, green when reached.
@@ -102,4 +102,24 @@ const PERCENT_FMT = new Intl.NumberFormat('pt-BR', {
 export function formatBpAsPercent(bp: number | null): string {
   if (bp === null || !Number.isFinite(bp)) return '—'
   return PERCENT_FMT.format(bp / 10000)
+}
+
+/**
+ * The single rule for "a saved meta is always visible" (G-03). A category that HAS a
+ * meta renders as an adherence row as long as the user has income in the period —
+ * regardless of realized spend, so a zero-spend teto is never invisible. With no
+ * income the % meta is undefined (the row would be `sem-receita`), so the row is not
+ * forced and the period's "sem receita" copy handles it instead. Income is accepted as
+ * `number | bigint` because the dashboard carries net income as a bigint of cents.
+ */
+export function shouldRenderMetaRow({
+  hasMeta,
+  incomeCents,
+}: {
+  hasMeta: boolean
+  incomeCents: number | bigint
+}): boolean {
+  const hasIncome =
+    typeof incomeCents === 'bigint' ? incomeCents > 0n : incomeCents > 0
+  return hasMeta && hasIncome
 }
