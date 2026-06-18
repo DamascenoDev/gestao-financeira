@@ -1,239 +1,185 @@
 # Stack Research
 
-**Domain:** Personal finance web app (Brazil) — statement ingestion (PDF/CSV/OFX), AI-assisted merchant→category classification with learned memory, budget/savings dashboards, MEI tax tracking
-**Researched:** 2026-06-16
-**Confidence:** HIGH (core stack & parsing/AI verified via official docs + Context7; a few MEDIUM/LOW flags noted inline)
+**Domain:** BYOK multi-provider AI classification (short merchant descriptors) for an existing Next.js 16 + AI SDK 6 + Supabase app
+**Researched:** 2026-06-18
+**Confidence:** HIGH
 
-> Locked stack (NOT re-litigated): Next.js App Router + TypeScript strict (no JS) · Supabase (Auth + Postgres + Storage) · Vercel. All recommendations below are *within* that envelope.
+## Scope note
+
+This is a **subsequent-milestone (v1.4)** stack delta. The base stack is locked and live (Next.js 16, TS strict, Supabase Auth/Postgres/Storage + RLS, Vercel gru1, `ai` 6.0.x, `@ai-sdk/google` 3.0.x, `zod` 4.4.x). The null seam `suggestCategory()` + `validateSuggestion` (Zod enum wrapper) + `SuggestionSlot` UI are **already built**. This document covers ONLY the additions needed to wire real, BYOK, multi-provider AI into that seam.
+
+**Decisions already made (do not re-litigate):** direct `@ai-sdk` provider packages (NOT AI Gateway), because the user pastes their **own per-provider key** into a Settings UI — there is no Vercel Gateway key. Default cripto: Supabase Vault (this research validates it and pins the concrete, RLS-safe pattern).
 
 ---
 
 ## Recommended Stack
 
-### Core Technologies
+### Core Technologies (new for v1.4)
 
 | Technology | Version | Purpose | Why Recommended |
 |------------|---------|---------|-----------------|
-| Next.js (App Router) | 16.x | Framework | Locked. App Router + Server Actions/Route Handlers are the natural home for server-side parsing and AI calls (keeps API keys off the client). |
-| TypeScript (strict) | 5.x | Language | Locked. End-to-end type safety pairs with Supabase generated types + Zod for runtime validation at the boundaries (uploads, AI output). |
-| `@supabase/supabase-js` | 2.108.x | DB/Auth/Storage client | Official client; combine with generated `Database` types for typed queries. |
-| `@supabase/ssr` | 0.12.x | Cookie-based auth in App Router | **The** current pattern for Server Components, Route Handlers & middleware. Replaces the deprecated `@supabase/auth-helpers-nextjs` (do not use that). |
-| `ai` (Vercel AI SDK) | 6.0.x | LLM orchestration | First-party for Next.js. `generateObject`/`Output.object` + Zod gives schema-validated classification. Defaults to AI Gateway (one key, zero token markup, easy model swap). |
-| `@ai-sdk/google` | 3.0.x | Gemini provider (direct) | Optional direct provider if you prefer your own Google key over Gateway. Gemini 2.5 Flash-Lite is the cheap classification workhorse. |
-| `zod` | 4.4.x | Runtime validation | Validates upload-parsed rows AND constrains AI output to your category enum. Single source of truth shared by AI schema + form schema. |
-| `tailwindcss` | 4.3.x | Styling | Locked-adjacent (shadcn default). v4 uses the `@theme` directive / CSS-first config. Fully supported by current shadcn CLI. |
-| shadcn/ui (CLI) | 4.11.x CLI | Component layer | Vendored Radix-based components you own. Full Tailwind v4 + React 19 support. Includes a Recharts-backed `chart` primitive for the dashboards. |
+| `@ai-sdk/google` | **3.0.83** (already pinned `3.0.x`) | Gemini provider, runtime-instantiated per-key | Already in the stack. `createGoogleGenerativeAI({ apiKey })` accepts a user-supplied key at request time — exactly the BYOK shape. Gemini 2.5 Flash-Lite is the cheap short-text workhorse. |
+| `@ai-sdk/anthropic` | **3.0.85** | Claude (Anthropic) provider, runtime-instantiated per-key | First-party AI SDK provider. `createAnthropic({ apiKey })` for BYOK. Cheapest current Claude tier = Haiku 4.5. Same `generateObject` call site as the other providers. |
+| `@ai-sdk/deepseek` | **2.0.39** | DeepSeek provider, runtime-instantiated per-key | First-party AI SDK provider. `createDeepSeek({ apiKey })` for BYOK. Cheapest of the three per-token. Note major is `2.x`, not `3.x` — see Version Compatibility. |
+| `ai` (Vercel AI SDK) | **6.0.208** (already pinned `6.0.x`) | `generateObject` orchestration over whichever provider the user picked | Already in the stack. One `generateObject` call site; swap only the `model` argument. Zod schema constrains output to the category enum. |
+| `zod` | **4.4.x** (already pinned) | Schema for AI output (category enum) + key-format validation in Settings form | Already in the stack and shared by `validateSuggestion`. No new dependency. |
+| **Supabase Vault** | built-in (Postgres extension, ships with the project) | Encrypt the user's API key at rest | `vault.create_secret()` writes Authenticated-Encryption ciphertext; `vault.decrypted_secrets` view decrypts on read. Zero new infra, no key-management ops, encrypted in backups/replication. See encryption section. |
+
+All three provider packages declare the **same** AI-SDK-6-compatible zod peer range (`^3.25.76 || ^4.1.8`), so they coexist cleanly with the locked `zod 4.4.x` and `ai 6.0.x`.
 
 ### Supporting Libraries
 
 | Library | Version | Purpose | When to Use |
 |---------|---------|---------|-------------|
-| `pdf-parse` (mehmet-kozan v2 rewrite) | 2.4.x | **PDF text + table extraction** | Credit-card statement PDFs. v2 is a pure-TypeScript rewrite that wraps pdfjs-dist and explicitly targets serverless (Next.js+Vercel, Lambda). Exposes `getText()` AND `getTable()` — the table API is what you want for line-item statements. **Verify the npm dist matches the mehmet-kozan/pdf-parse repo at install time** (see "What NOT to Use"). |
-| `unpdf` | 1.6.x | PDF text extraction (edge-safe fallback) | Use if you hit native-binary/worker issues with pdf-parse on Vercel, or want edge-runtime extraction. Zero native deps, serverless-first. Text-only — no table reconstruction, so you'd parse columns yourself. |
-| `papaparse` | 5.5.x | CSV parsing | Bank/card CSV exports. Battle-tested, streaming, header mode, robust to messy delimiters/quoting common in BR bank exports. TS types via `@types/papaparse`. |
-| `ofx-data-extractor` | 1.5.x | OFX parsing | BR banks export OFX (Money/2003 SGML + newer XML). TS-native, actively maintained (v1.5.0, Mar 2026), `toJson()`/`toNormalized()`/`getTransactionsSummary()` over `STMTTRN`. Best-maintained TS OFX lib found. |
-| `@ai-sdk/react` | 3.0.x | Client hooks | Only if you stream classification to the UI (`useObject`). For a confirm-loop you can also just call a Route Handler and render results normally. |
-| `decimal.js` | 10.6.x | Arbitrary-precision math | Engine for money math (sum of transactions, % of income, goal progress). Avoids IEEE-754 float drift. Store cents as integers; use Decimal for division/percentages. |
-| `dinero.js` | v2 (2.x) | Money objects + formatting | v2 went **stable 2026-03-02** (no longer alpha). Immutable money objects, currency-aware, integer-cents storage, locale formatting. See version note — npm `latest` may still point at v1; pin the v2 release explicitly. If you'd rather not chase dist-tags, `decimal.js` + `Intl.NumberFormat` covers 100% of needs with zero ambiguity. |
-| `date-fns` | 4.4.x | Dates / monthly cycles | Tree-shakeable. `startOfMonth`/`endOfMonth`/`eachMonthOfInterval` model the monthly + annual budget cycles cleanly. Pair with `date-fns-tz` 3.2.x to pin everything to `America/Sao_Paulo` (avoid UTC month-boundary bugs). |
-| `recharts` | 3.8.x | Charts | What shadcn's `chart` component wraps. Bar (budget adherence), progress/area (savings goals), line (annual trend). **Requires a `react-is` override to match your React 19 version.** |
-| `@tanstack/react-table` | 8.21.x | Transaction tables | Headless table for the post-upload review grid (sort/filter/inline category confirm). Pairs with shadcn's table styling. |
-| `react-hook-form` | 7.79.x | Forms | Income entries, category/goal config, MEI NF entry. `@hookform/resolvers` + Zod = one schema validates form + DB shape. |
-| `sonner` | 2.0.x | Toasts | "Classification saved", "Pattern learned", upload errors. shadcn's recommended toast. |
-| `@tanstack/react-query` | 5.101.x | Client data cache | Optional. With Server Components + Server Actions you may not need it; add only if client-side refetch/optimistic UI gets painful. |
+| (none required) | — | — | **No new deps for "test connection" or structured output.** Test-connection = one cheap `generateObject`/`generateText` ping against the user's key using the already-installed provider + `ai`. Structured/enum output already covered by `zod` + `ai`. Key encryption is built-in Vault, not an npm package. |
 
 ### Development Tools
 
 | Tool | Purpose | Notes |
 |------|---------|-------|
-| `supabase` CLI | 2.106.x | Local Postgres, migrations, type generation | `supabase migration new`, `supabase db push`, and `supabase gen types typescript` → commit `database.types.ts`. Add an `npm run gen:types` script and regenerate after every migration so the typed client never drifts. |
-| `@types/papaparse` | latest | Types for PapaParse | PapaParse ships JS; needs the DefinitelyTyped package. |
-| Vercel project | — | Hosting + AI Gateway | Set `maxDuration` on PDF-parsing Route Handlers (parsing can take seconds). AI Gateway key lives as an env var. |
+| `supabase` CLI (already in stack, 2.106.x) | New migration: `user_provider_keys` table + Vault helper RPCs | `supabase migration new add_byok_keys` → `supabase db push` → regenerate `database.types.ts` (existing `npm run gen:types`). |
 
 ## Installation
 
 ```bash
-# Core app deps
-npm install next react react-dom @supabase/supabase-js @supabase/ssr \
-  ai @ai-sdk/google @ai-sdk/react zod
+# Two new direct providers (Gemini + AI SDK core already present)
+npm install @ai-sdk/anthropic@3.0.85 @ai-sdk/deepseek@2.0.39
 
-# Parsing (server-side ingestion)
-npm install pdf-parse unpdf papaparse ofx-data-extractor
+# Already pinned in CLAUDE.md — confirm present, do NOT re-add at different majors:
+#   ai@6.0.x  @ai-sdk/google@3.0.x  zod@4.4.x
 
-# Money / dates / charts / tables / forms / toasts
-npm install decimal.js dinero.js date-fns date-fns-tz \
-  recharts @tanstack/react-table react-hook-form @hookform/resolvers sonner
-
-# Optional client cache
-npm install @tanstack/react-query
-
-# Dev
-npm install -D typescript @types/react @types/node @types/papaparse supabase
-
-# UI scaffolding (shadcn vendors components into your repo)
-npx shadcn@latest init
-npx shadcn@latest add button card table chart form input select dialog sonner
-
-# Tailwind v4 + Recharts/React19: add to package.json "overrides"
-#   "react-is": "19.x"  (match your installed React version)
+# NO new deps for: test-connection (reuse ai + provider), structured output (zod+ai),
+# key encryption (Supabase Vault is built-in).
 ```
 
 ---
 
-## Deep Dives (the hard parts)
+## Runtime BYOK instantiation pattern (per provider)
 
-### 1. Statement parsing on Vercel serverless
+The whole point of "direct provider, not Gateway": instantiate the provider **at request time** with the decrypted user key, never from an env var. All three follow the identical `create*({ apiKey })` shape and feed one `generateObject` call.
 
-**Recommendation: format-specific parsers behind one normalizer.** Each parser emits a canonical `ParsedTransaction[]` (`{ date, description, amountCents, raw }`) validated by a shared Zod schema before anything touches the DB.
+```ts
+import { generateObject } from "ai";
+import { createGoogleGenerativeAI } from "@ai-sdk/google";
+import { createAnthropic } from "@ai-sdk/anthropic";
+import { createDeepSeek } from "@ai-sdk/deepseek";
+import { z } from "zod";
 
-- **CSV → `papaparse`.** Trivial, fast, no serverless concerns. Handle BR specifics: comma decimal separator (`1.234,56`), `dd/mm/yyyy` dates, latin-1/UTF-8 encoding. Normalize to integer cents at the parse boundary.
-- **OFX → `ofx-data-extractor`.** BR banks (Itaú, Nubank, BB, Bradesco, Inter) all export OFX. Most deterministic of the three formats — prefer it when the user has a choice. Map `STMTTRN` → canonical shape; `DTPOSTED` → date, `TRNAMT` → cents, `MEMO`/`NAME` → description.
-- **PDF → `pdf-parse` v2 (`getTable()`), `unpdf` as fallback.** This is the genuinely hard one.
-
-**PDF serverless tradeoffs (the load-bearing decision):**
-- Classic `pdf-parse` v1 and raw `pdfjs-dist` legacy builds drag in canvas/native bindings and worker-resolution issues that break on Vercel/Lambda. Multiple 2026 write-ups document hours lost to this. **Do not use pdf-parse v1 or raw pdfjs-dist for serverless.**
-- `pdf-parse` **v2** (the mehmet-kozan rewrite) was built for serverless and adds real **table extraction** (`getText()` + `getTable()`), which is exactly what credit-card line items need. This is the recommended primary.
-- `unpdf` is the safest serverless bet for raw text (zero native deps, edge-capable) but is **text-only** — you reconstruct columns from positioned text yourself, which is brittle for tabular statements.
-- Card statement PDFs vary wildly by issuer and many are effectively scanned/flattened. Treat PDF as **best-effort**: extract → show the parsed grid → let the user correct before persisting. Do NOT auto-commit PDF-derived rows. If a given issuer's PDF is image-only, text extraction yields nothing — that's an OCR problem out of scope for v1; steer the user to CSV/OFX for that bank.
-- Run PDF parsing in a **Node.js runtime Route Handler** (not Edge) and set `export const maxDuration = 60`. Keep the uploaded file in Supabase Storage; parse from a buffer.
-
-Confidence: HIGH for CSV/OFX, MEDIUM for PDF (issuer variance is inherent, not a library defect).
-
-### 2. AI-assisted classification
-
-**Two-layer design (matches PROJECT.md):**
-1. **Memory layer (no AI):** a `merchant_patterns` table (`user_id`, `match_key`, `category_id`, `confidence`, `times_confirmed`). On ingest, normalize the descriptor (uppercase, strip card-network noise / store numbers / city suffixes) → exact or prefix match → auto-assign. Cheapest and most accurate path; covers the majority after a short warm-up.
-2. **AI layer (only on cache miss):** call the LLM *only* for never-seen merchants. AI **suggests**; the human confirms; on confirm you **write the pattern to memory** so it never hits the LLM again. This is the spec's cost-control mechanism — honor it.
-
-**Provider/SDK pattern — use Vercel AI SDK + AI Gateway.**
-- AI Gateway is the default transport in AI SDK v5/v6: one key, hundreds of models via string IDs (`'google/gemini-2.5-flash-lite'`), **zero token markup**, built-in fallbacks/observability, and BYOK if you want your own Google key. For a solo Vercel app this beats wiring a provider SDK directly — same price, less code, trivial model swaps.
-- If you'd rather hold your own Google API key with no Vercel dependency, use `@ai-sdk/google` directly with `google('gemini-2.5-flash-lite')`. Same call site otherwise.
-
-**Model choice: Gemini 2.5 Flash-Lite** ($0.10 in / $0.40 out per 1M tokens, with a free tier). Cheapest credible classification model from a top provider, structured outputs on by default. Short-descriptor classification with a fixed category enum is trivial for it. GPT-5-nano ($0.05/$0.40) is a comparable-or-cheaper alternative reachable via the same Gateway string swap — A/B them on your real descriptors, but Flash-Lite's free tier makes it the pragmatic default for a personal-scale app.
-
-**Call shape — constrain output to YOUR categories with a Zod enum:**
-```typescript
-import { generateObject } from 'ai';
-import { z } from 'zod';
-
-const schema = z.object({
-  category: z.enum(userCategorySlugs),         // built from the user's editable categories
+// categoryEnum + the suggestion schema are the SAME zod source already used by validateSuggestion
+const SuggestionSchema = z.object({
+  category: categoryEnum,           // constrains output to your category set
   confidence: z.number().min(0).max(1),
 });
 
+function modelFor(provider: "gemini" | "claude" | "deepseek", apiKey: string) {
+  switch (provider) {
+    case "gemini":
+      return createGoogleGenerativeAI({ apiKey })("gemini-2.5-flash-lite");
+    case "claude":
+      return createAnthropic({ apiKey })("claude-haiku-4-5");
+    case "deepseek":
+      return createDeepSeek({ apiKey })("deepseek-chat"); // see model-id note below
+  }
+}
+
+// In a Node.js-runtime Route Handler / Server Action (key never touches the client):
 const { object } = await generateObject({
-  model: 'google/gemini-2.5-flash-lite',       // via AI Gateway
-  schema,
-  prompt: `Classifique este estabelecimento em UMA categoria. Descritor: "${descriptor}"`,
+  model: modelFor(provider, decryptedApiKey),
+  schema: SuggestionSchema,
+  prompt: `Classify this merchant descriptor into one category: "${descriptor}"`,
 });
 ```
-Using `z.enum` guarantees the model can only return a real category — no free-text reconciliation. Persist `category` + `confidence`; surface low-confidence ones first for review. Batch unseen descriptors from one upload into a single call to cut request overhead.
 
-Confidence: HIGH (AI SDK + Gateway + generateObject/enum verified in current docs; pricing verified on Google's pricing page).
+- **Run in a Node.js runtime** (not Edge) Route Handler / Server Action — same place PDF parsing already runs. The decrypted key stays server-side, consistent with the existing "API keys off the client" rule.
+- **Memory-first is unchanged:** only call this on a cache miss (unseen merchant). Batch all unseen descriptors from one upload into a single call.
+- **`test connection`** = call the same `modelFor(...)` with a 1-token prompt (or `generateText` with `maxTokens: 1`) and surface success/`AI_APICallError` to the Settings UI. No extra library.
 
-### 3. Supabase patterns (App Router, TS strict)
+## Verified model IDs + pricing (as of 2026-06-18)
 
-- **Auth:** `@supabase/ssr` with `createBrowserClient` (client) and `createServerClient` (server) implementing the **`getAll`/`setAll`** cookie interface (the old individual `get/set/remove` shape is deprecated). Add **middleware** to refresh the session (`supabase.auth.getUser()`) on every request — Server Components can't write cookies, so the middleware does the token refresh and propagation.
-- **Single-user now, multi-user-ready:** put `user_id uuid references auth.users` on **every** domain table from day one (already a locked decision). Costs nothing now; avoids a painful migration when the spouse is added.
-- **RLS (non-negotiable for financial data):** enable RLS on every table and write `using (auth.uid() = user_id)` + matching `with check` policies for select/insert/update/delete. This is what actually isolates data — never rely on app-layer filtering alone. Test policies with the local CLI.
-- **Typed client:** `supabase gen types typescript` → `database.types.ts`, pass `Database` generic to `createClient<Database>()`. Regenerate after every migration (npm script). Gives `Row`/`Insert`/`Update` types end-to-end.
-- **Storage:** uploaded statements go in a private bucket keyed by `user_id/...`; secure with Storage RLS policies (same `auth.uid()` check on the object path). Parse server-side from the downloaded buffer; never expose the bucket publicly.
-- **Migrations:** SQL files under `supabase/migrations/`, `supabase db push` to apply, version-controlled. Keep schema-as-SQL in the repo; do not click-edit schema in the dashboard for anything you want reproducible.
+| Provider | Model id string | Input $/1M | Output $/1M | Notes |
+|----------|-----------------|-----------|------------|-------|
+| Gemini | `gemini-2.5-flash-lite` | **$0.10** | **$0.40** | Cheapest current Gemini; 1M context; has a free tier. Verified on Google AI pricing. |
+| Claude | `claude-haiku-4-5` | **$1.00** | **$5.00** | Cheapest current Claude tier (Haiku 4.5). 200K context. Use the bare id — **no date suffix**. Verified against the Anthropic model catalog. |
+| DeepSeek | `deepseek-chat` (alias) → `deepseek-v4-flash` | **$0.14** (cache-miss) | **$0.28** | `deepseek-chat` still works as a non-thinking alias for V4-Flash, but is **scheduled for deprecation 2026/07/24 15:59 UTC**. Cache-hit input is $0.0028/1M. |
 
-Confidence: HIGH (current Supabase SSR docs + type-gen workflow verified).
+**Pricing ordering for the user:** DeepSeek ≈ Gemini (both ~$0.1–0.28/1M) ≪ Claude Haiku ($1/$5). For pure short-text merchant classification, all three are effectively free at personal volume (memory-first means the LLM is hit only on genuinely new merchants).
 
-### 4. UI / forms / charts
+**DeepSeek model-id action item for the roadmap:** ship with `deepseek-chat` for compatibility, but treat `deepseek-v4-flash` as the forward-stable id. Best handled as a small per-provider config map (display name → model id) so the v4-flash switch on 2026/07/24 is a one-line config change, not a code change. Re-verify the exact id at build time.
 
-shadcn/ui + Tailwind v4 is the right call (and your stated preference) — full React 19 / Next.js 16 support, you own the component code, and its `chart` primitive wraps Recharts so you don't hand-roll charting.
-- **Budget adherence (monthly + annual):** Recharts bar charts (spent vs target per category) + a computed adherence %; color thresholds (under/near/over). Annual = same component over `eachMonthOfInterval`.
-- **Savings-goal progress:** shadcn `Progress` for each sinking fund (optional target) + a small history list per reserve.
-- **Transaction review grid:** `@tanstack/react-table` + shadcn table styling; inline category confirm triggers the "learn pattern" write.
-- **Forms:** `react-hook-form` + Zod resolver, one schema shared with the DB insert shape.
-- Remember the `react-is` override for Recharts under React 19.
+## Key encryption at rest — recommended: Supabase Vault (RLS-safe pattern)
 
-Confidence: HIGH.
+**Comparison (single-user personal app, low-ops, RLS-compatible):**
 
-### 5. Money, dates, i18n
+| Option | Verdict | Why |
+|--------|---------|-----|
+| **Supabase Vault** (`vault.create_secret` / `vault.decrypted_secrets`) | ✅ **RECOMMENDED** | Built into the project (zero new infra). Authenticated Encryption at rest; ciphertext stays encrypted in backups + replication. Decrypt happens on-the-fly via a view, never stored. The key-management is Supabase's, not yours — exactly the "simple, low-ops" target. Internal impl is migrating **off** pgsodium but the `vault.*` interface/API is explicitly staying stable. |
+| **pgcrypto** (`pgp_sym_encrypt`) | ⚠️ Avoid | Makes **you** own the symmetric key (where to store it? Vercel env → same problem as app-layer) and the crypto choices. More moving parts than Vault for no benefit here. |
+| **App-layer (Node `crypto` + key in Vercel env)** | ⚠️ Avoid | Workable but you hand-roll AES-GCM, IV handling, and key rotation, and the master key lives in a Vercel env var (single point of compromise, manual rotation). Vault does all of this for you. |
+| Supabase **Server Key Management / Transparent Column Encryption (TCE)** | ❌ Do NOT use | Supabase explicitly does **not** recommend these on its platform — high operational complexity + misconfiguration risk. (TCE = old pgsodium path, deprecated.) |
 
-- **Money:** store **integer cents** (`bigint`/`integer` in Postgres) — never floats. Do math with `decimal.js` (sums, % of income, goal progress, division). `dinero.js` v2 (now stable) is a nice typed money-object + formatting layer on top, but is optional; `decimal.js` + `Intl.NumberFormat` is the zero-ambiguity baseline.
-- **pt-BR currency formatting:** `Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' })` — built in, no dependency, renders `R$ 1.234,56` correctly. Format only at the display edge; keep cents internally.
-- **Dates / BR cycles:** `date-fns` for month/year boundaries; `date-fns-tz` to pin to `America/Sao_Paulo` so a transaction at month-end doesn't slip into the wrong budget period via UTC. Parse BR `dd/mm/yyyy` explicitly at the ingest boundary.
-- **MEI specifics:** the R$ 81.000/year ceiling and DASN-SIMEI report are pure domain math over the same integer-cents + monthly-bucket primitives — no extra library needed.
+**pgsodium status (verified):** pgsodium is **pending deprecation**; Supabase recommends **no new pgsodium/TCE usage**. **Vault is unaffected** — it is the recommended secret store going forward; only its internals move off pgsodium, the `vault.create_secret` / `vault.decrypted_secrets` surface is unchanged. So building on Vault is the future-proof choice.
 
-Confidence: HIGH.
+**Critical RLS detail — how to make Vault per-user + RLS-safe.** Vault secrets live in `vault.secrets` and are **not** themselves `user_id`-scoped or RLS-protected per row; access is gated by SQL privileges on the `vault` schema/view. So **do not** try to put RLS on `vault.decrypted_secrets` directly. Instead use the indirection pattern that fits this app's "every table has `user_id` + RLS" rule:
 
----
+1. App-owned table `user_provider_keys ( user_id uuid references auth.users, provider text, secret_id uuid /* the Vault UUID */, created_at, ... )` — **RLS `auth.uid() = user_id`** on select/insert/update/delete, like every other domain table. It stores **only the Vault secret UUID**, never the plaintext key.
+2. Write path: a `SECURITY DEFINER` RPC that (a) checks `auth.uid()`, (b) calls `vault.create_secret(plaintext)`, (c) inserts the returned UUID into `user_provider_keys` for that user. The plaintext key arrives over the Server Action / Route Handler, is handed straight to Vault, and is never persisted in app tables.
+3. Read path (server-only, on cache-miss classification): a `SECURITY DEFINER` RPC that verifies the row belongs to `auth.uid()`, then joins to `vault.decrypted_secrets` to return the plaintext **only inside the trusted server function**. Never expose `vault.decrypted_secrets` to the `anon`/`authenticated` roles directly, and never return the plaintext to the client — only the classification result goes back.
+
+This keeps the user-facing isolation in RLS (where the rest of the app already proves it) while delegating the actual encryption to Vault. Net new schema = one table + two `SECURITY DEFINER` RPCs in one migration.
 
 ## Alternatives Considered
 
 | Recommended | Alternative | When to Use Alternative |
 |-------------|-------------|-------------------------|
-| `pdf-parse` v2 (`getTable`) | `unpdf` | If pdf-parse hits native-binary/worker issues on Vercel, or you only need raw text and will parse columns yourself. Edge-runtime safe. |
-| `pdf-parse` v2 | `pdfjs-dist` (modern build) directly | Only if you need fine-grained text-position control beyond pdf-parse's table API; more wiring, more serverless footguns. |
-| AI SDK + AI Gateway | `@ai-sdk/google` direct provider | If you want to hold your own Google key and avoid any Vercel-Gateway dependency. Identical call site. |
-| Gemini 2.5 Flash-Lite | GPT-5-nano | Slightly cheaper input ($0.05); A/B on real descriptors. Reach it by swapping the Gateway model string. |
-| `ofx-data-extractor` | `node-ofx-parser` / `ofx-js` | If you hit a parsing edge case on a specific BR bank's OFX dialect; keep as a fallback, but `ofx-data-extractor` is the best-maintained TS option. |
-| `decimal.js` (+`dinero.js` v2 optional) | `big.js` | Lighter footprint if you only need basic arithmetic; lacks money/currency conveniences. `currency.js` is an option but less precise for chained division. |
-| `date-fns` | Luxon | If you want a richer single-object DateTime+zone API; heavier, less tree-shakeable. Temporal (native) not yet broadly safe to rely on. |
-| `recharts` (via shadcn chart) | Tremor / visx / Chart.js | Tremor for faster dashboard scaffolding if you drift from shadcn; visx for fully custom viz. Not needed for these chart types. |
-| Server Actions + RSC | `@tanstack/react-query` | Add React Query only if client-side refetch/optimistic UI becomes painful; not required up front. |
+| Direct `@ai-sdk/*` providers (BYOK per-key) | Vercel AI Gateway | **Not applicable here** — Gateway uses one Vercel-issued key, which defeats "user pastes their own per-provider key." Explicitly excluded by the milestone decision. |
+| Supabase Vault | pgcrypto / app-layer Node crypto | Only if you ever leave Supabase, or need a customer-managed master key for a compliance mandate. Not the case for a single-user personal app. |
+| `deepseek-chat` (alias) now | `deepseek-v4-flash` (stable id) | Switch the config map to `deepseek-v4-flash` before/at the 2026/07/24 deprecation; alias keeps working until then. |
+| Claude Haiku 4.5 | Gemini Flash-Lite / DeepSeek | If the user wants the cheapest run, steer to Gemini/DeepSeek (10–50× cheaper than Haiku for this task). Haiku is the "I already have an Anthropic key" path. |
 
 ## What NOT to Use
 
 | Avoid | Why | Use Instead |
 |-------|-----|-------------|
-| `@supabase/auth-helpers-nextjs` | Deprecated; superseded for App Router | `@supabase/ssr` with `getAll`/`setAll` |
-| `pdf-parse` **v1** (classic) | Pulls canvas/native bindings + worker-resolution issues that break on Vercel/Lambda | `pdf-parse` v2 rewrite, or `unpdf` |
-| Raw `pdfjs-dist` legacy build in a serverless handler | "module requires Node.js APIs" / worker errors on edge & flaky on Lambda | `unpdf` (bundles a minimal pdf.js, no canvas) or pdf-parse v2 |
-| Floating-point `number` for money | IEEE-754 rounding drift corrupts sums/percentages — unacceptable for finance | Integer cents + `decimal.js` |
-| Auto-committing PDF-parsed rows | Issuer PDF variance → silent misreads | Parse → show review grid → user confirms → persist |
-| App-layer-only data filtering (no RLS) | A query bug or future multi-user mistake leaks financial data | Postgres RLS `auth.uid() = user_id` on every table + Storage |
-| Calling the LLM for already-known merchants | Burns money & latency on solved cases | Memory-first (`merchant_patterns`), AI only on cache miss |
-| Cookie `get/set/remove` (single-cookie) Supabase SSR shape | Older/deprecated interface | `getAll`/`setAll` batch interface |
-| `cookies()` writes from Server Components | Not allowed; session won't refresh | Refresh session in middleware |
+| Vercel **AI Gateway** for this feature | One shared Vercel key; cannot hold the user's own per-provider key | Direct `@ai-sdk/*` providers, instantiated at request time with `createX({ apiKey })` |
+| `@ai-sdk/deepseek@3.x` | Does not exist at AI-SDK-6 time; deepseek provider's current major is **2.x** | `@ai-sdk/deepseek@2.0.39` (peer `ai`/`zod` ranges match SDK 6) |
+| Date-suffixed Claude model id (e.g. `claude-haiku-4-5-20251001` in app code) | Brittle; the bare alias is the supported call string | `claude-haiku-4-5` (bare alias) |
+| Storing the API key in an app table (even "encrypted" by hand) | Reinvents key management; master key ends up in an env var | Vault secret UUID in `user_provider_keys` + plaintext only inside a `SECURITY DEFINER` RPC |
+| RLS policy directly on `vault.decrypted_secrets` | Vault secrets aren't per-row RLS-scoped; you'd fight the schema | App-owned `user_provider_keys` table carries the `user_id` + RLS; it references the Vault UUID |
+| pgsodium / Transparent Column Encryption | Pending deprecation; Supabase recommends against new usage | Supabase Vault (`vault.*` API is staying) |
+| Reading the user key in an **Edge** runtime handler | Decrypted secret + provider SDK want Node; Edge complicates it | Node.js-runtime Route Handler / Server Action (same place PDF parsing runs) |
 
 ## Stack Patterns by Variant
 
-**If a bank/issuer offers both PDF and OFX/CSV:**
-- Steer the user to OFX (then CSV). Deterministic parsing, no table-reconstruction risk. PDF is the last resort.
+**If the user has not configured any key (or the key errors):**
+- `suggestCategory()` returns null → UI falls back to the existing manual pick (memory still learns from it).
+- Because the seam is already null-tolerant and additive, "no key / provider error" is a graceful no-op, not a failure. No new dependency required for this path.
 
-**If a card statement PDF is image-only/scanned:**
-- Text extraction returns nothing. Out of scope to OCR in v1 — surface a clear message and ask for CSV/OFX from that bank. Don't silently produce empty results.
+**If the user picks DeepSeek after 2026/07/24:**
+- The config map must resolve `deepseek` → `deepseek-v4-flash` (the `deepseek-chat` alias retires). One-line config change; no code/dep change.
 
-**If you stay on Vercel free/hobby limits (solo use):**
-- Gemini 2.5 Flash-Lite free tier + memory-first classification keeps AI cost near zero. Batch unseen descriptors per upload into one call.
-
-**If multi-user (spouse) goes live later:**
-- Zero schema migration needed (every table already `user_id`-scoped + RLS). Only the UI gains an account/sharing surface — exactly the deferred scope in PROJECT.md.
+**If classifying a whole uploaded invoice:**
+- Collect all unseen merchant descriptors, send them in **one** `generateObject` call (array schema) to minimize latency/cost — not one call per row.
 
 ## Version Compatibility
 
 | Package A | Compatible With | Notes |
 |-----------|-----------------|-------|
-| Next.js 16.x | React 19.x | App Router; Server Actions stable. |
-| shadcn/ui (CLI 4.x) | Tailwind v4.3.x + React 19 | Full support; init with the v4 `@theme` flow. |
-| `recharts` 3.8.x | React 19 | **Requires `react-is` override** in package.json matching your React 19 version. |
-| AI SDK `ai` 6.0.x | AI Gateway (v5 & v6) | Gateway is the default transport; string model IDs work out of the box. |
-| `zod` 4.4.x | AI SDK 6 `generateObject` | Zod schemas drive structured/enum output. |
-| `@supabase/ssr` 0.12.x | Next.js 16 App Router | `getAll`/`setAll` cookie interface; middleware session refresh. |
-| `dinero.js` v2 (2.x) | TS strict | Stable since 2026-03-02. **npm `latest` dist-tag may still resolve v1 — pin the v2 version explicitly** and verify the installed major. |
-| `pdf-parse` 2.4.x | Vercel Node runtime | Confirm the installed package resolves to the mehmet-kozan v2 repo; set `maxDuration` on the Route Handler. |
+| `ai@6.0.208` | `@ai-sdk/google@3.0.83`, `@ai-sdk/anthropic@3.0.85`, `@ai-sdk/deepseek@2.0.39` | All three providers declare `ai` SDK 6-era peers; coexist in one app. |
+| `@ai-sdk/anthropic@3.0.85` | `zod ^3.25.76 \|\| ^4.1.8` | Satisfied by locked `zod 4.4.x`. |
+| `@ai-sdk/deepseek@2.0.39` | `zod ^3.25.76 \|\| ^4.1.8` | Provider major is **2.x** (not 3.x) — pin explicitly. |
+| `@ai-sdk/google@3.0.83` | `zod ^3.25.76 \|\| ^4.1.8` | Already present; same enum/`generateObject` path. |
+| Supabase Vault | Supabase project (Postgres) | `vault.create_secret` / `vault.decrypted_secrets` stable; internals migrating off pgsodium but API unchanged. |
+| `gemini-2.5-flash-lite` / `claude-haiku-4-5` / `deepseek-chat` | `generateObject` enum output | Each supports structured/JSON output; Zod enum constrains the category. |
 
 ## Sources
 
-- Context7 `/websites/ai-sdk_dev` — generateObject/Output enum classification patterns, two-step structured output (HIGH)
-- https://vercel.com/docs/ai-gateway — Gateway = default in AI SDK v5/v6, zero markup, BYOK, string model IDs (HIGH)
-- https://ai-sdk.dev/providers/ai-sdk-providers/google-generative-ai — current Gemini model IDs, generateObject + structuredOutputs (HIGH)
-- https://ai.google.dev/gemini-api/docs/pricing — Gemini 2.5 Flash-Lite $0.10/$0.40, free tier (HIGH)
-- https://github.com/mehmet-kozan/pdf-parse — v2 pure-TS, serverless target, `getText()`/`getTable()` API (HIGH)
-- dev.to / chudi.dev / pkgpulse / buildwithmatija (2026) — serverless PDF caveats: avoid pdf-parse v1 / raw pdfjs-dist, unpdf edge-safe (MEDIUM, multiple sources agree)
-- https://github.com/Fabiopf02/ofx-data-extractor — TS-native OFX, v1.5.0 (Mar 2026), STMTTRN/normalize API (MEDIUM, single primary source + npm metadata)
-- https://supabase.com/docs/guides/auth/server-side/nextjs + /creating-a-client — `@supabase/ssr`, getAll/setAll, middleware refresh, auth-helpers deprecated (HIGH)
-- https://supabase.com/docs/reference/cli/.../supabase-gen-types-typescript — typed client workflow (HIGH)
-- https://ui.shadcn.com/docs/tailwind-v4 + shadcn issue #6585 — Tailwind v4/React 19 support, recharts react-is override (MEDIUM-HIGH)
-- https://www.sarahdayan.com/blog/dinerojs-v2-is-out + GitHub discussion #618 — Dinero v2 stable 2026-03-02 (MEDIUM)
-- npm registry (`npm view`) — all version numbers as of 2026-06-16 (HIGH)
+- `npm view @ai-sdk/anthropic@3.0.85`, `@ai-sdk/deepseek@2.0.39`, `@ai-sdk/google@3.0.83`, `ai@6.0.208`, `zod@4.4.3` — exact versions + zod peer ranges, 2026-06-18 (HIGH)
+- Anthropic `claude-api` skill model catalog — `claude-haiku-4-5` bare id, $1/$5 per 1M, 200K context, no date suffix (HIGH)
+- https://ai.google.dev/gemini-api/docs/pricing + pricepertoken/devtk — `gemini-2.5-flash-lite` $0.10/$0.40 per 1M, free tier, 1M context (HIGH)
+- https://api-docs.deepseek.com/quick_start/pricing — `deepseek-chat`→V4-Flash alias, $0.14/$0.28 cache-miss, **alias deprecates 2026/07/24 15:59 UTC**, base_url `https://api.deepseek.com` (HIGH)
+- https://supabase.com/docs/guides/database/vault — `vault.create_secret`, `vault.decrypted_secrets`, Authenticated Encryption at rest, protect the view via SQL privileges (HIGH)
+- https://supabase.com/docs/guides/database/extensions/pgsodium + supabase discussion #27109 — pgsodium pending deprecation; **Vault unaffected, recommended going forward**; TCE/Server Key Management not recommended on platform (HIGH)
 
 ---
-*Stack research for: personal finance app (BR) with multi-format statement ingestion + AI classification*
-*Researched: 2026-06-16*
+*Stack research for: BYOK multi-provider AI classification (v1.4 milestone delta)*
+*Researched: 2026-06-18*

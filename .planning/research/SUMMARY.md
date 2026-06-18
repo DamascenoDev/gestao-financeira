@@ -1,168 +1,154 @@
 # Project Research Summary
 
 **Project:** Gestão Financeira Pessoal
-**Domain:** Personal finance web app (Brazil) — statement ingestion (PDF/CSV/OFX), AI-assisted merchant→category classification with learned memory, %-of-income budget targets (monthly + annual), reservas/sinking funds, and MEI/DASN-SIMEI tax tracking. Single-user v1, multi-user-ready data model.
-**Researched:** 2026-06-16
+**Domain:** BYOK multi-provider AI classification wired into a SHIPPED Next.js 16 + Supabase personal-finance app (v1.4 — CLS-AI)
+**Researched:** 2026-06-18
 **Confidence:** HIGH
 
 ## Executive Summary
 
-This is a single-user (later two-user) personal finance app for Brazil whose stated moat is **"classificação inteligente com memória + visão de metas"** — upload a fatura, watch it self-classify (learning from every confirmation), and see adherence to %-of-income goals. The stack is locked (Next.js App Router + TypeScript strict + Supabase Auth/Postgres/Storage + Vercel), so all four researchers worked *within* that envelope and converged on a remarkably consistent picture: the generic ledger plumbing (import, editable categories, dashboards) is **table stakes** that the dominant BR apps (Mobills, Organizze) already do; the differentiation — and the engineering effort — belongs in three places: (1) a *learned* merchant→category memory with a human-confirm loop, (2) %-of-income budgets evaluated on two horizons (monthly **and** annual-cumulative), and (3) the reservas + MEI modules that no mass app does well.
+This is a **subsequent-milestone (v1.4) integration**, not a greenfield build. The upload→parse→review→confirm→learn pipeline and its memory-first classifier are already live in production (v1.3). Three null seams were intentionally pre-built and ship inert today: `suggestCategory()` (`src/lib/classifier/suggest.ts:27`), the `validateSuggestion` enum wrapper (`:48`), and the `SuggestionSlot` chip (`src/components/suggestion-slot.tsx`). The milestone wires REAL AI into those seams plus adds a BYOK key-storage surface. The research is emphatic: **do not redesign the pipeline — everything is additive.** Memory-first stays in front of AI; AI fires only on cache-miss descriptors, batched into one `generateObject` call per upload; suggestions are chips, never auto-commits; only human confirm writes `merchant_patterns`.
 
-The recommended approach is a **two-layer classifier** (cheap indexed memory lookup first, a cheap short-text LLM only on memory-miss via the Vercel AI SDK + AI Gateway, output constrained to an allowed-category enum, pattern persisted **only on human confirm**) fed by an **ingestion pipeline** built around two hard infrastructure facts: the browser uploads files **directly to Supabase Storage via a signed URL** (dodging Vercel's 4.5 MB function-body limit), and parsing runs as **deferred background work** (`after()`/`waitUntil`) so a slow PDF parse never blocks the response. CSV/OFX are the reliable **primary** ingestion path (deterministic, no AI); per-bank PDF is a fragile, best-effort **fallback** (pure-JS parser, manual-correction grid, deferrable to v1.x). Everything is scoped by `user_id` with Postgres RLS and a private per-user Storage bucket from day one.
+The recommended approach is a **provider-agnostic factory over direct `@ai-sdk/*` packages** (NOT AI Gateway, because the user pastes their own per-provider key) — `createGoogleGenerativeAI` / `createAnthropic` / `createDeepSeek`, each instantiated at request time with a decrypted key. The key is encrypted at rest in **Supabase Vault** (the current, future-proof choice — pgsodium/TCE are deprecated). An app-owned `ai_settings` table (next migration `0033`) carries `user_id` + RLS and stores only the Vault secret UUID + provider + model; decryption happens server-only via a `SECURITY DEFINER` RPC filtered by `auth.uid()`. The key must NEVER reach the client — the form is write-only and the page renders "chave configurada ✓", not the key.
 
-The dominant risk is twofold. **Correctness/security foundations** must be right before anything lands: money as **integer centavos** (never float; Postgres `bigint`), **RLS on every table** (a misconfigured policy leaks the spouse's data silently — empty result, not error), service-role key kept server-only, and **idempotent dedup** so re-uploads don't double-count. **Domain modeling** has two load-bearing open decisions: how reserva contributions are treated in budget math (the #1 modeling pitfall — must be a *transfer/saving* excluded from spend adherence, not an expense) and which income denominator the budget % uses (recommended: net *received* income, with monthly and annual computed off the same ledger). The mitigation strategy that all four researchers endorse: **build the manual ledger loop first** (income → categories → transactions → budget dashboard → reservas) to prove the core value on hand-entered data, then bolt on the highest-risk upload + AI pipeline onto a proven foundation rather than as a big-bang dependency.
+The dominant risks are **security and provider-parity**, not throughput (cost is near-zero by construction). The four critical pitfalls: (1) the BYOK key leaking to the client via `select('*')`, RSC prop serialization, or a `'use client'` import — mitigated by `import 'server-only'` + projecting only `has_key`/`provider`; (2) plaintext-at-rest or a deprecated-crypto footgun — mitigated by Vault; (3) a missing/partial RLS policy on the new settings table — mitigated by all four command policies + `with check`; (4) **DeepSeek silently breaking structured output** — it has no `json_schema` mode, only `json_object`, so the feature works in dev (tested on Gemini) and breaks when the user picks DeepSeek — mitigated by a per-provider structured-output adapter and a flat Zod schema (Claude rejects `$ref`/`name`). A fifth, operationally dangerous item: the folded-in v1.3 debt includes a **destructive prod throwaway-account delete**, and MEMORY warns the dev server points at PROD Supabase — this MUST be an isolated phase with a DB backup and a confirmed throwaway `user_id`.
 
 ## Key Findings
 
 ### Recommended Stack
 
-Stack is locked; STACK.md fills in the libraries *within* it with HIGH confidence on core/parsing/AI (a few MEDIUM flags on PDF and dist-tags). The shape: `@supabase/ssr` for cookie-based auth (the old `auth-helpers-nextjs` is deprecated — do not use), the Vercel AI SDK (`ai`) with `generateObject` + a Zod **enum** to constrain classification output, format-specific parsers behind one normalizer (CSV/OFX deterministic, PDF best-effort), shadcn/ui + Tailwind v4 + Recharts for the dashboards, and **integer-cents money math** with `decimal.js` + `Intl.NumberFormat('pt-BR')` at the display edge only.
+The base stack is locked and live (Next.js 16, TS strict, Supabase Auth/Postgres/Storage + RLS, Vercel, `ai` 6.0.x, `@ai-sdk/google` 3.0.x, `zod` 4.4.x). v1.4 adds only **two npm packages** plus a built-in Postgres feature. All three provider packages declare the same AI-SDK-6 zod peer range, so they coexist cleanly. Test-connection and structured output need NO new deps (reuse `ai` + provider + `zod`); key encryption is built-in Vault, not a package. See `STACK.md`.
 
 **Core technologies:**
-- `@supabase/ssr` (0.12.x) + `@supabase/supabase-js` (2.x) — auth/DB/Storage with `getAll`/`setAll` cookies + middleware session refresh; typed client via `supabase gen types`
-- `ai` (Vercel AI SDK 6.x) + AI Gateway — LLM orchestration; one key, zero token markup, model swap by string ID (`google/gemini-2.5-flash-lite` default, GPT-5-nano an A/B alternative)
-- `zod` (4.x) — single source of truth: validates parsed rows AND constrains AI output to the user's category enum
-- `pdf-parse` v2 (mehmet-kozan rewrite, `getTable()`) primary / `unpdf` edge-safe fallback — pure-JS, serverless-targeted PDF extraction (avoid pdf-parse v1 / raw pdfjs-dist — native-binary footguns on Vercel)
-- `papaparse` + `ofx-data-extractor` — deterministic CSV/OFX parsing (the reliable primary ingestion path)
-- `decimal.js` + `Intl.NumberFormat('pt-BR')` (+ optional `dinero.js` v2) — exact money math over integer cents
-- `date-fns` + `date-fns-tz` pinned to `America/Sao_Paulo` — monthly/annual cycle boundaries without UTC month-edge bugs
+- `@ai-sdk/anthropic@3.0.85` — Claude provider (`createAnthropic({ apiKey })`, model `claude-haiku-4-5`, bare id, $1/$5) — first-party, BYOK runtime instantiation.
+- `@ai-sdk/deepseek@2.0.39` — DeepSeek provider (`createDeepSeek({ apiKey })`) — **major is 2.x, not 3.x**; model `deepseek-chat` → `deepseek-v4-flash` (alias DEPRECATES 2026-07-24; pin via a provider→modelId config map and re-verify at build).
+- `@ai-sdk/google@3.0.83` — Gemini provider (already present), model `gemini-2.5-flash-lite` ($0.10/$0.40, free tier) — the cheap default workhorse.
+- Supabase Vault (built-in) — `vault.create_secret` / `vault.decrypted_secrets`, authenticated encryption at rest, stable API, key-management owned by Supabase.
 
 ### Expected Features
 
-FEATURES.md (HIGH on table stakes + BR tax facts) frames it sharply: importing + categories + basic dashboards are the *price of entry*, not the moat. Build those cheaply; spend effort on the three differentiators.
+The full feature landscape and prioritization are in `FEATURES.md`. Every feature either fills a pre-built seam or sits beside it — none rebuild the pipeline.
 
-**Must have (table stakes):**
-- Income tracking — recurring fixed (salário, pensão) + ad-hoc; store *expected* vs *received* (the budget denominator)
-- OFX + CSV import with **duplicate detection** + multi-account/source model (the reliable path)
-- Transaction list + edit; editable BR-default categories (ship a sensible seed, soft-delete)
-- Manual review/confirm surface for classified transactions (the product's main screen)
-- Monthly spend-by-category dashboard; pt-BR locale/currency/date everywhere; per-user RLS isolation
+**Must have (table stakes / P1):**
+- BYOK Settings: provider picker + paste key + encrypted at-rest (Vault, RLS) — the locked decision; AI can't authenticate without it.
+- Memory-first dispatch (AI only on unseen) — the cost guardrail.
+- One batched, deduped AI call per upload — cost + latency contract.
+- Enum-constrained output (live per-user enum) + "none fits"/confidence schema — keeps AI inside the user's categories, avoids confidently-wrong pre-fills.
+- SuggestionSlot pre-fill, no auto-commit; confirm persists + learns — the human-in-the-loop core value.
+- Graceful degradation (no key / provider error → manual pick) — AI is strictly additive.
+- Provenance badge (memória vs IA) — minimal, near-free trust affordance.
 
-**Should have (competitive — this is the moat):**
-- Learned merchant→category memory + suggest→confirm→auto-apply loop (auto-apply high-confidence, queue low-confidence) + bulk re-classification
-- Budget targets as **% of income, monthly AND annual-cumulative** + adherence dashboard (both horizons, progress bars, over-budget flags)
-- Reservas (sinking funds): named buckets, optional target+progress, contribution-via-"Reserva"-category with "qual reserva?" sub-prompt, withdrawals, per-bucket history
-- MEI module: NF register + R$81k running tracker + DASN-SIMEI report (record-and-report, not e-file)
-- In-app threshold alerts (budget % and MEI limit — cheap, prevents desenquadramento harm)
+**Should have (P2):**
+- Test-connection button (also a stated v1.4 target — promote into MVP if cheap).
+- Confidence hint + low-confidence-first sorting in the review grid.
+- Active-provider indicator / per-upload AI summary.
 
-**Defer (v1.x / v2+):**
-- Per-bank PDF import (high-risk; add one bank at a time, or v1 for the primary card only if no OFX) — strongest deferral candidate
-- Recurring-expense detection, CSV/MEI-report export, transfers-between-accounts as a first-class type (v1.x)
-- Shared/family UI for the spouse (data model ready; UI deferred), email/digest alerts, Open Finance aggregation, IRPF/broader tax, investments, native mobile, multi-currency (all explicitly out of scope)
+**Defer (v2+):**
+- Provider A/B or auto-fallback; spouse/multi-user BYOK (schema already ready).
+- Anti-features to refuse: auto-commit, per-transaction streaming, fine-tuning, multi-model voting, free-text category generation, app-side/Vercel-env key storage.
 
 ### Architecture Approach
 
-ARCHITECTURE.md (HIGH) lays out a Next.js App Router app over the user's personal Supabase, with four decisions baked in: file uploads **bypass the Vercel function** (browser → Storage signed URL, sidestepping the 4.5 MB limit); parse + classify run as **deferred background work** (`after()`); **RLS is the security boundary**, not app code (every table + the Storage bucket enforce `user_id = auth.uid()`); and the **LLM is the last-resort path** (memory lookup first). Aggregation (budget adherence, reserva balances, MEI totals) lives in **SQL views/RPC** so it inherits RLS and avoids over-fetching. **Reserva balances are always DERIVED** (Σ in − Σ out from a ledger), never a stored mutable counter.
+Integration points were grepped from the live codebase (`ARCHITECTURE.md`). A new `lib/ai/` namespace holds the BYOK boundary (provider-factory, server-only settings decrypt, batched classify); `classifier/suggest.ts` gets its real body; `import.ts` (~line 434) reshapes the ingest loop to collect unique misses → one batched call → attach `row.suggestion`; `confirmImport` is unchanged (only confirm writes memory). Load-bearing invariants: **key never reaches the client**, **only `descriptor_norm` goes to the model** (no PII), **AI suggests / human confirms / only confirm learns**. Every failure mode (no key, bad key, 4xx/5xx/429, malformed output, Vault error) degrades to the existing manual pick inside an inner `try/catch` returning `{}` — the upload never fails because the AI did. Node runtime, `maxDuration` ≥ 60 on the import segment; `@ai-sdk/*` are pure JS (no `serverExternalPackages` change).
 
 **Major components:**
-1. **Supabase Auth + RLS Postgres + private Storage bucket** — identity, system-of-record (every row `user_id`-scoped), raw statements in `{user_id}/...` folders
-2. **Ingestion pipeline** — signed-URL direct upload → `/api/ingest` registers + triggers `after()` parse → format parsers → normalize (BRL amounts, merchant canonicalization) → two-layer idempotent dedup (file `content_hash` + per-tx `dedupe_key`)
-3. **Two-layer classifier (`lib/classifier`)** — memory point-read on `merchant_patterns` (free, always first) → batched LLM call for unknowns only → write-back to memory **only on human confirm**
-4. **Aggregation layer (SQL views/RPC + app presentation)** — `v_spend_by_category_period`, `v_reserva_balance`, `v_mei_year_total`; monthly + annual adherence computed off the **same ledger**
-5. **Server Actions** — all authenticated mutations (confirm classification, CRUD income/reservas/NFs, the "qual reserva?" sub-question that writes the reserva ledger entry + learns the pattern in one transaction)
+1. `ai_settings` table + Vault + `get_ai_api_key()` SECURITY DEFINER RPC (migration 0033) — encrypted key reference, RLS-scoped.
+2. `lib/ai/provider-factory.ts` — `modelFor(provider, model, apiKey)` switch → configured `@ai-sdk` LanguageModel; one place knows provider names.
+3. `lib/ai/settings.server.ts` (`import 'server-only'`) + `lib/ai/classify.ts` — server-only decrypt read + batched `generateObject` with the live per-user enum.
+4. `suggestCategory()` seam (wire) → `SuggestionSlot` chip in `import-review-table.tsx:771` (feed `row.suggestion`).
+5. BYOK Settings surface under `conta/configuracoes-ia/` (mirror the `mei/configuracoes` RSC+form+action triad) + `saveAiSettings` / `testConnection` actions.
 
 ### Critical Pitfalls
 
-Top items from PITFALLS.md (HIGH); each maps cleanly to a phase and has a verification check in the "Looks Done But Isn't" list.
+Full list and pitfall→phase mapping in `PITFALLS.md`.
 
-1. **Float money** — store **integer centavos** (`bigint`); parse `"1.234,56"` → `Math.round(value*100)` once at ingest; format only at the display edge. Never `double precision`/`real`/Postgres `money`. (P0 — non-negotiable, near-impossible to retrofit.)
-2. **RLS leak / service-role exposure** — `ENABLE ROW LEVEL SECURITY` + `(select auth.uid()) = user_id` (`WITH CHECK` on insert), `TO authenticated`; test all four verbs as a *second* user even though v1 is single-user; service-role key `import 'server-only'`, never `NEXT_PUBLIC_`. A denied query returns `[]`, not an error — silent leak risk. (P0.)
-3. **Public/unscoped Storage + duplicate imports** — private bucket, `{user_id}/` path RLS, signed URLs only; idempotent dedup via file `content_hash` + per-tx `dedupe_key` UNIQUE with `ON CONFLICT DO NOTHING`; show "X new, Y duplicates" preview. (P1.)
-4. **AI cost / prompt injection / memory correctness** — memory-first so known merchants never reach the LLM; batch + dedupe unknowns into one call; delimit untrusted descriptors as *data*, validate output against the allowed-category enum, human-confirm before learning; store category **point-in-time on the row** (don't rewrite history), key rules by stable `category_id` not name. (P2.)
-5. **Domain modeling — budget % denominator, reserva double-counting, MEI edges** — pin the denominator (net *received* income, monthly + annual off the same ledger, clamp near-zero); reserva contributions are **transfers/saving excluded from spend adherence**, balance derived, guard against negative withdrawals; MEI uses the *applicable* limit (R$6.750 × active months first year, R$81k full year, +20% tolerance band), gross *receita bruta*, comércio/serviços split + employee flag, framed as informational not tax advice (LGPD: minimal data to LLM, export/delete path). (P3/P4/P5.)
+1. **BYOK key leaks to the client** (via `select('*')`, RSC prop serialization, or a `'use client'` import) — never select the key column in client-reachable queries; expose only `has_key` + `provider`; decrypt only inside the Server Action; `import 'server-only'`; grep bundle + Network tab during verify.
+2. **Plaintext / deprecated-crypto at rest** — use Supabase Vault; the settings row holds only the Vault secret UUID; decrypt view server-only. Do NOT use pgsodium/TCE/hand-rolled pgcrypto.
+3. **RLS gap on the new settings table** — enable RLS in the same migration; write all four command policies + `with check`; test cross-user locally (Vault's own view is not per-user RLS-scoped — the app row enforces isolation).
+4. **DeepSeek silently breaks structured output** (no `json_schema`, only `json_object`) — per-provider adapter: DeepSeek uses `json_object` + enum-in-prompt + server-side Zod validate; keep the schema flat (Claude rejects `$ref`/`name`); handle `NoObjectGeneratedError` → manual fallback.
+5. **Destructive prod verification of v1.3 debt** — isolate in its own phase; back up the prod DB first; confirm the throwaway `user_id`; double-confirm the delete; never run via the dev server (it points at PROD).
 
 ## Implications for Roadmap
 
-All four researchers independently produced the same backbone: **foundation → manual ledger loop → upload+AI pipeline → MEI → hardening.** The sequencing insight is load-bearing — the upload+AI machinery is the highest-risk, highest-novelty part, and everything it produces (`pending` transactions) is consumed by machinery you can stand up cheaply with manual entry first. Build the manual loop first so the core value is demonstrable early and AI lands on a proven foundation.
+Based on combined research, the strict dependency order is **encryption/storage → AI call → UI**, with the v1.3 debt kept entirely separate. Suggested phase clustering (phases continue from 14):
 
-### Phase 1: Foundation (auth, RLS, money, schema)
-**Rationale:** Nothing works without identity + the isolation boundary, and the money type + multi-tenant schema are impossible-to-retrofit decisions. This is where the project's two most catastrophic pitfalls live.
-**Delivers:** Supabase project + `@supabase/ssr` clients + middleware refresh; all tables (`user_id`-scoped, integer-cents `bigint`) with indexes + RLS policies + `WITH CHECK`; private `statements` bucket with path-scoped RLS; BR-default category seed; typed client via `gen types`; empty SQL views scaffolded; `user_id` scoping designed for LGPD export/delete later.
-**Addresses:** Per-user isolation, editable BR categories (seed), integer-cents money foundation.
-**Avoids:** Pitfall 1 (float), 2 (RLS leak), 3 (service-role leak), 4 (public bucket — bucket created private now).
+### Phase 1: Key Storage + BYOK Settings (Vault migration, RLS, test-connection)
+**Rationale:** Nothing downstream can authenticate or decrypt without this; it is the root of the dependency chain. It is also where the three most sensitive pitfalls (1, 2, 3) are prevented.
+**Delivers:** Migration `0033_ai_settings.sql` (table + RLS all-four policies + `with check` + Vault enable + `get_ai_api_key()` SECURITY DEFINER RPC); regenerated `database.types.ts`; `lib/ai/settings.server.ts` (server-only decrypt) + `lib/schemas/ai-settings.ts`; the `conta/configuracoes-ia/` RSC + write-only key form + `saveAiSettings`/`testConnection` actions.
+**Addresses:** BYOK Settings (P1), test-connection (P2, promote if cheap).
+**Avoids:** Pitfalls 1 (key leak), 2 (plaintext at rest), 3 (RLS gap).
+**Uses:** Supabase Vault, `@ai-sdk/*` for the test ping.
 
-### Phase 2: Manual ledger loop (income → categories → transactions → budget dashboard → reservas)
-**Rationale:** Proves the entire "classified spend vs metas" core value on hand-entered data, de-risking the hardest pieces (budget %, reserva accounting) **before** the upload pipeline exists. Budget % needs income first (the denominator); reservas need transactions + categories. This is steps 2–5 of the architecture build order collapsed into one value-delivering phase (may split during roadmapping).
-**Delivers:** income_sources + income_entries CRUD (expected vs received); manual transaction CRUD + category editing; budget_targets + monthly/annual adherence SQL views + dashboard; reservas + reserva_ledger_entries + "qual reserva?" + derived-balance progress bars.
-**Uses:** Recharts/shadcn charts, `date-fns-tz` (America/Sao_Paulo cycles), `decimal.js`, SQL views for aggregation.
-**Implements:** Aggregation layer; reserva derived-balance pattern; the adherence dashboard ("visão de metas").
-**Avoids:** Pitfall 10 (budget % denominator — pin it here), 11 (reserva double-counting/negative balance — resolve the accounting rule here).
+### Phase 2: Classification Wire (provider factory + per-provider adapter + memory-first batch)
+**Rationale:** The seam cannot be wired without the decrypt read and the factory from Phase 1. This is the milestone's core value.
+**Delivers:** `lib/ai/provider-factory.ts` (+test); batched `lib/ai/classify.ts`; the real `suggestCategory()` body (live per-user enum + `generateObject` + `validateSuggestion` + inner `try/catch`→`{}`); reshaped `import.ts` ingest loop (collect unique misses → one batched call → attach `row.suggestion`); `maxDuration` confirmed.
+**Implements:** provider-agnostic factory, live-enum structured output, memory-first batched call, graceful fallback.
+**Avoids:** Pitfalls 4 (DeepSeek adapter), 5 (enum freshness/hallucination), 6 (LLM for known merchants), 8 (graceful fallback).
 
-### Phase 3: Upload + AI ingestion pipeline (the highest-risk phase)
-**Rationale:** Highest novelty and risk; deliberately built last among the core loop so it feeds machinery already proven by Phase 2. Memory layer must precede AI so the LLM only fills genuine gaps.
-**Delivers:** signed-URL direct upload → `/api/ingest` + `after()` parse → OFX/CSV parsers (primary) + PDF (best-effort fallback) → normalize + two-layer dedup → `merchant_patterns` memory lookup → batched LLM fallback (enum-constrained) → revisão/confirm UI that learns patterns on confirm + bulk re-classify.
-**Uses:** `papaparse`, `ofx-data-extractor`, `pdf-parse` v2 / `unpdf`, Vercel AI SDK + AI Gateway + Zod enum, Supabase signed upload URLs.
-**Implements:** Ingestion pipeline + two-layer classifier components.
-**Avoids:** Pitfall 4 (public bucket / payload limit — direct upload), 5 (dedup), 6 (PDF native deps on Vercel), 7 (prompt injection), 8 (AI cost), 9 (memory correctness/history).
+### Phase 3: Review-Grid Suggestion Affordances
+**Rationale:** Needs suggestions flowing from Phase 2; pure UI on top of a proven pipeline.
+**Delivers:** Feed `row.suggestion` to `<SuggestionSlot />` (`import-review-table.tsx:771`); provenance badge (memória vs IA) as P1; confidence hint + low-confidence-first sort as P2.
+**Avoids:** Pitfall 7 (auto-commit — chip only; learning stays in `confirmImport`).
 
-### Phase 4: MEI module
-**Rationale:** Fully independent of the classification core value (separate NF register + tracker + report) — can slot anywhere after Phase 1, parked here because it doesn't touch the moat. Explicit v1 goal.
-**Delivers:** mei_invoices register (with activity-type split + employee flag captured from day one), running annual total vs the *applicable* limit with tiered alerts (green/amber/red), DASN-SIMEI report view (total + comércio/serviços split + employee flag), informational disclaimer.
-**Avoids:** Pitfall 12 (proportional first-year cap + 20% band), 13 (DASN comércio/serviços split), 14 (tax-advice framing).
-
-### Phase 5: Hardening (LGPD export/delete, isolation tests, security audit)
-**Rationale:** Financial + sensitive data with a second data subject (spouse) coming; the safety net that turns "looks done" into "is done."
-**Delivers:** two-user RLS isolation test (all four verbs), service-role-key bundle grep/CI check, signed-URL-only verification, LGPD export-all + delete-account paths, LLM data-minimization audit (no PII/amounts to provider), in-app threshold alerts polish.
-**Avoids:** Re-verifies Pitfalls 2, 3, 4; closes Pitfall 14 (LGPD).
+### Phase 4: v1.3 Debt Cleanup (ISOLATED)
+**Rationale:** Independent of 1–3 and intentionally kept apart from feature commits because it contains a DESTRUCTIVE prod step.
+**Delivers:** Redeploy G-07/G-08; hands-on prod walkthroughs MEI (12-06) + LGPD (12-07, incl. throwaway-account delete); Nyquist `VALIDATION.md` for Phases 12 + 13.
+**Avoids:** Pitfall 9 — DB backup first, confirmed throwaway `user_id`, RLS-scoped cascade, double-confirmed delete, never via the dev server.
 
 ### Phase Ordering Rationale
-
-- **Dependencies discovered:** budget % requires income (denominator); classification memory requires merchant normalization; AI requires the memory layer (fires only on cache-miss); reservas require categories + transactions. These force foundation → income → manual loop → ingestion → AI.
-- **Architecture grouping:** the manual loop (Phase 2) and the ingestion pipeline (Phase 3) both produce/consume `transactions` rows — building the consumer (dashboard, reservas) first lets the producer (upload+AI) land on a working target. MEI shares almost no surface, so it parallelizes.
-- **Pitfall avoidance:** the two impossible-to-retrofit pitfalls (float money, RLS) are front-loaded into Phase 1; the two highest-novelty risk clusters (ingestion, AI) are isolated in Phase 3 where they can fail without blocking core-value delivery; the domain-modeling decisions (denominator, reserva accounting) are forced to be resolved in Phase 2 before the dashboard depends on them.
+- **Strict dependency chain:** storage/encryption (1) → factory + seam wire (2) → grid (3). The seam (2) imports the decrypt read and factory (1); the grid (3) renders suggestions produced by (2). The settings form can begin in parallel once the schema + save/test actions exist, but lands after the decrypt path is proven.
+- **Batch + enum + "none fits" are one cohesive unit** (all properties of the single `generateObject` call sharing one Zod schema) — plan them together in Phase 2, not as separate phases.
+- **Debt is isolated** because mixing a destructive prod delete into feature churn is a Pitfall-9 wrong-account hazard; the throwaway-delete must be a deliberate, double-confirmed step.
 
 ### Research Flags
 
 Phases likely needing deeper research during planning:
-- **Phase 3 (upload + AI):** PDF parsing is the most fragile step — BR bank/card layouts vary wildly; needs a parser-strategy spike against **real sample statements per bank** (reference: `banksheet` for BR PDFs, `ofx-data-extractor` for OFX). Also confirm final AI provider/pricing + structured-output behavior at build time (A/B Gemini 2.5 Flash-Lite vs GPT-5-nano on real descriptors).
-- **Phase 4 (MEI/DASN):** verify the exact DASN-SIMEI form fields + 2026 proportional/tolerance figures against the current Receita manual at build time (tax rules drift).
+- **Phase 2 (Classification Wire):** the DeepSeek `json_object` vs `json_schema` per-provider adapter and the Claude flat-schema constraint are subtle and provider-version-sensitive; A/B the three providers on real BR descriptors and re-verify the DeepSeek model id at build (alias deprecates 2026-07-24). Use `/gsd-plan-phase --research-phase` here.
 
 Phases with standard patterns (skip research-phase):
-- **Phase 1 (foundation):** Supabase SSR auth + RLS + typed-client workflow are well-documented and verified HIGH.
-- **Phase 2 (manual loop):** CRUD + SQL-view aggregation + shadcn/Recharts dashboards are established patterns; the only novel work is the *decisions* (denominator, reserva accounting), not the implementation.
+- **Phase 1 (Key Storage):** Vault + RLS + SECURITY DEFINER RPC patterns are well-documented and pinned in STACK/ARCHITECTURE; mirror the existing `mei/configuracoes` triad.
+- **Phase 3 (Review Grid):** `@tanstack/react-table` + `SuggestionSlot` already exist; feeding a prop and adding a badge is established.
+- **Phase 4 (v1.3 Debt):** no new patterns — operational care, not research.
 
 ## Confidence Assessment
 
 | Area | Confidence | Notes |
 |------|------------|-------|
-| Stack | HIGH | Core stack + AI SDK + parsing verified via official docs/Context7; MEDIUM only on PDF (issuer variance, inherent not a library defect) and a couple of npm dist-tags (`dinero.js` v2, `pdf-parse` v2). |
-| Features | HIGH | Table stakes + BR tax facts from official Receita/gov.br + established BR apps; MEDIUM on classification-memory UX (verified vs YNAB/Monarch/QuickBooks) and PDF feasibility (vs existing BR OSS parsers). |
-| Architecture | HIGH | Stack locked + data model/pipeline are standard patterns verified against current Supabase/Vercel/Next.js docs (RLS perf form, signed upload URLs, `after()`, 4.5 MB limit). |
-| Pitfalls | HIGH | Vercel limits + Supabase RLS from official docs; MEI/DASN from multiple BR sources; money/PDF/AI from official docs + credible technical sources. |
+| Stack | HIGH | Exact versions + zod peer ranges from `npm view`; Vault, Gemini/Claude pricing, AI SDK patterns from official docs. DeepSeek model-id is the only near-term churn (pinned via config map). |
+| Features | MEDIUM | AI-SDK enum/structured-output patterns MEDIUM-verified; Claude/Gemini pricing HIGH; DeepSeek model-id LOW (churn); UX norms LOW/convergent. Scope is well-bounded by pre-built seams. |
+| Architecture | HIGH | Integration points read directly from the live codebase; Vault + provider patterns cross-checked against official docs. |
+| Pitfalls | HIGH | Verified against Supabase, AI SDK, and Next.js security docs; DeepSeek schema limit cross-checked; project MEMORY/PROJECT.md authoritative for the debt hazards. |
 
 **Overall confidence:** HIGH
 
 ### Gaps to Address
-
-- **Reserva accounting decision (OPEN, #1 modeling pitfall):** is a "Reserva" contribution a transfer/saving *excluded* from spend-adherence (recommended), and does it reduce "available to budget" income? Pick one canonical rule and apply it to both monthly + annual views. **Resolve in Phase 2 requirements before the dashboard depends on it.**
-- **Real sample statements per bank (OPEN):** PDF parsing feasibility and per-bank CSV column mapping can only be validated against the user's actual Nubank/Itaú/Inter/etc. exports. Collect samples before Phase 3; this also informs whether per-bank PDF defers to v1.x.
-- **Final AI provider A/B (OPEN):** Gemini 2.5 Flash-Lite (free tier, pragmatic default) vs GPT-5-nano (slightly cheaper input) — A/B on real BR descriptors via the AI Gateway string swap during Phase 3. Architecturally cost is dominated by call *volume* (memory-first), not model choice.
-- **Budget % denominator (recommendation, confirm in Phase 2):** net *received* income for the period, monthly + annual off the same ledger, with near-zero-income clamping. Document it before building adherence.
-- **MEI activity type:** user is likely services-only, but model the comércio/serviços split + employee flag from day one anyway — cheap now, painful re-tag later.
+- **DeepSeek model-id transition (2026-07-24):** `deepseek-chat` alias deprecates → `deepseek-v4-flash`. Handle via a provider→modelId config map; re-verify the exact id at build time. (Phase 2 planning.)
+- **DeepSeek structured-output round-trip:** must be proven end-to-end (`json_object` + Zod) before defaults lock — easy to ship Gemini-only and miss this. (Phase 2 verify.)
+- **Local Supabase Vault extension:** `supabase_vault` must be enabled in dev for `vault.create_secret` to exist — verify before depending on it. (Phase 1 planning.)
+- **`maxDuration` on the import segment:** confirm ≥ 60 covers parse + one batched LLM call. (Phase 2.)
+- **Dev-server-points-at-PROD hazard:** load-bearing for Phase 4; ensure no destructive step runs through the dev server, and back up first.
 
 ## Sources
 
 ### Primary (HIGH confidence)
-- Context7 `/websites/ai-sdk_dev` + https://vercel.com/docs/ai-gateway + https://ai-sdk.dev/providers/.../google-generative-ai — `generateObject`/enum classification, AI Gateway default transport, current Gemini model IDs
-- https://supabase.com/docs/guides/auth/server-side/nextjs + /storage/security/access-control + RLS performance docs — `@supabase/ssr` getAll/setAll, middleware refresh, `(select auth.uid())`, private bucket + `{user_id}/` Storage RLS, signed URLs
-- https://vercel.com/docs/functions/limitations + https://nextjs.org/docs/app/api-reference/functions/after — 4.5 MB body / 250 MB bundle / duration limits, deferred background work
-- https://ai.google.dev/gemini-api/docs/pricing — Gemini 2.5 Flash-Lite pricing + free tier
-- gov.br / Receita Federal DASN-SIMEI manual — R$81k limit, comércio/serviços split, employee flag, May 31 deadline
-- https://www.crunchydata.com/blog/working-with-money-in-postgres — integer-cents/numeric, `money` type deprecated
+- Live codebase (grepped 2026-06-18): `src/lib/classifier/{suggest,memory}.ts`, `src/actions/import.ts`, `src/components/{suggestion-slot,import-review-table}.tsx`, `src/lib/supabase/{server,admin}.ts`, migrations 0021/0032, `mei/configuracoes`, `next.config.ts`, `package.json`.
+- `npm view @ai-sdk/{anthropic,deepseek,google}` + `ai` + `zod` — exact versions + peer ranges.
+- Supabase Vault docs — `vault.create_secret` / `vault.decrypted_secrets`, authenticated encryption, stable API.
+- Supabase pgsodium/TCE deprecation docs + discussion #27109 — Vault is the recommended path.
+- AI SDK docs (generateObject, provider management) + Anthropic/Google provider pages.
+- Next.js security docs (Server Components/Actions, Data Security) — RSC prop serialization, `server-only`, taint, DAL.
+- Anthropic `claude-api` skill — `claude-haiku-4-5` id, $1/$5, 200K context.
+- Google AI pricing — `gemini-2.5-flash-lite` $0.10/$0.40, free tier.
+- `.planning/PROJECT.md` — v1.4 goal, BYOK + Vault decisions, v1.3 debt list.
 
 ### Secondary (MEDIUM confidence)
-- https://github.com/mehmet-kozan/pdf-parse (v2 serverless, getTable) + https://github.com/Fabiopf02/ofx-data-extractor (TS OFX) + https://github.com/tio-ze-rj/banksheet (BR bank PDF reference)
-- dev.to / chudi.dev / buildwithmatija — serverless PDF caveats (`unpdf` edge-safe, avoid pdf-parse v1 / raw pdfjs-dist)
-- Monarch / YNAB / QuickBooks / ExpenseSorted writeups — suggest→confirm→auto-apply, bulk recategorize, ML accuracy (70–80% cold → ~95% after ~50 corrections)
-- Mobills / my-best / TechTudo — BR app feature baselines (OFX/CSV/PDF import, editable categories)
-- InfinitePay / InfoMoney / MaisMEI / Nubank — MEI proportional first-year cap (R$6.750 × meses), +20% tolerance band, desenquadramento
-- LLM prompt-injection mitigation (arxiv 2508.19287, evidentlyai) + CVE-2025-48757 (Supabase RLS exposure)
+- Requesty "Structured Outputs Across LLM Providers" — DeepSeek lacks `json_schema`; Claude no `name`/no recursive `$ref`; Gemini OpenAPI-subset.
+- Vault `decrypted_secrets` service-role-only + SECURITY DEFINER per-user pattern (multiple sources agree).
+- 2026 serverless/PFM write-ups — human-in-the-loop categorization UX norms.
 
 ### Tertiary (LOW confidence)
-- Exact LLM pricing figures (Gemini Flash $0.075–0.15/1M, GPT-nano $0.10/$0.40) — verify at build time; LLM pricing moves
-- `dinero.js` v2 / `pdf-parse` v2 npm dist-tags — pin explicitly and verify installed major at install time
+- DeepSeek pricing/model-id transition (`deepseek-chat` → `deepseek-v4-flash`, deprecation 2026-07-24) — single-vendor docs, near-term churn; pin/verify at build.
 
 ---
-*Research completed: 2026-06-16*
+*Research completed: 2026-06-18*
 *Ready for roadmap: yes*

@@ -1,226 +1,168 @@
 # Feature Research
 
-**Domain:** Personal finance / budgeting web app (single-user, Brazil) with AI-assisted expense classification, savings goals, % -of-income budget targets, sinking funds, and MEI tax management
-**Researched:** 2026-06-16
-**Confidence:** HIGH on table-stakes + Brazil tax facts (Context: official Receita/gov.br + established BR apps); MEDIUM on classification-memory UX patterns (verified against YNAB/Monarch/QuickBooks behavior); MEDIUM on PDF-parsing feasibility (verified against existing BR OSS parsers)
+**Domain:** AI-assisted transaction classification (BYOK multi-provider) for a single-user personal-finance app — milestone v1.4 "IA de Classificação"
+**Researched:** 2026-06-18
+**Confidence:** MEDIUM (AI-SDK enum/structured-output patterns MEDIUM-verified; provider pricing HIGH for Claude/Gemini, near-term LOW for DeepSeek model-id churn; UX norms LOW/convergent)
 
-## Executive Framing
+## Scope note
 
-The user's edge is explicitly stated in PROJECT.md: **"classificação inteligente com memória + visão de metas"** must work even if everything else fails. So the bar for table stakes is "what makes the classify→goals loop usable," and the differentiators are the three things the mass-market BR apps (Mobills, Organizze) do NOT do well: (1) a *learned* merchant→category memory with a confirm loop, (2) % -of-income budget targets evaluated monthly **and** annual-cumulative, and (3) the reservas + MEI modules. Everything that is generic ledger plumbing is table stakes; the moat is in those three.
+This research covers ONLY the new AI-classification feature as the user experiences it. The memory-first layer, ingest→review→confirm→learn pipeline, `@tanstack/react-table` review grid, and the additive seams (`suggestCategory()` null seam, `validateSuggestion` Zod-enum wrapper, `SuggestionSlot` UI) are **already built and shipped (v1.3)**. Every feature below either fills one of those seams or sits beside them — none rebuild the pipeline.
 
-A key strategic finding: the dominant BR apps already do OFX/CSV/PDF import, editable categories, goals, and credit-card invoice management. So importing + categories + basic dashboards are **table stakes, not differentiators** — they're the price of entry, and the user should build them as cheaply as possible (lean on existing patterns) to spend budget on the moat.
+The classification flow, end-to-end, is:
+
+```
+upload statement → server parse → per-descriptor:
+   memory hit?  ── YES ──► auto-classify (zero AI, current v1.3 behavior)
+        │
+        └── NO (unseen) ─► collect into batch
+batch of unseen descriptors ── ONE AI call per upload ──► {category, confidence}[]
+   → pre-fill SuggestionSlot in the review grid (NOT committed)
+   → user confirms or overrides inline
+   → ON CONFIRM ONLY: persist transaction category + write merchant_pattern (learn)
+   → next upload: that descriptor is now a memory hit (no AI)
+```
 
 ## Feature Landscape
 
 ### Table Stakes (Users Expect These)
 
-Features the user (and later, wife) will assume exist. Missing these = the classify→goals loop is unusable or the app feels broken.
+Features without which the v1.4 milestone goal ("ligar IA no seam, memory-first, confirmação humana, BYOK") is not met.
 
 | Feature | Why Expected | Complexity | Notes |
 |---------|--------------|------------|-------|
-| Income tracking — recurring fixed (salário, pensão) + ad-hoc | % -of-income targets are meaningless without a reliable income denominator | LOW–MEDIUM | Recurring = a template that auto-materializes a monthly entry; ad-hoc = manual. The recurring engine is shared infra with recurring-expense detection (below). Store *expected* vs *received* so a late salary doesn't silently break the month's target math. |
-| Statement/invoice ingestion: **OFX + CSV** | This is the cheap, reliable path; every BR app supports it (Mobills, Organizze import OFX/CSV/Excel). Nubank/Itaú/Inter all export OFX | LOW (OFX/CSV) | OFX is a structured (SGML/XML-ish) format — parse it deterministically, no AI. Make this the primary ingestion path. CSV needs a per-bank column-mapping step (date/amount/description vary). |
-| Statement ingestion: **PDF** | User explicitly wants PDF; many BR credit-card bills only come as PDF | **HIGH** | PDF is the riskiest line item. BR bank PDFs are inconsistent (merged words, multi-line descriptions, dates split across lines; layout changes month to month). Existing OSS (`tio-ze-rj/banksheet` TS — Nubank/Itaú/Bradesco/Inter; `moacyrricardo/bank-importer`) proves it's doable but per-bank and brittle. **Treat PDF as a differentiator-risk, not a table stake** — see Pitfalls. Recommend: ship OFX/CSV first, add PDF per-bank incrementally. |
-| Transaction list with edit (date, amount, description, category, notes) | Core ledger CRUD; nothing works without it | LOW | The spine everything else hangs on. |
-| Editable BR-standard expense categories (add/remove/rename) | Explicitly requested; every BR app has it | LOW | Ship a sensible BR default seed (see category list below) so the user isn't categorizing into an empty taxonomy. Soft-delete categories (don't orphan historical transactions). |
-| Manual review/confirm of classified transactions | The whole "suggest → confirm → auto-apply" loop requires a review surface | MEDIUM | This *is* the product's main screen. See classification UX notes in Differentiators. |
-| Monthly spend-by-category view / dashboard | You can't judge goal adherence without seeing category totals | MEDIUM | Drives the adherence dashboard. |
-| Duplicate detection on import | Re-importing an overlapping statement is the #1 way ledgers get corrupted | MEDIUM | Hash on (date, amount, normalized description) + fuzzy window. Table stakes because without it every re-upload doubles spend and breaks every target. |
-| Multi-account / multi-source separation | User has multiple cards + bank + income sources; mixing them silently double-counts | MEDIUM | Even single-user, "which card is this from" matters for reconciliation and dedup. Model an `account`/`source` per transaction now; cheap later. |
-| Per-user data isolation (RLS, `user_id` scoping) | Financial data; wife joins later | MEDIUM | Already a PROJECT.md decision. Not a "feature" the user sees but non-negotiable infra. |
-| pt-BR everything: locale, R$ currency, DD/MM/YYYY, comma decimals | Brazilian user; OFX/CSV amounts and dates come in BR formats | LOW | Cross-cutting. Parse `1.234,56` correctly on import (classic bug source). |
+| Memory-first dispatch: AI fires only on cache-miss descriptors | Core cost guardrail; known merchants already auto-classify in v1.3 | LOW | Pure routing logic inside the existing `suggestCategory()` seam — partition parsed rows into `memoryHit[]` vs `unseen[]` before any AI call. Depends on existing `merchant_patterns` lookup. Testable: "Given an upload where every descriptor is already a saved pattern, no AI request is made." |
+| Batch all unseen descriptors into ONE AI call per upload | Cost + latency; per-transaction calls burn money/time on a solved-shape problem | MEDIUM | Dedupe unseen descriptors (same merchant string appearing 5× = 1 entry), send the deduped list in a single `generateObject` call, map results back to all matching rows. Testable: "An upload with 12 unseen descriptors (3 duplicated) produces exactly 1 AI request carrying 9 distinct descriptors." |
+| Enum-constrained output (only existing category names) | AI must never invent a category outside the user's editable category set | MEDIUM | `generateObject` with a Zod `z.enum(userCategories)` (or enum mode). `validateSuggestion` seam already wraps this. The enum is built **per-user at call time** from their current categories — not hardcoded. Testable: "AI output not in the user's category list is rejected and the row falls back to unclassified." |
+| "AI unsure / none fits" handling | Short BR descriptors are often ambiguous; a forced wrong guess is worse than none | MEDIUM | Include a sentinel (`null` / "Sem sugestão") in the schema + a `confidence` field; below a threshold, leave the `SuggestionSlot` empty so the user picks manually. Avoids confidently-wrong pre-fills. Testable: "A descriptor the model returns low confidence for shows no pre-filled category, only the manual picker." |
+| Suggestion pre-fills the review grid, never auto-commits | Locked decision; financial data demands human confirmation before it's truth | LOW | AI result populates `SuggestionSlot` as a *proposal*. The transaction is NOT written with that category until the user confirms. Mirrors the existing PDF "parse → review → confirm" contract. Testable: "After an upload, suggested rows exist in the review grid but querying transactions shows nothing persisted until confirm." |
+| Confirm → persist + learn the pattern | The learning loop is the product's core value | LOW | On confirm (whether accepting the AI suggestion or overriding it), write the category AND upsert the `merchant_pattern` so the next upload is a memory hit. Already the v1.3 confirm behavior — AI just changes what's *pre-filled*, not what confirm does. Testable: "After confirming an AI-suggested row, re-uploading the same descriptor classifies via memory with no AI call." |
+| BYOK Settings: pick provider + paste key, encrypted at-rest | No app-owned key; user holds their own Gemini/Claude/DeepSeek key, scoped + private | HIGH | Settings UI with provider picker + key field; key encrypted at-rest (Supabase Vault per PROJECT.md), `user_id`-scoped + RLS. Direct `@ai-sdk/*` provider packages (not AI Gateway — locked decision). Testable: "User saves a Gemini key; it is not readable in plaintext from the DB; another user_id cannot read it." |
+| Graceful degradation: no key / provider error → manual pick still works | The app must function without AI; AI is additive, not load-bearing | MEDIUM | If no key configured, or the provider call throws/times out/rate-limits, skip AI silently and present the normal manual-pick review grid (exact v1.3 experience). Surface a non-blocking toast (`sonner`), never a hard failure. Testable: "With no key set, an upload with unseen descriptors still reaches a usable review grid; with a deliberately invalid key, the upload still completes via manual pick." |
+| Suggestion provenance: memory-matched vs AI-suggested | User needs to know whether a category is a confirmed pattern or a guess to scrutinize | LOW | Badge/icon in the row: "memória" (confirmed pattern, high trust) vs "IA" (suggestion, review me). Cheap, high trust-value. Testable: "A memory-hit row and an AI-suggested row are visually distinguishable in the grid." |
 
 ### Differentiators (Competitive Advantage)
 
-These align directly with PROJECT.md Core Value. This is where to spend effort.
+Not required to ship, but raise the quality of the confirm-loop. Each is small because the pipeline already exists.
 
 | Feature | Value Proposition | Complexity | Notes |
 |---------|-------------------|------------|-------|
-| **Learned merchant→category memory (memory layer)** | Mass apps use static rules; user wants a memory that *grows from confirmations* and auto-applies. This is the stated moat | MEDIUM | Two-layer design (already a decision): **Layer 1 — memory**: normalized merchant descriptor → learned category, exact/fuzzy match, deterministic, free. **Layer 2 — AI**: only for never-seen merchants, always human-confirmed before it becomes a memory entry. Industry data: ML categorization is 70–80% accurate cold, ~95%+ after ~50 user corrections — the memory is what captures that lift. Normalization of the messy descriptor (strip store numbers, city codes, `*`, transaction IDs) is the real engineering work. |
-| **Suggest → confirm → auto-apply UX loop** | The feel of "upload a fatura and watch it classify itself, getting smarter each time" is the product | MEDIUM | Mature pattern (QuickBooks/Monarch/YNAB): on import, show each new txn with a *suggested* category + confidence; user confirms/corrects in-line; confirmation writes the memory rule; future matches auto-apply silently (or land in a low-friction "review" queue only if confidence is low). **Auto-apply high-confidence, queue low-confidence** is the right default — don't make the user confirm what's already learned. |
-| **Bulk re-classification** | When the user renames/merges a category or fixes a mis-learned merchant, they must fix history in one action | MEDIUM | Monarch's bulk-edit is the gold standard ("recategorize multiple transactions simultaneously — invaluable when cleaning up import data"). Needs: select-many → set category, and "re-apply this memory rule to all past matching transactions." Dependency: requires the memory layer + a stable merchant-normalization key. |
-| **Budget targets as % of income, monthly AND annual-cumulative** | Mass apps do fixed-R$ monthly budgets; %-of-income + dual horizon is the user's specific mental model | MEDIUM–HIGH | Two evaluation windows over the same target set is the subtlety: monthly view = this month's spend vs (target% × this month's income); annual view = YTD spend vs (target% × YTD income). A category can be green monthly but red cumulative (or vice-versa) — the dashboard must show both without confusing them. Edge cases: variable income months, mid-year target changes. This is genuinely differentiating and worth getting right. |
-| **Adherence dashboard** | The "visão de metas" half of Core Value | MEDIUM | Per-category: spent vs target, % used, on-track/over, both horizons. Visual progress bars + over-budget highlighting. Light, not gamified. |
-| **Reservas de oportunidade (sinking funds)** | Named buckets (Apê, Carro), optional target + progress bar, contributions + withdrawals, per-bucket history | MEDIUM–HIGH | The clever UX hook: a contribution is *a transaction classified as "Reserva"* that then sub-prompts "qual reserva?" — so reservas piggyback on the same classification flow rather than being a separate manual ledger. Withdrawals reduce the bucket. Optional target → progress bar only when a target exists. Per-bucket transaction history. Complexity is in keeping bucket balances consistent with the underlying transactions (a reserva is both an expense in the main ledger *and* a contribution to a bucket — model carefully so it's not double-counted against budget targets; reservas should probably be a category *excluded* from normal spend-target math, or treated as "saving," not "spending"). **This double-meaning is the #1 modeling pitfall — flag for requirements.** |
-| **MEI module** | Register issued service NFs, track R$81k annual limit, produce a DASN-SIMEI-easing report | MEDIUM | BR-specific, no mass app does this well integrated with personal finance. Scope (verified vs official Receita/gov.br): annual gross-revenue limit **R$ 81.000** (2026, MEI Geral); DASN-SIMEI is the annual declaration due **31 May** of the following year; must report total gross revenue, split (relevant for some) into *comércio/indústria* vs *serviços*. Module needs: (1) NF register (date, value, client, service description, optionally revenue type), (2) running annual total + % of R$81k with threshold alerts (e.g. 80%, 90%, 100%, and the +20% tolerance band that triggers desenquadramento), (3) a year-end report that maps directly to the DASN-SIMEI fields (total faturamento by type) so the user can transcribe it in minutes. Keep it a **record + report** tool, NOT a filing integration (see anti-features). |
+| Confidence hint on AI suggestions | Lets the user triage — eyeball low-confidence rows, trust high ones | LOW | Render the `confidence` from the AI object as a subtle cue (dot/percentage). Requires confidence in the schema (already needed for "none fits"). |
+| Sort/flag low-confidence rows to the top of the review grid | Directs attention where overrides are most likely | LOW | `@tanstack/react-table` already does sorting; add a confidence column + default sort. Pure client-side. |
+| "Test connection" button in BYOK Settings | Confirms the pasted key works before the user relies on it mid-upload | LOW-MEDIUM | One tiny throwaway classification/ping per provider; green/red result. Listed as a v1.4 target feature in PROJECT.md. |
+| Active-provider indicator | At a glance, which provider/model is doing the classifying | LOW | Read current config, show "Classificando com: Gemini 2.5 Flash-Lite". |
+| Per-upload AI summary ("8 novos classificados pela IA, 3 sem sugestão") | Closes the loop; user sees what AI did vs what needs them | LOW | Derived from the batch result counts; one toast or banner. |
+| Bulk-accept high-confidence suggestions | Speeds the common case where AI nailed most rows | MEDIUM | "Aceitar todas acima de X%" — still a single explicit human action (not auto-commit), then persist+learn each. Keep behind an explicit click to preserve the confirmation contract. |
 
 ### Anti-Features (Commonly Requested, Often Problematic)
 
-Things that seem natural to add but should be deliberately NOT built for v1.
-
 | Feature | Why Requested | Why Problematic | Alternative |
 |---------|---------------|-----------------|-------------|
-| Automatic bank integration (Open Finance / scraping) | "Why upload manually?" — every fintech does it | Already Out of Scope in PROJECT.md. Open Finance needs regulated partner/aggregator (Pluggy/Belvo) = cost + compliance + ongoing maintenance; scraping is fragile and ToS-risky. Massive scope for a personal app | Keep manual OFX/CSV/PDF upload. Revisit Pluggy/Belvo only if upload friction proves intolerable post-validation. |
-| Full DASN-SIMEI e-filing / gov.br integration | "Make the MEI tab actually submit the declaration" | No public API; would mean automating a gov portal = brittle, legally sensitive, high maintenance. The stated goal is only to *facilitar* the declaration | Generate a clean report the user copies into the official portal. Record-and-report, not file-for-you. |
-| IRPF / broader tax engine | "If it does MEI, why not income tax?" | Explicitly Out of Scope. IRPF rules are complex, change yearly, high liability | Hard stop at MEI/DASN-SIMEI. |
-| Investment/brokerage tracking, net-worth, B3 sync | Common in Monarch/Mobills premium | Different domain (assets vs cash-flow), pulls focus from the classify→goals moat, needs market-data feeds | Out for v1. The app is cash-flow + budgeting, not wealth management. |
-| Native mobile app | "I want it on my phone" | Out of Scope; responsive web covers it. Native = 2nd codebase, app-store overhead | Responsive Next.js web; installable PWA if mobile feel is needed. |
-| Shared/family account UI | Wife joins later | Out of Scope for v1 UI; only the *data model* is multi-user-ready | Build `user_id` scoping + RLS now (table stake); defer shared-view UI to a later milestone. |
-| Real-time / push-notification alerts infrastructure | "Alert me when I hit 90% of a budget" | Real-time push needs background jobs, delivery infra, mobile presence — heavy for single-user web | In-app threshold badges/banners computed on page load (e.g. "Alimentação at 92% of monthly target"). Email digest at most, later. |
-| Multi-currency | Generic finance-app feature | User is single-currency BRL; adds modeling weight (FX rates, conversion) for zero value here | BRL-only. Hard-code R$. |
-| AI auto-applying to *new* merchants without confirmation | "Let the AI just do it all" | Breaks the explicit decision: AI suggestions for never-seen merchants must be human-confirmed before becoming memory. Auto-trusting AI poisons the memory with errors | Confirm-then-memorize for new merchants; auto-apply only from *confirmed* memory. |
-
-## Gaps in the User's Stated Scope (Should Consider)
-
-Common features the user did NOT mention but that the domain expects — call these out for requirements:
-
-- **Duplicate detection on import** — listed above as table stakes; user didn't mention it but it's mandatory to keep the ledger trustworthy. **Highest-priority gap.**
-- **Recurring-expense detection** — user mentioned recurring *income* but not recurring *expenses* (Netflix, aluguel, mensalidades). Monarch auto-detects these; surfaces "hidden" subscriptions and makes monthly forecasts possible. Reuses the recurring-income engine. **Strong add — low marginal cost, high value.**
-- **Budget threshold alerts (in-app)** — % -of-target alerts (80/90/100%) for both budget categories and the MEI R$81k limit. User implied adherence but not proactive warnings. The MEI-limit alert is arguably essential given desenquadramento risk.
-- **Export (CSV / report PDF)** — for backup, taxes, and "own your data." Cheap, expected, reduces lock-in anxiety. Especially the MEI year-end report as a downloadable artifact.
-- **Transfers between accounts** — moving money between own accounts must NOT count as income or expense, or it pollutes targets. Related to the reservas double-counting problem. **Modeling gap to resolve.**
-- **Reconciliation / running balance per account** — light "does my recorded balance match reality" check; prevents silent drift.
-- **Multi-account modeling** — listed in table stakes; user spoke of "faturas" (plural) but didn't model the account dimension explicitly.
-- **Handling income/expense sign + refunds/estornos** — credit-card statements include estornos (refunds) and payments; these need correct signs or category math breaks.
+| Auto-commit AI suggestions (skip confirmation) | "It's usually right, save me clicks" | Violates the locked human-in-the-loop decision; a silent misclassification corrupts goal-adherence math and is hard to notice/undo. Provider variance makes silent errors inevitable. | Pre-fill + one-click confirm; optional bulk-accept-above-threshold as an explicit action. |
+| Per-transaction live streaming of classifications | Feels modern / real-time | Multiplies calls and latency for a single-user batch job; defeats the one-call-per-upload cost guardrail; `useObject` streaming UX is overkill for a confirm grid. | One batched `generateObject` per upload; render results when they arrive. |
+| Fine-tuning a model on the user's history | "Make it learn *me*" | Cost, ops burden, and a moving target for a solo dev; the `merchant_patterns` memory already IS the personalization layer and is deterministic + free. | Memory-first patterns; AI only for genuinely new descriptors. |
+| Multi-model voting / ensemble | "Higher accuracy" | 2-3× the cost/latency for marginal gain on short merchant strings; conflict resolution adds complexity; single-user app doesn't need it. | One provider per the user's BYOK choice; confidence + human confirm catches errors. |
+| AI re-classifying already-memorized merchants | "Maybe the category changed" | Burns money/latency re-solving solved cases; user already owns the pattern and can edit it directly. | Memory always wins; user edits a pattern manually if a merchant's category should change. |
+| Free-text category generation by the AI | "Let AI propose new categories" | Breaks enum constraint → unbounded category sprawl, breaks goal math which is keyed to the fixed category set. | Constrain to the user's existing categories; category management stays a manual, deliberate user action. |
+| Storing the BYOK key app-side / in Vercel env | "Simpler than encrypting per-user" | It's the user's personal key in a multi-user-ready schema; an app-owned key defeats BYOK and would leak across the future spouse account. | Per-`user_id` encrypted key in Supabase Vault + RLS (locked decision). |
+| OCR / per-bank PDF parsing in this milestone | "Some PDFs fail" | Out of scope for v1.4; orthogonal to classification; explicitly a deferred candidate in PROJECT.md. | Steer failing banks to OFX/CSV; revisit only if a real bank fails `getText`. |
 
 ## Feature Dependencies
 
 ```
-Statement ingestion (OFX/CSV/PDF)
-    └──requires──> Transaction list + multi-account model
-    └──requires──> Duplicate detection (else re-import corrupts ledger)
+BYOK Settings (key + provider, encrypted)
+    └──required by──► AI classification call (suggestCategory seam)
+                          └──requires──► Memory-first dispatch (partition hit/unseen)
+                          └──requires──► Batch dedupe (one call per upload)
+                          └──requires──► Enum-constrained output (validateSuggestion)
+                                             └──requires──► "none fits" sentinel + confidence
+                          └──produces──► SuggestionSlot pre-fill (review grid)
+                                             └──then──► Confirm → persist + learn pattern
+                                             └──enhanced by──► provenance badge, confidence hint,
+                                                                low-confidence sort, bulk-accept
 
-Editable BR categories
-    └──required-by──> Classification (memory + AI)
-    └──required-by──> Budget targets
-    └──required-by──> Reservas ("Reserva" is a category)
-
-Classification memory layer
-    └──requires──> Merchant-descriptor normalization (the hard part)
-    └──required-by──> Suggest→confirm→auto-apply loop
-    └──required-by──> Bulk re-classification (re-apply rule to history)
-
-AI classification (Layer 2)
-    └──requires──> Classification memory layer (only fires on cache-miss)
-    └──requires──> Human-confirm gate before writing memory
-
-Income tracking (recurring + ad-hoc)
-    └──required-by──> Budget targets (% -of-income needs the denominator)
-    └──shares-engine-with──> Recurring-expense detection
-
-Budget targets (% of income, monthly + annual)
-    └──requires──> Income tracking + categorized transactions
-    └──required-by──> Adherence dashboard
-    └──enhanced-by──> Threshold alerts
-
-Reservas (sinking funds)
-    └──requires──> "Reserva" category + sub-prompt flow on classification
-    └──requires──> Transfer/exclusion logic (don't double-count vs budget targets)
-
-MEI module
-    └──mostly-independent (separate NF register + R$81k tracker + report)
-    └──enhanced-by──> Threshold alerts (limit warnings)
+Graceful degradation ──wraps──► the entire AI call (no key / error → manual pick path)
+"Test connection" ──enhances──► BYOK Settings
 ```
 
 ### Dependency Notes
 
-- **Budget targets require Income tracking:** %-of-income is undefined without a reliable income figure; build income first.
-- **Classification loop requires merchant normalization:** the memory's match key is a normalized descriptor; without normalization the memory never hits and every txn looks "new" to the AI (expensive + annoying). This is the quiet critical path.
-- **Reservas conflict with naive budget math:** a "Reserva" transaction is money leaving the checking account (looks like spend) but is *saving*, not *consumption*. If it counts against spend targets the adherence view lies. Decide early: reservas are excluded from spend-target denominators (treated as a transfer/saving). **Resolve in requirements.**
-- **AI depends on memory:** AI is the fallback for cache-misses only; it cannot ship before the memory layer or costs/UX blow up.
+- **AI call requires BYOK Settings:** no key → no provider → AI path is skipped entirely (degradation path). Settings must ship in or before the phase that wires the AI call.
+- **Batch + enum + "none fits" are one cohesive unit:** they're all properties of the single `generateObject` call. Plan them together, not as separate phases — the schema (`{category: enum|sentinel, confidence: number}`) is shared by all three and by the `validateSuggestion` seam.
+- **SuggestionSlot pre-fill depends on the AI result shape:** provenance badge + confidence hint need `confidence` and a source tag in the result the UI receives.
+- **Confirm → persist + learn is unchanged from v1.3** — the AI feature only changes what is *pre-filled* in the slot, not what confirm does. This is the lowest-risk dependency: the learning loop already works.
+- **Graceful degradation wraps everything:** every AI-touching path (no key, invalid key, timeout, rate-limit, malformed output) must fall back to the existing manual review grid. This is a cross-cutting requirement, not a single feature.
 
 ## MVP Definition
 
-### Launch With (v1) — the classify→goals loop must work end to end
+### Launch With (v1.4 core — CLS-AI + BYOK)
 
-- [ ] Income: recurring (salário, pensão) + ad-hoc — *budget denominator*
-- [ ] OFX + CSV import with duplicate detection + multi-account model — *cheap, reliable ingestion*
-- [ ] Transaction list + edit — *the spine*
-- [ ] BR default categories, editable — *taxonomy for everything*
-- [ ] Classification memory layer (normalize → match → auto-apply confirmed) — *the moat, half 1*
-- [ ] AI classification for new merchants, human-confirmed → memorized — *the moat, half 2*
-- [ ] Suggest→confirm→auto-apply review screen + bulk re-classify — *the product's main screen*
-- [ ] Budget targets (% of income), monthly + annual-cumulative — *the moat, "visão de metas"*
-- [ ] Adherence dashboard (both horizons, progress bars, over-budget flags) — *the payoff*
-- [ ] Reservas: named buckets, optional target+progress, contribution-via-"Reserva"-category + withdrawals, per-bucket history — *differentiator the user clearly wants*
-- [ ] MEI: NF register + R$81k running tracker + DASN-SIMEI report — *explicit v1 goal*
-- [ ] In-app threshold alerts for budget % and MEI limit — *cheap, prevents real harm (desenquadramento)*
-- [ ] `user_id` scoping + RLS — *infra mandate*
+- [ ] **BYOK Settings: provider picker + paste key + encrypted at-rest (Vault, RLS)** — without it the AI path can't authenticate; the locked BYOK decision.
+- [ ] **Memory-first dispatch (AI only on unseen)** — the cost guardrail; without it AI fires on solved cases.
+- [ ] **One batched AI call per upload (deduped unseen descriptors)** — cost + latency contract.
+- [ ] **Enum-constrained output + "none fits"/confidence schema** — keeps AI inside the user's categories and avoids confidently-wrong pre-fills.
+- [ ] **SuggestionSlot pre-fill, no auto-commit; confirm persists + learns** — the human-in-the-loop core value.
+- [ ] **Graceful degradation (no key / provider error → manual pick)** — the app must still work; AI is additive.
+- [ ] **Provenance badge (memória vs IA)** — minimal trust affordance; nearly free.
 
 ### Add After Validation (v1.x)
 
-- [ ] **PDF import, per-bank** — *trigger: OFX/CSV proves too limited for the banks the user actually uses.* High-risk; add incrementally one bank at a time. Could be in v1 for the user's primary card only if OFX isn't available there.
-- [ ] Recurring-expense detection — *trigger: enough history accrued to detect patterns.*
-- [ ] Export (CSV + MEI report PDF) — *trigger: first tax season or backup need.*
-- [ ] Transfers-between-accounts as first-class type — *trigger: reconciliation noise appears.*
+- [ ] **Test-connection button** — add once the basic save+use flow is proven (also a stated v1.4 target; promote into MVP if cheap).
+- [ ] **Confidence hint + low-confidence-first sorting** — trigger: user reports trouble spotting which rows to review.
+- [ ] **Active-provider indicator + per-upload AI summary** — trigger: more than one provider in regular use, or user asks "what did the AI do?".
+- [ ] **Bulk-accept above threshold** — trigger: uploads routinely produce many high-confidence suggestions and per-row confirm feels tedious.
 
 ### Future Consideration (v2+)
 
-- [ ] Shared/family UI for wife — *defer until single-user is validated; data model already ready.*
-- [ ] Email/digest alerts — *defer; in-app alerts suffice for single web user.*
-- [ ] Open Finance aggregation (Pluggy/Belvo) — *defer; only if manual upload friction is proven painful, accept cost/compliance.*
+- [ ] **Provider A/B or auto-fallback between configured providers** — defer until cost/quality differences actually bite; adds config complexity.
+- [ ] **Spouse/multi-user BYOK (each account its own key)** — schema is ready; defer the UI until the shared-account milestone.
 
 ## Feature Prioritization Matrix
 
 | Feature | User Value | Implementation Cost | Priority |
 |---------|------------|---------------------|----------|
-| Classification memory + confirm loop | HIGH | MEDIUM | P1 |
-| Budget targets %-of-income (monthly+annual) + adherence dashboard | HIGH | MEDIUM–HIGH | P1 |
-| OFX/CSV import + dedup + multi-account | HIGH | MEDIUM | P1 |
-| Income tracking (recurring + ad-hoc) | HIGH | LOW–MEDIUM | P1 |
-| Editable BR categories | HIGH | LOW | P1 |
-| Reservas (sinking funds) | HIGH | MEDIUM–HIGH | P1 |
-| MEI module (NF + limit + report) | HIGH | MEDIUM | P1 |
-| AI fallback classification | HIGH | MEDIUM | P1 |
-| Bulk re-classification | MEDIUM | MEDIUM | P1 |
-| In-app threshold alerts (budget + MEI) | MEDIUM | LOW | P1 |
-| PDF import | MEDIUM | HIGH | P2 |
-| Recurring-expense detection | MEDIUM | MEDIUM | P2 |
-| Export (CSV / report) | MEDIUM | LOW | P2 |
-| Transfers between accounts | MEDIUM | LOW–MEDIUM | P2 |
-| Shared/family UI | LOW (now) | MEDIUM | P3 |
-| Open Finance integration | MEDIUM | HIGH | P3 |
+| BYOK Settings (key + provider, encrypted) | HIGH | HIGH | P1 |
+| Memory-first dispatch (AI on unseen only) | HIGH | LOW | P1 |
+| One batched AI call per upload | HIGH | MEDIUM | P1 |
+| Enum-constrained output + "none fits"/confidence | HIGH | MEDIUM | P1 |
+| SuggestionSlot pre-fill, confirm persists + learns | HIGH | LOW | P1 |
+| Graceful degradation (no key / error → manual) | HIGH | MEDIUM | P1 |
+| Provenance badge (memória vs IA) | MEDIUM | LOW | P1 |
+| Test-connection button | MEDIUM | LOW-MEDIUM | P2 |
+| Confidence hint + low-confidence-first sort | MEDIUM | LOW | P2 |
+| Active-provider indicator / AI summary | LOW | LOW | P2 |
+| Bulk-accept above threshold | MEDIUM | MEDIUM | P2 |
+| Provider auto-fallback / A/B | LOW | MEDIUM | P3 |
 
-## Suggested BR Default Category Seed
+**Priority key:** P1 = must have for the v1.4 milestone · P2 = should have, add when possible · P3 = future.
 
-Editable, but ship a sensible Brazilian taxonomy so the user isn't staring at an empty list (sources: BB/Neon/XP/PayPal-BR personal-finance category guides):
+## Competitor / Norm Feature Analysis
 
-- **Moradia** (aluguel/financiamento, condomínio, IPTU, manutenção)
-- **Contas de consumo** (luz, água, gás, internet, celular)
-- **Alimentação** (mercado/supermercado)
-- **Restaurantes & delivery**
-- **Transporte** (combustível, app de transporte, transporte público, manutenção veículo)
-- **Saúde** (plano, farmácia, consultas)
-- **Educação** (mensalidades, cursos)
-- **Lazer & entretenimento** (streaming, cinema, viagens)
-- **Compras pessoais** (roupas, eletrônicos)
-- **Cuidados pessoais** (higiene, beleza)
-- **Assinaturas & serviços**
-- **Impostos & tarifas** (tarifas bancárias, taxas)
-- **Pets**
-- **Presentes & doações**
-- **Reserva** (special — routes to sinking funds, excluded from spend targets)
-- **Transferência** (special — internal, excluded from income/expense math)
-- **Outros**
+| Feature | Typical PFM apps (Mint/YNAB-style) | This app's approach |
+|---------|--------------------------------------|---------------------|
+| Categorization | Server-side rules + ML, mostly auto-applied | Memory patterns (deterministic) first; AI only for genuinely new merchants |
+| Human confirmation | Often auto-categorized, user corrects after the fact | Confirm-before-persist; nothing AI-suggested is truth until the user accepts |
+| Model ownership | Vendor-hosted model, opaque | BYOK — user's own Gemini/Claude/DeepSeek key, encrypted per-user |
+| Learning | Global model + per-user overrides | Per-user `merchant_patterns` learned on each confirm |
+| Provider lock-in | Single vendor | Swappable provider via direct `@ai-sdk/*` packages |
 
-Mark **Reserva** and **Transferência** as system/special categories that are excluded from normal spend-vs-target computation.
+## Provider note (for requirements, not a feature)
 
-## Competitor Feature Analysis
+All three target providers classify short BR merchant descriptors well; the choice is cost/free-tier and which key the user holds — not accuracy. Current IDs/prices for the requirements doc:
 
-| Feature | Mobills / Organizze (BR mass apps) | Monarch / YNAB (US power apps) | Our Approach |
-|---------|-------------------------------------|--------------------------------|--------------|
-| Import | OFX/CSV/Excel/PDF, credit-card invoice import | Bank sync (US) + rules | OFX/CSV first, PDF per-bank later — no bank sync |
-| Categorization | Manual + simple rules | Static rules engine, bulk edit (Monarch), payee-memory (YNAB) | **Learned memory + AI fallback w/ confirm** — the differentiator |
-| Budgets | Fixed R$ monthly | Flexible monthly | **% -of-income, monthly + annual-cumulative** — the differentiator |
-| Goals/savings | Goal manager | Goals | **Reservas w/ contribution-via-classification** — the differentiator |
-| Recurring | Bills/alerts | Auto-detect recurring | Recurring income v1; expense-detect v1.x |
-| Bulk recategorize | Limited | Yes (Monarch) | Yes — required by memory model |
-| MEI/DASN | None | N/A (US) | **MEI module** — uncontested differentiator in BR personal finance |
-| Tax filing | None | N/A | Report-only, not e-file (anti-feature) |
+- **Gemini 2.5 Flash-Lite** — ~$0.10/$0.40 per M tokens, has a free tier (HIGH, CLAUDE.md source). The cheap default workhorse.
+- **Claude Haiku 4.5** — id `claude-haiku-4-5`, $1.00/$5.00 per M tokens, 200K context (HIGH, Claude API skill).
+- **DeepSeek** — `deepseek-chat` deprecates 2026-07-24, now routes to `deepseek-v4-flash` (~$0.14 cache-miss in / $0.28 out per M) (LOW — model-id churn; pin/verify the id at build time).
+
+With memory-first + one batched call per upload, real AI spend stays near zero regardless of provider.
 
 ## Sources
 
-- gov.br / Receita Federal — DASN-SIMEI manual & R$81k limit (HIGH): https://www8.receita.fazenda.gov.br/simplesnacional/arquivos/manual/manual_dasn-simei.pdf ; https://www.gov.br/empresas-e-negocios/pt-br/empreendedor/servicos-para-mei/declaracao-anual-de-faturamento
-- MaisMEI / Contabilizei / Nubank — DASN-SIMEI deadlines, +20% tolerance, desenquadramento (MEDIUM): https://ajuda.maismei.com.br/hc/ajuda-da-maismei/articles/1745869317-guia-completo-entenda-a-dasn_simei-declaracao-anual-do-mei ; https://blog.nubank.com.br/dasn-simei/
-- Mobills help / my-best / TechTudo — BR app import (OFX/CSV/PDF), feature baselines (HIGH on feature existence): https://ajuda.mobills.com.br/hc/pt-br/articles/360051606394 ; https://br.my-best.com/18262
-- Monarch Money help — rules engine, bulk recategorize, recurring detection, review thresholds (MEDIUM): https://help.monarch.com/hc/en-us/articles/360048393372-Creating-Transaction-Rules
-- YNAB vs Monarch comparisons — payee-memory vs rules, categorization UX (MEDIUM): https://robberger.com/ynab-vs-monarch-money/
-- ExpenseSorted / QuickBooks pattern writeups — ML categorization accuracy (70–80% cold → ~95% after ~50 corrections), suggest/confirm/auto-apply, merchant memory, TF-IDF/embeddings normalization (MEDIUM): https://www.expensesorted.com/blog/ai-expense-categorization-personal-finance-apps
-- Goodbudget/envelope UX writeups — sinking funds, 85% envelope alerts, categorize-on-transaction prompt (MEDIUM): https://medium.com/@ayushnandanwar13/revamping-a-budgeting-app-goodbudget-a-ux-ui-case-study-eaf0ef928222
-- BR statement parsers (feasibility) — `tio-ze-rj/banksheet` (TS; Nubank/Itaú/Bradesco/Inter), `moacyrricardo/bank-importer`, PDF-parsing pitfalls (MEDIUM): https://github.com/tio-ze-rj/banksheet ; https://dev.to/tiozerj/i-built-a-local-only-pdf-bank-statement-parser-with-a-plugin-system-heres-how-it-works-3gd8
-- LLM cost for short-text classification — GPT-4o-mini / Gemini Flash-Lite cheapest tier, embeddings vastly cheaper than prompting, batch mode (MEDIUM): https://inference.net/content/llm-api-pricing-comparison/
-- BR category taxonomy — BB/Neon/XP/PayPal-BR personal-finance category guides (MEDIUM): https://blog.bb.com.br/controle-de-gastos-por-categoria-descubra-para-onde-vai-seu-dinheiro/
+- CLAUDE.md "AI-assisted classification" deep dive — generateObject/Output enum classification, AI SDK direct providers, memory-first cost model (HIGH, Context7 `/websites/ai-sdk_dev` + Gemini pricing docs)
+- PROJECT.md v1.4 milestone — locked decisions: memory-first, confirm-before-learn, BYOK direct `@ai-sdk`, Supabase Vault key encryption, never auto-commit
+- Vercel AI SDK docs (generateObject enum mode + Zod object schema, schema validation/throw, .describe() steering) — ai-sdk.dev / Vercel Academy text-classification (MEDIUM, verified)
+- Claude API skill (`claude-api`) — Haiku 4.5 id and $1/$5 pricing, 200K context (HIGH)
+- Web search — DeepSeek pricing/model-id transition deepseek-chat→deepseek-v4-flash, deprecation 2026-07-24 (LOW, single-vendor docs, near-term churn); PFM human-in-the-loop categorization UX norms (LOW, convergent)
 
 ---
-*Feature research for: personal finance / budgeting web app (Brazil) with AI classification, %-of-income budgets, sinking funds, and MEI*
-*Researched: 2026-06-16*
+*Feature research for: AI-assisted transaction classification with BYOK (v1.4)*
+*Researched: 2026-06-18*
