@@ -71,4 +71,13 @@ export interface ParsedReviewRow extends RawTransaction {
    * pure parsers (which don't know the DB) need not set it.
    */
   duplicate?: boolean
+  /**
+   * O palpite NÃO-vinculante da IA para uma linha que deu memory-miss (CLSAI-01).
+   * Anexado pela ação de ingestão (Plan 02) a partir de `classifyDescriptors`; é só
+   * uma dica — NUNCA é aplicado a `category_id` (sem auto-commit, o palpite permanece
+   * palpite). A Phase 16 renderiza esta dica na grade enquanto o usuário a aplica
+   * manualmente. Opcional porque linhas persistidas antigas não o têm e os parsers
+   * puros nunca o definem. `source: 'ia'` marca a origem do palpite.
+   */
+  suggestion?: { categoryId: string | null; confidence: number; source: 'ia' }
 }
