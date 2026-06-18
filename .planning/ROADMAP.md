@@ -86,7 +86,7 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
   4. Usuário sobe uma fatura real (OFX/CSV) em produção, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando ao vivo — core value provado
   5. `v_abastecimento_consumo` em produção computa km/l e R$/km corretos no edge same-odometer (WR-02 fechado); SUMMARYs das fases 9/10 trazem `requirements_completed`
 
-**Plans**: 3/11 plans executed (12-08..12-11 = gap-closure fixes for live-verify defects G-01..G-06, recorded in 12-VERIFICATION.md)
+**Plans**: 4/11 plans executed
 
 Plans:
 **Wave 1**
@@ -121,7 +121,7 @@ Plans:
 
 **Wave 8**
 
-- [ ] 12-08-PLAN.md — G-01 (systemic): Select trigger renders the item LABEL not the raw value/`__none__` — items label-map at every value≠label call site + render test (gap_closure, autonomous)
+- [x] 12-08-PLAN.md — G-01 (systemic): Select trigger renders the item LABEL not the raw value/`__none__` — items label-map at every value≠label call site + render test (gap_closure, autonomous)
 
 **Wave 9**
 
@@ -174,7 +174,7 @@ Phases execute in numeric order: … → 11 → 12 → 13. Decimal phases (e.g. 
 | 9. Etiquetar gastos da fatura ao carro | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 10. Abastecimento híbrido + consumo | v1.2 | 3/3 | Complete | 2026-06-17 |
 | 11. Detalhe do carro + gráfico de consumo | v1.2 | 4/4 | Complete | 2026-06-17 |
-| 12. Produção & Live-Verify | v1.3 | 3/7 | In Progress|  |
+| 12. Produção & Live-Verify | v1.3 | 4/11 | In Progress|  |
 | 13. PDF de Fatura | v1.3 | 0/TBD | Not started | - |
 
 ## Deferred (cross-milestone)
