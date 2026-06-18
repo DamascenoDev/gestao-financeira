@@ -5,16 +5,16 @@ milestone_name: Produção & PDF
 current_phase: 12
 current_phase_name: produ-o-live-verify
 status: executing
-stopped_at: Completed 12-09-PLAN.md (dashboard adherence G-02/G-03/G-04)
-last_updated: "2026-06-18T13:52:53.058Z"
+stopped_at: Phase 13 context gathered
+last_updated: "2026-06-18T15:35:10.079Z"
 last_activity: 2026-06-18
 last_activity_desc: "12-03 production live-verify signed off APPROVED; punch list: /receitas has no delete affordance (Phase-2 inherited gap, candidate for `/gsd-plan-phase 12 --gaps`)"
 progress:
   total_phases: 2
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 11
-  completed_plans: 7
-  percent: 0
+  completed_plans: 11
+  percent: 50
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -127,9 +127,9 @@ Last activity: 2026-06-18 — 12-03 production live-verify signed off APPROVED; 
 
 ## Session Continuity
 
-**Last session:** 2026-06-18T13:52:53.033Z
-**Stopped at:** Quick task 20260618-import-grid-gaps complete (G-07 carro select label + G-08 all-duplicate toast) — local GREEN, needs git push + redeploy
-**Resume file:** None
+**Last session:** 2026-06-18T15:35:10.071Z
+**Stopped at:** Phase 13 context gathered
+**Resume file:** .planning/phases/13-pdf-de-fatura/13-CONTEXT.md
 
 **Última sessão (2026-06-17) — Completed 11-02-PLAN.md — KPIs no CarroCard da lista /carros + wiring do RSC (não-worktree, sequencial em `main`, Wave 1, depends_on []).** Completa a promessa diferida da Phase 8 (card identity-only) com a metade-lista do CAR-05.2: gasto total + km/l médio por card, lidos da view `v_carro_resumo` existente. **Task 1 (commit `58a0f2c`, feat, TDD RED+GREEN):** `src/components/carro-card.tsx` — `CarroCardData` ganha `gastoTotalCents: number | null` + `kmPorLitroMedio: number | null`; abaixo do bloco identidade/badges, um KPI strip aditivo `<dl className="flex flex-wrap gap-x-6 gap-y-1">` com dois itens (label `text-xs text-muted-foreground` sobre valor `font-mono text-sm font-semibold tabular-nums`), espelhando a gramática de totais rotulados do `ReceitaGastoChart`, foreground neutro (sem gold, nunca vermelho). **Null discipline (D4):** gasto null → `'—'` (nunca `formatCents(0)`/`R$ 0,00`); km/l via `kmPorLitroKpiLabel` (helper local que anexa ` km/l` ao `kmPerLitroLabel` congelado `'12,4'` só p/ valor real, deixando `'—'` puro — nunca `0 km/l`); o strip nunca é escondido. Identidade (link apelido `/carros/{id}`, modelo·placa·ano, badges combustível/Arquivado, dropdown Editar/Arquivar) intocada. `src/components/carro-card-kpis.test.tsx` (mock `@/actions/carros`): non-null format (`formatCents` + `12,4 km/l`), null → dois `'—'` SEM `R$ 0,00`/`0 km/l`, link de identidade intacto — 3 testes green. **Task 2 (commit `759a757`, feat):** `src/app/(app)/carros/page.tsx` — segunda leitura RLS-scoped aditiva `supabase.from('v_carro_resumo').select('carro_id, gasto_total_cents, km_por_litro_medio')` (`security_invoker`, sem `.eq`), `Map` por `carro_id` anexado por carro; **0-gasto coalescido pela view → null → `'—'`** (nunca `R$ 0,00`), km/l passa null adiante; falha na leitura de KPI degrada p/ KPIs null (cards renderizam identidade + `'—'`) — nunca falha a página; filtro arquivados/ordem/empty/error inalterados. **Desvios:** 3 auto-fix. **[Rule 3 - Blocking]:** teste movido p/ `src/components/*.test.tsx` (o glob `tests/**` do vitest casa só `.ts`, não `.tsx` — mesma correção do 11-01). **[Rule 1 - Bug]:** o plano implicava `kmPerLitroLabel(12.4) === '12,4 km/l'`, mas o helper congelado retorna `'12,4'`; a unidade é anexada no componente via `kmPorLitroKpiLabel` e o teste casa o gasto com regex tolerante a NBSP (`/R\$\s*3\.240,00/`) em vez de literal frágil. **[Rule 3 - Blocking]:** estender o tipo compartilhado `CarroCardData` quebrou a compilação do header de `[id]/page.tsx` (fora dos dois arquivos do plano) — null-filled os dois campos novos lá com comentário apontando p/ o Plan 03 (KPIs do detalhe). **Gates:** `npm test -- carro-card` 3 green; `tsc --noEmit` limpo; `npm run build` exit 0 (`/carros` + `/carros/[id]` compilam); suíte completa **732 passed/85 files** (de 729, +3; sem recorrência do flake `reserva-saida`). **Sem stubs** na superfície /carros (o null-fill do `[id]` é hand-off documentado p/ Plan 03). **Sem threat flags** — única superfície nova é uma 2ª leitura da `v_carro_resumo` existente (`security_invoker`, RLS-scoped pelo `createClient()` server, nunca `admin.ts`/service-role/env), zero view/migração nova (T-11-03 mitigate / T-11-04 accept). **CAR-05 In progress** — metade-lista entregue; o detalhe `/carros/[id]` enriquecido (KPI cards + agregação categoria + wiring chart) fica em 11-03 e o human-verify em 11-04. Sem push remoto. **Próxima ação:** executar 11-03 (página de detalhe enriquecida).
 
