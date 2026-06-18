@@ -116,7 +116,7 @@ Last activity: 2026-06-18 — 12-03 production live-verify signed off APPROVED; 
 
 ### Todos / Carry-forward
 
-- (nenhum ainda)
+- **G-03 fix pendente de aplicação no remoto (quick 20260618-adherence-views-refresh):** migration `0030_adherence_views_refresh.sql` recria `v_adherence_month`/`v_adherence_ytd` income-driven (remote tinha 0014 aplicada no estado spend-driven antigo). Gates locais GREEN. **Ação do usuário:** rodar `supabase db push` no remoto — só DB, sem redeploy.
 
 ### Blockers
 
