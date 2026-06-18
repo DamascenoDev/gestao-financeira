@@ -1,15 +1,16 @@
 import { describe, it, expect } from 'vitest'
 
 // Wave 0 RED scaffold (BYOK-03). Pins the provider-error → friendly pt-BR mapping
-// BEFORE the action module is implemented (Plan 04 exports `mapProviderError`
-// from `@/actions/ai-settings`). The security-critical invariant: the message
+// BEFORE the action module is implemented. `mapProviderError` lives in the plain
+// `@/lib/ai/map-provider-error` module (a `'use server'` file may export only async
+// functions, so the sync helper cannot live in the action). The security-critical invariant: the message
 // shown to the user must be one of the three fixed pt-BR strings from
 // 14-UI-SPEC §Copywriting, and must NEVER leak the raw key (`sk-`, `AIza`) or a
 // stack trace. The `server-only` guard is aliased to a no-op in vitest.config.ts,
 // so importing the server module transitively does not trip the client guard.
 // RED now — the import below has no target. No real provider call is made; the
 // provider error objects are simulated.
-import { mapProviderError } from '@/actions/ai-settings'
+import { mapProviderError } from '@/lib/ai/map-provider-error'
 
 // Exact copy from 14-UI-SPEC §Copywriting Contract.
 const INVALID_KEY = 'Chave inválida. Confira se você copiou a chave correta do provedor.'
