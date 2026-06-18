@@ -100,7 +100,9 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
   3. A sugestão é restrita às categorias ATUAIS do usuário (enum vivo, lido no momento da chamada via `validateSuggestion`); editar/renomear categoria entre uploads não produz categoria stale/inventada — quando nada encaixa o slot fica vazio
   4. Sem chave / chave inválida / erro de provedor / rate-limit / saída malformada degrada para o pick manual com toast não-bloqueante — o upload e a review grid continuam plenamente usáveis (inner `try/catch` → `{}`)
   5. NENHUMA sugestão é auto-commitada: `merchant_patterns` continua sendo escrito SÓ no `confirmImport` em confirmação humana — o loop confirm/learn do v1.3 permanece intacto
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 15-01-PLAN.md — classify.ts batched doGenerate (flat schema + enum-gate + try/catch fallback) + ParsedReviewRow.suggestion (TDD; wave 1)
+- [ ] 15-02-PLAN.md — import.ts two-pass wire + suggestCategory delegate + maxDuration≥60 + test updates (wave 2)
 **Research flag**: yes — adapter por-provedor (Claude flat-schema, sem `$ref`/`name`) e re-verificar model-ids no build; A/B em descritores BR reais. Usar `/gsd-plan-phase --research-phase`.
 
 ### Phase 16: Review-Grid Suggestion Affordances
