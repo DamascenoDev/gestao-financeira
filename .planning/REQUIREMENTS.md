@@ -22,10 +22,10 @@ Levar o app (11 fases code-complete no stack local) ao ar de verdade e provar o 
 Trazer o upload de fatura em PDF, adiado do v1. Tratado como **best-effort com confirmação humana obrigatória** — variância de PDF BR é alta.
 
 - [ ] **PDF-01**: Usuário sobe fatura em PDF pela mesma UI de upload (junto de CSV/OFX); o arquivo persiste no Storage privado por `user_id`
-- [ ] **PDF-02**: Sistema extrai as linhas de transação do PDF (`pdf-parse` v2 `getTable`; `unpdf` como fallback de texto) e normaliza para o shape canônico (data, descrição, valor em centavos inteiros)
+- [x] **PDF-02**: Sistema extrai as linhas de transação do PDF (`pdf-parse` v2 `getTable`; `unpdf` como fallback de texto) e normaliza para o shape canônico (data, descrição, valor em centavos inteiros)
 - [ ] **PDF-03**: Transações extraídas do PDF aparecem no review grid editável **antes** de persistir; nenhuma linha derivada de PDF é auto-commitada — usuário corrige/confirma primeiro
-- [ ] **PDF-04**: PDF sem texto extraível (image-only/escaneado) → mensagem clara orientando CSV/OFX daquele banco; nunca produz resultado vazio silencioso
-- [ ] **PDF-05**: Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória; IA deferida) e contam nas metas, idêntico a CSV/OFX
+- [x] **PDF-04**: PDF sem texto extraível (image-only/escaneado) → mensagem clara orientando CSV/OFX daquele banco; nunca produz resultado vazio silencioso
+- [x] **PDF-05**: Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória; IA deferida) e contam nas metas, idêntico a CSV/OFX
 
 ### Tech Debt & Housekeeping
 
@@ -68,10 +68,10 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 | DEPLOY-04 | Phase 12 | Pending |
 | DEPLOY-05 | Phase 12 | Pending |
 | PDF-01 | Phase 13 | Pending |
-| PDF-02 | Phase 13 | Pending |
+| PDF-02 | Phase 13 | Complete |
 | PDF-03 | Phase 13 | Pending |
-| PDF-04 | Phase 13 | Pending |
-| PDF-05 | Phase 13 | Pending |
+| PDF-04 | Phase 13 | Complete |
+| PDF-05 | Phase 13 | Complete |
 | DEBT-01 | Phase 12 | Complete |
 | DEBT-02 | Phase 12 | Complete |
 
