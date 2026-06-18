@@ -2,17 +2,17 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
-current_phase: 12
-current_phase_name: produ-o-live-verify
+current_phase: 13
+current_phase_name: pdf-de-fatura
 status: executing
 stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-06-18T16:19:56.943Z"
+last_updated: "2026-06-18T17:00:41.946Z"
 last_activity: 2026-06-18
-last_activity_desc: "12-03 production live-verify signed off APPROVED; punch list: /receitas has no delete affordance (Phase-2 inherited gap, candidate for `/gsd-plan-phase 12 --gaps`)"
+last_activity_desc: Phase 13 execution started
 progress:
   total_phases: 2
   completed_phases: 1
-  total_plans: 11
+  total_plans: 15
   completed_plans: 11
   percent: 50
 ---
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 12 — produ-o-live-verify
+- **Current focus:** Phase 13 — pdf-de-fatura
 
 ## Current Position
 
-Phase: 12 (produ-o-live-verify) — EXECUTING
-Plan: 7 of 7
-Status: 12-03 complete (3/7) — live-verify APPROVED in production; INC-02 / TXN-03 / TXN-04 confirmed against the 12-02 bundle (no re-deploy, D-08). Next: 12-04.
-Last activity: 2026-06-18 — 12-03 production live-verify signed off APPROVED; punch list: /receitas has no delete affordance (Phase-2 inherited gap, candidate for `/gsd-plan-phase 12 --gaps`)
+Phase: 13 (pdf-de-fatura) — EXECUTING
+Plan: 1 of 4
+Status: Executing Phase 13
+Last activity: 2026-06-18 — Phase 13 execution started
 
 ## Performance Metrics
 
