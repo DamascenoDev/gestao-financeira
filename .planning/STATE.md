@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: IA de Classificação (BYOK)
 status: planning
-last_updated: "2026-06-18T19:35:47.943Z"
+last_updated: "2026-06-18T20:00:23.000Z"
 last_activity: 2026-06-18
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,14 +22,25 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Planning next milestone — `/gsd-new-milestone` (candidato v1.4: IA de classificação no seam `suggestCategory()`). v1.3 shipped: app no ar (Supabase sa-east-1 + Vercel gru1) + core value memory-only + PDF de fatura. See PROJECT.md (updated 2026-06-18) + MILESTONES.md.
+- **Current focus:** v1.4 IA de Classificação (BYOK) — roadmap criado (Phases 14–17, 17/17 reqs mapeados). Próximo: planejar a Phase 14 (Key Storage + BYOK Settings, raiz da cadeia storage→AI→grid) via `/gsd-plan-phase 14`. Phase 17 (dívida v1.3) é isolada/human-verify. See ROADMAP.md + PROJECT.md (updated 2026-06-18).
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 14 of 17 (Key Storage + BYOK Settings) — not yet planned
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-18 — Milestone v1.4 started
+Status: Roadmap complete — ready to plan Phase 14
+Last activity: 2026-06-18 — v1.4 roadmap created (Phases 14–17; BYOK-01..05 → P14 · CLSAI-01..06 → P15 · CLSAI-07/08 → P16 · DEBT-03..06 → P17)
+
+Progress: [░░░░░░░░░░] 0% (v1.4 phases)
+
+**v1.4 phase list (dependency order key-storage → AI call → grid; debt isolated):**
+
+| Phase | Goal | Requirements | Status |
+|-------|------|--------------|--------|
+| 14. Key Storage + BYOK Settings | Provedor + chave criptografada (Vault) + RLS + testar/remover; raiz da cadeia | BYOK-01..05 | Not started |
+| 15. Classification Wire | Memory-first + batched AI no `suggestCategory()` + enum vivo + fallback gracioso | CLSAI-01..06 | Not started |
+| 16. Review-Grid Suggestion Affordances | `SuggestionSlot` + procedência (memória vs IA) + dica de confiança/ordenação | CLSAI-07, CLSAI-08 | Not started |
+| 17. v1.3 Debt Cleanup (ISOLATED, human-verify) | Redeploy G-07/08 + walkthroughs prod MEI/LGPD (delete destrutivo) + VALIDATION.md 12/13 | DEBT-03..06 | Not started |
 
 ## Deferred Items
 

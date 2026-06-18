@@ -67,29 +67,29 @@ Mapa requisito→fase. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BYOK-01 | TBD | Pending |
-| BYOK-02 | TBD | Pending |
-| BYOK-03 | TBD | Pending |
-| BYOK-04 | TBD | Pending |
-| BYOK-05 | TBD | Pending |
-| CLSAI-01 | TBD | Pending |
-| CLSAI-02 | TBD | Pending |
-| CLSAI-03 | TBD | Pending |
-| CLSAI-04 | TBD | Pending |
-| CLSAI-05 | TBD | Pending |
-| CLSAI-06 | TBD | Pending |
-| CLSAI-07 | TBD | Pending |
-| CLSAI-08 | TBD | Pending |
-| DEBT-03 | TBD | Pending |
-| DEBT-04 | TBD | Pending |
-| DEBT-05 | TBD | Pending |
-| DEBT-06 | TBD | Pending |
+| BYOK-01 | Phase 14 | Pending |
+| BYOK-02 | Phase 14 | Pending |
+| BYOK-03 | Phase 14 | Pending |
+| BYOK-04 | Phase 14 | Pending |
+| BYOK-05 | Phase 14 | Pending |
+| CLSAI-01 | Phase 15 | Pending |
+| CLSAI-02 | Phase 15 | Pending |
+| CLSAI-03 | Phase 15 | Pending |
+| CLSAI-04 | Phase 15 | Pending |
+| CLSAI-05 | Phase 15 | Pending |
+| CLSAI-06 | Phase 15 | Pending |
+| CLSAI-07 | Phase 16 | Pending |
+| CLSAI-08 | Phase 16 | Pending |
+| DEBT-03 | Phase 17 | Pending |
+| DEBT-04 | Phase 17 | Pending |
+| DEBT-05 | Phase 17 | Pending |
+| DEBT-06 | Phase 17 | Pending |
 
 **Coverage:**
 - v1.4 requirements: 17 total
-- Mapped to phases: 0 (roadmap pendente)
-- Unmapped: 17 ⚠️ (será resolvido na criação do roadmap)
+- Mapped to phases: 17 ✓ (BYOK-01..05 → P14 · CLSAI-01..06 → P15 · CLSAI-07/08 → P16 · DEBT-03..06 → P17)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-18*
-*Last updated: 2026-06-18 after milestone v1.4 definition*
+*Last updated: 2026-06-18 — roadmap criado, traceability preenchida (Phases 14–17, 17/17 mapeados).*
