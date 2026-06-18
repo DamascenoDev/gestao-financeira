@@ -1,6 +1,9 @@
+import Link from 'next/link'
+
 import { AccountDeleteZone } from '@/components/delete-account-form'
 import { ExportDataButton } from '@/components/export-data-button'
 import { ExportTransactionsButton } from '@/components/export-transactions-button'
+import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { centsToBigInt } from '@/lib/money'
 import { monthBounds, toMonthKeyOrCurrent } from '@/lib/month'
@@ -111,6 +114,24 @@ export default async function ContaPage({
             Exporta apenas as transações do mês selecionado.
           </p>
         </div>
+      </Card>
+
+      {/* Entry-point — Configurações de IA (BYOK). A simple Card linking to the
+          dedicated /conta/configuracoes-ia surface; NO new sidebar item (setup is
+          rare). The key never touches this page — it only routes there. */}
+      <Card className="gap-4 p-4">
+        <div className="flex flex-col gap-1">
+          <h2 className="text-sm font-semibold">Configurações de IA</h2>
+          <p className="text-sm text-muted-foreground">
+            Escolha seu provedor (Gemini ou Claude) e cadastre sua chave para
+            classificar gastos automaticamente.
+          </p>
+        </div>
+        <Button
+          variant="outline"
+          className="self-start"
+          render={<Link href="/conta/configuracoes-ia">Abrir configurações de IA</Link>}
+        />
       </Card>
 
       {/* Section B — Apagar conta e dados (AccountDeleteZone). lg-separated from
