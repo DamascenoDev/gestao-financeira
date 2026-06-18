@@ -1,6 +1,7 @@
 ---
 phase: 10-abastecimento-h-brido-consumo
 plan: 01
+requirements_completed: [CAR-03, CAR-04]
 subsystem: carro-consumo
 tags: [migration, supabase-views, security-invoker, consumption-math, integration-test, wr-fixes]
 requires:

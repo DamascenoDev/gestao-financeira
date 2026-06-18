@@ -1,6 +1,7 @@
 ---
 phase: 10-abastecimento-h-brido-consumo
 plan: 02
+requirements_completed: [CAR-03, CAR-04]
 subsystem: abastecimento-server-layer
 tags: [zod, server-actions, idor, xor, carro-id-sync, consumo-helper, integration-test]
 requires:

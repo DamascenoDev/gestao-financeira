@@ -4,6 +4,7 @@ phase: 09-etiquetar-gastos-da-fatura-ao-carro
 title: Etiquetagem na revisão de importação
 status: complete
 requirements: [CAR-02]
+requirements_completed: [CAR-02]
 completed: 2026-06-17
 key_files:
   created: []

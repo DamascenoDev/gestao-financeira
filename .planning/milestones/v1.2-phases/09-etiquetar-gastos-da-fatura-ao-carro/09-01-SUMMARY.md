@@ -1,6 +1,7 @@
 ---
 phase: 09-etiquetar-gastos-da-fatura-ao-carro
 plan: 01
+requirements_completed: [CAR-02]
 subsystem: transactions / carro-tagging server contract
 tags: [CAR-02, server-action, IDOR, D4, carro_id, wave-0]
 requires:

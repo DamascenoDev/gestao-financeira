@@ -4,6 +4,7 @@ phase: 09-etiquetar-gastos-da-fatura-ao-carro
 title: Etiquetagem no extrato (seletor no form + ação de linha + bulk)
 status: complete
 requirements: [CAR-02]
+requirements_completed: [CAR-02]
 completed: 2026-06-17
 key_files:
   created:

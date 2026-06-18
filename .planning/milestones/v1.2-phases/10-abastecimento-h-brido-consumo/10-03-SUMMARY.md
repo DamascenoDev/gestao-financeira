@@ -4,6 +4,7 @@ phase: 10-abastecimento-h-brido-consumo
 title: Abastecimento UI — form + picker + histórico + médias
 status: complete
 requirements: [CAR-03, CAR-04]
+requirements_completed: [CAR-03, CAR-04]
 completed: 2026-06-17
 key_files:
   created:
