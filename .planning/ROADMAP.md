@@ -82,7 +82,12 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
   3. Usuário clica "testar conexão" e recebe ok/erro de um ping barato que valida chave + provedor antes de confiar na config
   4. Cross-user isolation provado: a tabela `ai_settings` tem RLS com as quatro políticas (`select/insert/update/delete`) + `with check`, e o decrypt acontece server-only via RPC `SECURITY DEFINER` filtrado por `auth.uid()`
   5. Usuário remove/troca a chave; sem chave o app volta ao estado pré-IA (pick manual) sem quebrar
-**Plans**: TBD
+**Plans**: 5 plans
+- [ ] 14-01-PLAN.md — instalar @ai-sdk/google + @ai-sdk/anthropic (checkpoint de legitimidade) + scaffolds de teste Wave 0
+- [ ] 14-02-PLAN.md — migração 0033 (ai_settings + RLS + Vault + RPCs get/save/remove) + [BLOCKING] schema push LOCAL+PROD
+- [ ] 14-03-PLAN.md — camada lib/ai: aiSettingsSchema + registry client-safe + provider-factory + decrypt DAL server-only
+- [ ] 14-04-PLAN.md — Server Actions saveAiSettings/testConnection/removeAiKey (Vault RPC + ping + mapeamento de erro pt-BR)
+- [ ] 14-05-PLAN.md — RSC /conta/configuracoes-ia + AiSettingsForm write-only + card em /conta + [SECURITY GATE] write-only-key
 **UI hint**: yes
 
 ### Phase 15: Classification Wire
@@ -141,7 +146,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 | 11. Detalhe do carro + gráfico de consumo | v1.2 | 4/4 | Complete | 2026-06-17 |
 | 12. Produção & Live-Verify | v1.3 | 11/11 | Complete | 2026-06-18 |
 | 13. PDF de Fatura | v1.3 | 4/4 | Complete | 2026-06-18 |
-| 14. Key Storage + BYOK Settings | v1.4 | 0/TBD | Not started | - |
+| 14. Key Storage + BYOK Settings | v1.4 | 0/5 | Planned | - |
 | 15. Classification Wire | v1.4 | 0/TBD | Not started | - |
 | 16. Review-Grid Suggestion Affordances | v1.4 | 0/TBD | Not started | - |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/TBD | Not started | - |
