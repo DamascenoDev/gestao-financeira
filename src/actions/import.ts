@@ -276,6 +276,13 @@ export async function ingestStatement(
     .select('id')
     .maybeSingle()
   if (insError) {
+    // Surface the real Postgres error (code + message + constraint) server-side so
+    // a CHECK/RLS violation is diagnosable instead of hidden behind the generic
+    // message — e.g. a format/kind constraint not yet widened on the target DB.
+    console.error(
+      `[ingestStatement] statements insert failed (format=${ext}, file=${originalFilename}):`,
+      insError,
+    )
     return { error: 'Não foi possível registrar o arquivo. Tente de novo.' }
   }
 
