@@ -11,9 +11,9 @@ Requisitos deste milestone. Cada um mapeia para uma fase do ROADMAP.
 
 Levar o app (11 fases code-complete no stack local) ao ar de verdade e provar o core value ao vivo. Executa os 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05; verificar também 07-07).
 
-- [ ] **DEPLOY-01**: Supabase pessoal remoto provisionado (região São Paulo `sa-east-1`) — migrations 0001-0029 aplicadas no projeto remoto (inclui a 0029 do WR-02), RLS ativo em todas as tabelas, typed client sem drift
-- [ ] **DEPLOY-02**: App deployado na Vercel (produção, região `gru1`) com env vars configuradas (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_SECRET_KEY` se usado), `maxDuration` nas rotas de parsing. (Sem chave de IA — classificação por IA deferida, ver Future.)
-- [ ] **DEPLOY-03**: Usuário loga em produção com sua conta pessoal; sessão persiste entre refresh; RLS isola os dados (nenhum acesso cross-user)
+- [x] **DEPLOY-01**: Supabase pessoal remoto provisionado (região São Paulo `sa-east-1`) — migrations 0001-0029 aplicadas no projeto remoto (inclui a 0029 do WR-02), RLS ativo em todas as tabelas, typed client sem drift
+- [x] **DEPLOY-02**: App deployado na Vercel (produção, região `gru1`) com env vars configuradas (`NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` + `SUPABASE_SECRET_KEY` se usado), `maxDuration` nas rotas de parsing. (Sem chave de IA — classificação por IA deferida, ver Future.)
+- [x] **DEPLOY-03**: Usuário loga em produção com sua conta pessoal; sessão persiste entre refresh; RLS isola os dados (nenhum acesso cross-user)
 - [ ] **DEPLOY-04**: Upload de fatura grava no Storage privado por `user_id` em produção (Storage RLS), e o parsing server-side roda no runtime Node da Vercel a partir do buffer
 - [ ] **DEPLOY-05**: Core value verificado ao vivo em produção — usuário sobe uma fatura real (OFX/CSV), vê a classificação por **memória** (estabelecimento conhecido auto-classifica; novo = pick manual que vira padrão aprendido — **IA deferida, ver Future**) e a aderência às metas (mensal **e** anual) funcionando
 
@@ -62,9 +62,9 @@ Quais fases cobrem quais requisitos. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| DEPLOY-01 | Phase 12 | Pending |
-| DEPLOY-02 | Phase 12 | Pending |
-| DEPLOY-03 | Phase 12 | Pending |
+| DEPLOY-01 | Phase 12 | Complete |
+| DEPLOY-02 | Phase 12 | Complete |
+| DEPLOY-03 | Phase 12 | Complete |
 | DEPLOY-04 | Phase 12 | Pending |
 | DEPLOY-05 | Phase 12 | Pending |
 | PDF-01 | Phase 13 | Pending |

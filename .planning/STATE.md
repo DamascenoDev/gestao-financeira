@@ -6,14 +6,14 @@ current_phase: 12
 current_phase_name: produ-o-live-verify
 status: executing
 stopped_at: Phase 12 context gathered
-last_updated: "2026-06-18T11:51:02.728Z"
+last_updated: "2026-06-18T12:37:37.819Z"
 last_activity: 2026-06-18
-last_activity_desc: Phase 12 execution started
+last_activity_desc: 12-02 pre-flight passed (736 tests, tsc clean, build OK, secret-gate exit 0); awaiting human credentials for remote Supabase/Vercel wiring
 progress:
   total_phases: 2
   completed_phases: 0
   total_plans: 7
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 12 (produ-o-live-verify) — EXECUTING
-Plan: 2 of 7
+Plan: 3 of 7
 Status: 12-02 in progress — Task 1 (pre-flight gates) GREEN; paused at Task 2 (first human checkpoint, autonomous:false)
 Last activity: 2026-06-18 — 12-02 pre-flight passed (736 tests, tsc clean, build OK, secret-gate exit 0); awaiting human credentials for remote Supabase/Vercel wiring
 
@@ -45,6 +45,7 @@ Last activity: 2026-06-18 — 12-02 pre-flight passed (736 tests, tsc clean, bui
 | v1.2 requirements | 6 (CAR-01 + CAR-02 + CAR-04 + CAR-06 Complete; CAR-03 In progress server contract; CAR-05 In progress — lista /carros (11-02) + detalhe /carros/[id] enriquecido (11-03) entregues, falta só o human-verify (11-04); mapeados 6/6) |
 | Plans complete | 33 |
 | Phase 12 P12-01 | 5m | 2 tasks | 8 files |
+| Phase 12 P12-02 | ~5 min | 4 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -122,7 +123,7 @@ Last activity: 2026-06-18 — 12-02 pre-flight passed (736 tests, tsc clean, bui
 
 ## Session Continuity
 
-**Last session:** 2026-06-18T11:50:05.435Z
+**Last session:** 2026-06-18T12:37:03.780Z
 **Stopped at:** Phase 12 context gathered
 **Resume file:** .planning/phases/12-produ-o-live-verify/12-CONTEXT.md
 
@@ -192,3 +193,5 @@ Last activity: 2026-06-18 — 12-02 pre-flight passed (736 tests, tsc clean, bui
 ## Decisions
 
 - [Phase ?]: WR-02 fix: anchor v_abastecimento_consumo interval bounds on the prior full-tank fill's full ordering tuple via Postgres row-value comparison (12-01 / DEBT-01)
+- [Phase ?]: Phase 12 production deploy executed via the Vercel dashboard (Git import from origin/main @ 40b19ab), not the CLI; no .vercel/ dir in the repo is expected.
+- [Phase ?]: ONE deploy for the whole phase (D-08): waves 3-7 verify against this single bundle; downstream plans must NOT re-deploy.
