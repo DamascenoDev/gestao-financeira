@@ -1,8 +1,11 @@
 'use server'
 
+import { APICallError } from '@ai-sdk/provider'
 import { revalidatePath } from 'next/cache'
 
+import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
 import { DEFAULT_MODEL } from '@/lib/ai/settings'
+import { modelFor } from '@/lib/ai/provider-factory'
 import { aiSettingsSchema } from '@/lib/schemas/ai-settings'
 import { createClient } from '@/lib/supabase/server'
 
@@ -78,4 +81,65 @@ export async function removeAiKey(): Promise<ActionResult> {
 
   revalidatePath(AI_PATH)
   return { ok: true }
+}
+
+/* ── 14-UI-SPEC §Copywriting Contract — the ONLY strings ever shown for a test ── */
+const INVALID_KEY =
+  'Chave inválida. Confira se você copiou a chave correta do provedor.'
+const NO_CREDITS =
+  'Sem créditos ou cota esgotada no provedor. Verifique sua conta no provedor.'
+const TEST_GENERIC = 'Não foi possível testar agora. Tente novamente em instantes.'
+
+/**
+ * Map a thrown provider error to one of three fixed friendly pt-BR strings (BYOK-03,
+ * T-14-07, Pitfall 5). SECURITY: the returned string is a CONSTANT — it NEVER embeds
+ * the raw provider message, headers, a stack, or the decrypted key. `sk-…`/`AIza…`
+ * fragments in the original error can never reach the UI through this function.
+ *
+ * Narrows via the verified `APICallError.isInstance` guard (@ai-sdk/provider@3.0.x)
+ * to read `statusCode`: 401/403 → invalid key, 429 → no credits/quota, everything
+ * else (network / non-APICallError / unknown) → the generic try-again copy.
+ *
+ * Exported so the Wave 0 unit test asserts the mapping against simulated errors with
+ * no real provider call.
+ */
+export function mapProviderError(e: unknown): string {
+  // `isInstance` is duck-typed (works across copies of the package), so it also
+  // matches the test's plain `{ statusCode }` objects — exactly the contract we pin.
+  const status = APICallError.isInstance(e)
+    ? e.statusCode
+    : typeof e === 'object' && e !== null && 'statusCode' in e
+      ? (e as { statusCode?: unknown }).statusCode
+      : undefined
+
+  if (status === 401 || status === 403) return INVALID_KEY
+  if (status === 429) return NO_CREDITS
+  return TEST_GENERIC
+}
+
+/**
+ * Test the saved BYOK key with a cheap ~1-token ping (BYOK-03). Decrypts server-only
+ * via the @/lib/ai/settings.server DAL, instantiates the per-call BYOK model, and
+ * runs a single `doGenerate` ('ping', capped at 1 output token). The WHOLE body is
+ * wrapped in a total try/catch: on any throw it returns mapProviderError(e) — one of
+ * three fixed pt-BR strings, never the key, never a raw provider message, never a
+ * stack (T-14-07). Saving is decoupled from testing; this is a pure read+ping.
+ */
+export async function testConnection(): Promise<ActionResult> {
+  try {
+    const settings = await getDecryptedAiSettings()
+    if (!settings) return { error: 'Nenhuma chave configurada.' }
+
+    const model = modelFor(settings.provider, settings.model, settings.apiKey)
+    await model.doGenerate({
+      prompt: [{ role: 'user', content: [{ type: 'text', text: 'ping' }] }],
+      maxOutputTokens: 1,
+    })
+
+    return { ok: true }
+  } catch (e) {
+    // The decrypted key only ever existed inside this try; it never leaves via the
+    // returned string (mapProviderError is constant-output) and is never logged.
+    return { error: mapProviderError(e) }
+  }
 }
