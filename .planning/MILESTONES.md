@@ -1,5 +1,30 @@
 # Milestones
 
+## v1.3 Produção & PDF (Shipped: 2026-06-18)
+
+**Phases completed:** 2 phases (12-13), 15 plans, 18 tasks
+**Git:** 76 commits, 100 files (+7829 / -128), single-day sprint. First tag: `v1.3`.
+
+**Key accomplishments:**
+
+- **App live em produção** — Supabase pessoal remoto (`sa-east-1`, migrations 0001-0032, RLS ativo em todas as tabelas, typed client sem drift) + Vercel (`gru1`, `maxDuration` nas rotas de parsing). Login pessoal, sessão persistente e isolamento RLS cross-user verificados ao vivo no browser (DEPLOY-01/02/03).
+- **Core value provado ao vivo** — fatura real (Nubank OFX, 22 linhas) em produção → parse server-side → review grid → classificação por **memória** (auto-classifica conhecido; novo vira padrão na confirmação) → aderência às metas mensal **e** anual (DEPLOY-04/05). A camada de IA NÃO foi construída; o core value shipou memory-only (seam `suggestCategory()` pronto p/ v1.4).
+- **PDF de fatura** — Santander PDF pela mesma UI de upload, fluindo pelo MESMO pipeline ingest→review→confirm→classify→metas que OFX/CSV: parser `getText` (não `getTable`, decidido no spike), bloco hard image-only distinto de parse 0-linhas, estorno→`credit` server-derived, migrations 0031 (`transactions.kind`) + 0032 (`statements.format`). Verificado end-to-end ao vivo (98 linhas, contagens honestas, estorno verde, confirm→/extrato→metas) (PDF-01..05).
+- **WR-02 fechado + doc hygiene** — migration 0029 corrige o edge same-odometer em `v_abastecimento_consumo` (km/l não subestima, R$/km não superestima); `requirements_completed` CAR-02/03/04 backfilled no frontmatter das fases 9/10 (DEBT-01/02).
+- **8 defeitos de live-verify corrigidos (G-01..G-08)** — Base UI Select renderiza label não o valor cru/`__none__` em todos os call sites; truncamento de label de aderência + migration 0030 (refresh da view remota stale); copy calma sob-teto ("Dentro"); affordance de delete em /receitas; `BrDateField` pt-BR dd/mm/aaaa em todos os 6 forms (storage ISO mantido); toast de importação honesto em re-confirm all-duplicate.
+
+**Requirements:** 12/12 v1.3 satisfeitos (DEPLOY-01..05, PDF-01..05, DEBT-01/02). Auditoria do milestone: `tech_debt` — `milestones/v1.3-MILESTONE-AUDIT.md`. Cross-phase integration limpa (0 blockers, 0 broken flows, `tsc` exit 0).
+
+**Status:** **SHIPPED — app no ar em produção.** Core value (memory-only) e PDF de fatura provados ao vivo. Tag git `v1.3` (primeira tag do projeto).
+
+**Known deferred items at close: 3** (acknowledged `tech_debt`, ver STATE.md `## Deferred Items`):
+
+- Redeploy dos fixes G-07/G-08 (cosméticos do grid de importação; GREEN local, commit `2ae93fb`) — live bundle pendente.
+- Walkthroughs hands-on 12-06 (MEI: downloads CSV/JSON) + 12-07 (LGPD: export + delete de conta throwaway) — re-verificam reqs v1.0 (MEI-*/DATA-*/SEC-01), não reqs v1.3.
+- VALIDATION.md de Nyquist: Phase 12 ausente, Phase 13 draft (`nyquist_compliant:false`) — ambas verificadas por outros meios.
+
+---
+
 ## v1.2 Carro (Shipped: 2026-06-18)
 
 **Phases completed:** 4 phases, 13 plans, 17 tasks
@@ -18,6 +43,7 @@
 **Requirements:** CAR-01..06 — 6/6 satisfied (audit: `milestones/v1.2-MILESTONE-AUDIT.md`). Cross-phase integration ship-ready, headline E2E flow complete, no double-count.
 
 **Tech debt carried forward (accepted at close):**
+
 - WR-02 — `v_abastecimento_consumo` understates km/l / overstates R$/km when two full-tank fills share the EXACT same odometer (near-impossible single-user data shape; isolated to one car's consumption average; `gasto_total_cents` unaffected). Fix = future migration 0029.
 - Doc hygiene — CAR-02/03/04 absent from per-plan SUMMARY `requirements_completed` frontmatter (carried by checkbox + phase VERIFICATION instead).
 

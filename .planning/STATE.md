@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.3
 milestone_name: Produção & PDF
-current_phase: 13
-status: verifying
+current_phase: 3
+status: Awaiting next milestone
 stopped_at: Phase 13 UI-SPEC approved
-last_updated: "2026-06-18T18:45:47.263Z"
+last_updated: "2026-06-18T19:13:15.046Z"
 last_activity: 2026-06-18
-last_activity_desc: Phase 13 complete
+last_activity_desc: Milestone v1.3 completed and archived
 progress:
   total_phases: 2
   completed_phases: 2
@@ -30,10 +30,20 @@ current_phase_name: pdf-de-fatura
 
 ## Current Position
 
-Phase: 13
-Plan: Not started
-Status: 13-02 LOCAL schema applied — migrations 0031 (transactions.kind→credit) + 0032 (statements.format→pdf, added during Gate-2 retest) applied via `supabase migration up --local` and verified in pg_constraint. PROD `supabase db push` (0031+0032) + `npm run gen:types` still pending (user, needs creds — Gate 1 prod half). 13-04 ready to re-test locally end-to-end (Gate 2). Held executors: 13-02=a60156b92d4c7e106, 13-04=a5b3a6997f96083e5.
-Last activity: 2026-06-18 — Phase 13 complete
+Phase: Milestone v1.3 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-18 — Milestone v1.3 completed and archived
+
+## Deferred Items
+
+Items acknowledged and deferred at v1.3 milestone close on 2026-06-18 (audit status `tech_debt`; full detail in `milestones/v1.3-MILESTONE-AUDIT.md`):
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | 12-VERIFICATION.md (Phase 12) | human_needed — 12-06 (MEI) + 12-07 (LGPD) prod browser walkthroughs pending user (downloads + throwaway-account destructive delete); re-verify v1.0 reqs MEI-*/DATA-*/SEC-01, not v1.3 reqs |
+| quick_task | import-grid-gaps (20260618) | missing — G-07/G-08 fixes committed `2ae93fb` + GREEN locally; live prod bundle redeploy pending user (cosmetic: import-grid sentinel + "0 importadas" toast) |
+| nyquist | 12-VALIDATION.md / 13-VALIDATION.md | Phase 12 MISSING, Phase 13 draft (nyquist_compliant:false) — both verified by other means (Phase 13 VERIFICATION 9/9, Phase 12 live MCP) |
 
 ## Performance Metrics
 

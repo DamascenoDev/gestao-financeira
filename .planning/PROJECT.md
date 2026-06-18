@@ -10,26 +10,29 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 ## Current State
 
-**v1.2 "Carro" — code-complete on the LOCAL Supabase stack (2026-06-18).** O módulo de veículo está inteiro: cadastro multi-car, etiquetagem não-destrutiva de gastos da fatura ao carro, log de abastecimento híbrido (fatura OU manual, XOR) com odômetro/litros/tanque-cheio, e consumo km/l + R$/km com gráfico no detalhe. 6/6 requisitos CAR satisfeitos, integração cross-phase ship-ready (ver `milestones/v1.2-MILESTONE-AUDIT.md`).
+**v1.3 "Produção & PDF" — SHIPPED 2026-06-18. O app está NO AR.** Treze fases code-complete subiram para produção de verdade: Supabase pessoal remoto (`sa-east-1`, migrations 0001-0032, RLS ativo) + Vercel (`gru1`, `maxDuration` nas rotas de parsing). Login pessoal, sessão persistente e isolamento RLS verificados ao vivo no browser. **Core value provado em produção:** fatura real (OFX) → parse server-side → review grid → classificação por **memória** → aderência às metas (mensal + anual). Upload de **PDF de fatura** (Santander) adicionado pela mesma UI, fluindo pelo mesmo pipeline ingest→review→confirm→classify→metas (parser `getText`, bloco image-only, estorno→credit, migrations 0031/0032) — verificado end-to-end ao vivo (98 linhas). WR-02 fechado (migration 0029). Primeira tag git: `v1.3`.
 
-Onze fases construídas e verificadas no stack local (v1.0 fases 1-6 = core ledger + upload/IA + MEI; v1.1 fase 7 = identidade visual; v1.2 fases 8-11 = Carro). Suíte ~735 testes, `tsc`/build limpos, auditoria de segredos exit 0.
+Suíte ~761 testes, `tsc --noEmit` + `npm run build` limpos. Auditoria do milestone: `tech_debt` (12/12 requisitos satisfeitos, 0 blockers — ver `milestones/v1.3-MILESTONE-AUDIT.md`).
 
-**Não deployado.** Toda a fase remota — wiring do Supabase pessoal + deploy Vercel + verificação ao vivo no browser — está nos 6 walkthroughs `autonomous:false` diferidos (01-04, 02-05, 03-06, 04-04, 05-04, 06-05), pendentes das credenciais do usuário. Nenhuma tag git criada até o release real.
+**Dívida carregada (não bloqueia o core value):** redeploy dos fixes G-07/G-08 (cosméticos do grid de importação, GREEN local), walkthroughs hands-on 12-06 (MEI) + 12-07 (LGPD), e VALIDATION.md de Nyquist (Phase 12 ausente, Phase 13 draft). Detalhe em STATE.md `## Deferred Items`.
 
-## Current Milestone: v1.3 Produção & PDF
+**Classificação por IA NÃO foi construída** — o core value do v1.3 é **memory-only** (estabelecimento conhecido auto-classifica; novo = pick manual que vira padrão). O seam `suggestCategory()` + `validateSuggestion` enum wrapper + `SuggestionSlot` estão prontos (additivo); a IA fica para v1.4 (CLS-AI).
 
-**Goal:** Subir o app pra produção (Supabase pessoal + Vercel), validar o core value ao vivo, e adicionar upload de fatura em PDF.
+<details>
+<summary>Milestones anteriores (v1.0–v1.2)</summary>
 
-**Target features:**
-- **Deploy remoto** — wiring do Supabase pessoal + deploy Vercel (os 6 walkthroughs `autonomous:false` diferidos: 01-04, 02-05, 03-06, 04-04, 05-04, 06-05)
-- **Live-verify do core value** — fatura real em produção → classificação memória/IA → aderência metas, confirmado no browser
-- **PDF de fatura** — extração de transações de PDF (pdf-parse v2 `getTable`, unpdf fallback; **review grid antes de persistir, nunca auto-commit de linha PDF**; spike com amostras reais)
-- **WR-02 fix** — migration 0029 (edge same-odometer no `v_abastecimento_consumo`)
-- **Doc hygiene** — `requirements_completed` no frontmatter dos SUMMARY (CAR-02/03/04)
+- **v1.0 MVP** (Phases 1-6) — core ledger + upload OFX/CSV/IA-seam + metas/reservas + MEI/DASN + endurecimento. Code-complete no stack local; deploy/live-verify executado na Phase 12 (v1.3).
+- **v1.1 Identidade visual** (Phase 7) — re-skin navy+gold, dark mode, charts, mobile nav. SHIPPED 2026-06-17.
+- **v1.2 Carro** (Phases 8-11) — cadastro multi-car, etiquetagem não-destrutiva de gastos ao carro, abastecimento híbrido (XOR fatura/manual) + odômetro, consumo km/l tanque-cheio + R$/km com gráfico. 6/6 CAR. SHIPPED 2026-06-18 (`milestones/v1.2-*`). Design seed: `docs/superpowers/specs/2026-06-17-modulo-carro-design.md`.
 
-**Done:** app no ar (Supabase pessoal + Vercel prod) **e** core value provado ao vivo (fatura real classificada + metas), PDF de fatura funcionando com review humano. Tag git v1.3 no release real.
+</details>
 
-**Design seed (v1.2, concluído):** `docs/superpowers/specs/2026-06-17-modulo-carro-design.md`. Módulo autocontido espelhando o MEI.
+## Next Milestone Goals
+
+Próximo milestone definido via `/gsd-new-milestone`. Candidatos conhecidos:
+- **v1.4 IA de classificação** — wire AI SDK + Gemini 2.5 Flash-Lite via AI Gateway no seam `suggestCategory()` já pronto (memory-first, IA só no miss, confirmação antes de virar padrão).
+- **Limpeza de dívida v1.3** — redeploy G-07/G-08, walkthroughs MEI/LGPD ao vivo, VALIDATION.md de Nyquist.
+- **PDF avançado (se necessário)** — parser por banco / OCR só se um banco real do usuário falhar no getText.
 
 ## Requirements
 
@@ -37,23 +40,22 @@ Onze fases construídas e verificadas no stack local (v1.0 fases 1-6 = core ledg
 
 <!-- Shipped and confirmed valuable. -->
 
-- ✓ **(v1.2)** Aba Carro: cadastro multi-car, etiquetagem não-destrutiva de gastos ao carro, abastecimento híbrido (XOR fatura/manual) + odômetro, consumo km/l tanque-cheio + R$/km com gráfico — **v1.2** (code-complete no stack local; CAR-01..06 6/6; validação em produção pendente do deploy)
+- ✓ Autenticação via Supabase pessoal (login único no v1) — **v1.3** (login + sessão persistente + isolamento RLS provados ao vivo em produção)
+- ✓ Cadastro de receitas misto: recorrentes fixos (salário, pensão) + lançamentos avulsos — **v1.3** (live)
+- ✓ Upload de faturas multi-formato (OFX/CSV **e PDF**) com extração das transações — **v1.3** (PDF Santander pela mesma UI → review grid → sem auto-commit)
+- ✓ Categorias de gasto padrão-BR editáveis (adicionar / remover / renomear) — **v1.3** (live)
+- ✓ Metas por categoria em % da receita, mensal **e** acumulado anual, com dashboard de aderência — **v1.3** (live)
+- ✓ Reservas de oportunidade (sinking funds) com alvo opcional + entradas/saídas + histórico por reserva — **v1.3** (live)
+- ✓ Aba MEI: NFs de serviço emitidas + limite anual R$ 81k + relatório DASN-SIMEI — **v1.0** (provado local; prod walkthrough 12-06 pendente de verificação hands-on)
+- ✓ Modelo de dados escopado por `user_id` (multi-user-ready, sem migração para a esposa) — **v1.3** (RLS isola dados em produção)
+- ✓ Classificação por **memória de padrões** (merchant→categoria aprendido na confirmação; auto-classifica nas próximas faturas) — **v1.3** (core value provado ao vivo)
+- ✓ **(v1.2)** Aba Carro: multi-car, etiquetagem não-destrutiva de gastos ao carro, abastecimento híbrido (XOR fatura/manual) + odômetro, consumo km/l tanque-cheio + R$/km com gráfico — **v1.2** (CAR-01..06 6/6; em produção desde v1.3)
 
 ### Active
 
-<!-- Hipóteses até serem entregues e validadas. Detalhamento em REQUIREMENTS.md. -->
+<!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- [ ] Autenticação via meu Supabase pessoal (login só meu no v1)
-- [ ] Cadastro de receitas misto: recorrentes fixos (salário, pensão) + lançamentos avulsos
-- [ ] Upload de faturas em múltiplos formatos (PDF + CSV/OFX) com extração das transações
-- [ ] Classificação de gastos assistida por IA: para estabelecimento novo a IA sugere categoria, eu confirmo, vira padrão salvo na memória e auto-classifica nas próximas faturas
-- [ ] Categorias de gasto padrão-BR editáveis (adicionar / remover / renomear)
-- [ ] Metas por categoria em % da receita, configuráveis, avaliadas mensal **e** acumulado anual, com dashboard de aderência
-- [ ] Reservas de oportunidade (sinking funds) nomeadas (ex: Apê, Carro): alvo opcional com barra de progresso; entradas via gasto classificado como "Reserva" (sub-pergunta "qual reserva?") e saídas, com histórico por reserva
-- [ ] Aba MEI: registro das NFs de serviço emitidas, acompanhamento do limite anual (R$ 81k) e relatório para a declaração anual (DASN-SIMEI)
-- [ ] Modelo de dados escopado por `user_id` desde o v1 (multi-user-ready, sem migração dolorosa para adicionar a esposa)
-
-> Nota: os itens Active acima (core ledger, upload/IA, MEI, reservas, metas) estão **construídos e verificados no stack local** (v1.0/v1.1, fases 1-7) mas seguem Active porque ainda não foram validados em produção — o deploy + verificação ao vivo são os 6 walkthroughs diferidos. Migram para Validated quando o app subir.
+- [ ] **Classificação assistida por IA** (deferida p/ v1.4 — CLS-AI): para estabelecimento novo a IA sugere categoria, eu confirmo, vira padrão salvo na memória e auto-classifica nas próximas faturas. O seam `suggestCategory()` + o `validateSuggestion` enum wrapper + o `SuggestionSlot` já estão prontos (additivo). NÃO construída no v1 — o core value shipou **memory-only**.
 
 ### Out of Scope
 
@@ -88,21 +90,21 @@ Onze fases construídas e verificadas no stack local (v1.0 fases 1-6 = core ledg
 
 | Decision | Rationale | Outcome |
 |----------|-----------|---------|
-| Next.js + TypeScript estrito (sem JS) + Supabase + Vercel | Web app casa com Supabase pessoal; TS estrito por preferência; reaproveita stack do GIO | — Pending |
-| Classificação = memória de padrões + IA só para novos, com confirmação | Barateia (IA só no caso novo) e garante precisão via confirmação humana antes de memorizar | — Pending |
-| Provedor de IA a definir na pesquisa | Comparar custo/qualidade para classificação de texto curto antes de fixar | — Pending |
-| Modelo de dados escopado por `user_id` desde o v1 | Esposa entra no futuro sem migração dolorosa | — Pending |
-| Metas avaliadas mensal **e** anual | Usuário quer visão de curto e longo prazo da aderência | — Pending |
-| Reservas com alvo opcional + entradas/saídas | Flexível: nem toda reserva tem meta; saída permite usar o dinheiro guardado | — Pending |
-| MEI completo no v1 (NF + limite R$81k + relatório DASN) | Facilitar a declaração anual é objetivo explícito | — Pending |
-| PDF de fatura adiado para v1.x; OFX/CSV no v1 | PDF BR varia muito por banco e é frágil; OFX/CSV são determinísticos. PDF entra com spike sobre amostras reais | — Pending |
-| Aporte em reserva conta na meta de Investimentos (alocação), não como gasto de consumo | Usuário vê reserva como investimento; deve creditar a meta de investimento, não inflar gasto | — Pending |
-| Denominador das metas % = receita líquida recebida no mês | % sobre o que efetivamente caiu (recorrentes + avulsos) | — Pending |
-| Metas têm direção: teto (consumo, não exceder) vs alvo (investimento/poupança, atingir) | "lazer 10%" é teto; "investimentos 20%" é alvo — aderência se mede diferente | — Pending |
+| Next.js + TypeScript estrito (sem JS) + Supabase + Vercel | Web app casa com Supabase pessoal; TS estrito por preferência; reaproveita stack do GIO | ✓ Good — deployado e rodando em produção (Vercel gru1 + Supabase sa-east-1) no v1.3 |
+| Classificação = memória de padrões + IA só para novos, com confirmação | Barateia (IA só no caso novo) e garante precisão via confirmação humana antes de memorizar | ✓ Good — camada **memória** provada ao vivo (core value v1.3); IA deferida p/ v1.4 (seam pronto) |
+| Provedor de IA a definir na pesquisa | Comparar custo/qualidade para classificação de texto curto antes de fixar | — Pending — IA não construída no v1; decisão fica para v1.4 (CLS-AI) |
+| Modelo de dados escopado por `user_id` desde o v1 | Esposa entra no futuro sem migração dolorosa | ✓ Good — RLS isola dados cross-user, verificado ao vivo em produção (v1.3) |
+| Metas avaliadas mensal **e** anual | Usuário quer visão de curto e longo prazo da aderência | ✓ Good — dashboard de aderência mensal+anual provado ao vivo (v1.3) |
+| Reservas com alvo opcional + entradas/saídas | Flexível: nem toda reserva tem meta; saída permite usar o dinheiro guardado | ✓ Good — provado ao vivo (v1.3) |
+| MEI completo no v1 (NF + limite R$81k + relatório DASN) | Facilitar a declaração anual é objetivo explícito | ✓ Good — construído e provado local; prod walkthrough hands-on (12-06) pendente |
+| PDF de fatura adiado para v1.x; OFX/CSV no v1 | PDF BR varia muito por banco e é frágil; OFX/CSV são determinísticos. PDF entra com spike sobre amostras reais | ✓ Good — PDF Santander entregue no v1.3 (spike `getText` → mesmo pipeline, review humano, sem auto-commit) |
+| Aporte em reserva conta na meta de Investimentos (alocação), não como gasto de consumo | Usuário vê reserva como investimento; deve creditar a meta de investimento, não inflar gasto | ✓ Good — implementado na view `security_invoker` (CTE alloc_total); provado ao vivo |
+| Denominador das metas % = receita líquida recebida no mês | % sobre o que efetivamente caiu (recorrentes + avulsos) | ✓ Good — provado ao vivo (v1.3) |
+| Metas têm direção: teto (consumo, não exceder) vs alvo (investimento/poupança, atingir) | "lazer 10%" é teto; "investimentos 20%" é alvo — aderência se mede diferente | ✓ Good — aderência por direção provada ao vivo (v1.3) |
 | Dinheiro em centavos inteiros (bigint), nunca float | Erro de float em dinheiro é irreversível; padrão convergente da pesquisa | ✓ Good — implementado e provado por testes (local) |
 | (v1.2) Etiqueta `carro_id` em transactions é lente não-destrutiva | Gasto etiquetado continua contando na categoria/metas; aba Carro só agrega, não muda contabilidade | ✓ Good — D4 provado byte-idêntico (Wave-0 integration test) |
 | (v1.2) Abastecimento híbrido (vincula à fatura OU custo manual, XOR) | Combustível pago no cartão reaproveita o custo do lançamento (sem digitar/contar 2x); dinheiro/pix entra manual. Espelha reserva_ledger.transaction_id | ✓ Good — CHECK XOR no banco + validação no server; sem double-count (auditado) |
-| (v1.2) Consumo pelo método tanque-cheio | Mais preciso que km/l por abastecimento isolado; requer flag tanque_cheio + odômetro | ⚠️ Revisit — funciona; edge same-odometer (WR-02) diferido p/ migration 0029 |
+| (v1.2) Consumo pelo método tanque-cheio | Mais preciso que km/l por abastecimento isolado; requer flag tanque_cheio + odômetro | ✓ Good — edge same-odometer (WR-02) fechado no v1.3 via migration 0029 (DEBT-01) |
 
 ## Evolution
 
@@ -122,4 +124,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 — start milestone v1.3 "Produção & PDF". Escopo: deploy remoto (6 walkthroughs diferidos) + live-verify do core value + PDF de fatura + WR-02 (migration 0029) + doc hygiene. Onze fases code-complete no stack local; este milestone leva o app ao ar de verdade e adiciona o PDF adiado do v1.*
+*Last updated: 2026-06-18 after v1.3 "Produção & PDF" milestone — SHIPPED. App no ar (Supabase sa-east-1 + Vercel gru1), core value memory-only provado ao vivo, PDF de fatura entregue, WR-02 fechado. Tag git v1.3. Auditoria `tech_debt` (12/12 reqs; dívida em STATE.md Deferred Items). Próximo milestone via `/gsd-new-milestone` (candidato: v1.4 IA de classificação).*
