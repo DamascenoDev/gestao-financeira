@@ -33,7 +33,7 @@ progress:
 Phase: 13 (pdf-de-fatura) — EXECUTING (code complete; 2 human gates pending)
 Plan: 4 of 4 (all code written; 13-02 + 13-04 mid-flight at human gates)
 Status: Awaiting human gates in order — (1) 13-02 supabase db push (local+prod) + npm run gen:types; (2) 13-04 real local Santander PDF end-to-end verify. Held executors: 13-02=a60156b92d4c7e106, 13-04=a5b3a6997f96083e5.
-Last activity: 2026-06-18 — 13-01 (parser/TDD) + 13-03 (ingest wiring) complete with SUMMARYs; 13-02 (migration 0031 written, push pending) + 13-04 (UI + route code done, real-PDF verify pending) mid-flight. tsc clean, build OK, 784 tests pass.
+Last activity: 2026-06-18 — 13-01 (parser/TDD) + 13-03 (ingest wiring) complete with SUMMARYs; 13-02 (migration 0031 written, push pending) + 13-04 (UI + route code done, real-PDF verify pending) mid-flight. Gate-2 found+fixed a blocking bug: PDF upload failed in the Next server because pdf-parse was bundled (worker/font path break) — added serverExternalPackages:['pdf-parse'] (c008e76) + surfaced the swallowed error + server message in the UI (e90ee53). Parser proven against real Santander faturas (98/116 rows). User must restart `npm run dev` (config change) and re-test Gate 2.
 
 ## Performance Metrics
 
