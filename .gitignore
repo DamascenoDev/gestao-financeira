@@ -53,3 +53,4 @@ next-env.d.ts
 # README é rastreado; os PDFs ficam fora do git.
 /fixtures/faturas-pdf/**/*.pdf
 /fixtures/faturas-pdf/**/*.PDF
+/fixtures/faturas-pdf/*/*.ofx
