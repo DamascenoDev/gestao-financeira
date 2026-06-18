@@ -82,10 +82,16 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
   3. Usuário loga em produção com a conta pessoal, a sessão persiste entre refresh, e a RLS isola os dados (nenhum acesso cross-user)
   4. Usuário sobe uma fatura real (OFX/CSV) em produção, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando ao vivo — core value provado
   5. `v_abastecimento_consumo` em produção computa km/l e R$/km corretos no edge same-odometer (WR-02 fechado); SUMMARYs das fases 9/10 trazem `requirements_completed`
-**Plans**: TBD
+**Plans**: 7 plans
 
 Plans:
-- [ ] 12-01: TBD
+- [ ] 12-01-PLAN.md — migration 0029 (WR-02/DEBT-01) on the local stack + DEBT-02 doc hygiene (autonomous)
+- [ ] 12-02-PLAN.md — ONE production deploy: remote Supabase (sa-east-1) db push 0001-0029 + Vercel (gru1) + live auth verify (executes 01-04; DEPLOY-01/02/03 + DEBT-01)
+- [ ] 12-03-PLAN.md — live-verify receitas/categorias/extrato in production (executes 02-05; INC-02/TXN-03/TXN-04)
+- [ ] 12-04-PLAN.md — live-verify metas/aderência (mensal + anual) + reservas in production (executes 03-06; BUD-02/RSV-01/02/05 + DEPLOY-05 goal half)
+- [ ] 12-05-PLAN.md — core-value live-verify: upload → private Storage + server parse → memory-classify → learn → auto-classify (executes 04-04; DEPLOY-04 + DEPLOY-05 + IMP/CLS)
+- [ ] 12-06-PLAN.md — live-verify MEI module end-to-end in production (executes 05-04; MEI-01..06)
+- [ ] 12-07-PLAN.md — live-verify LGPD export + type-to-confirm delete + deployed-bundle secret gate (executes 06-05; DATA-01/02 + SEC-01)
 
 ### Phase 13: PDF de Fatura
 **Goal**: Usuário sobe fatura em PDF pela mesma UI de upload e, após revisar/confirmar no grid, as transações entram no mesmo pipeline de classificação e metas — best-effort, com confirmação humana obrigatória (nunca auto-commit de linha PDF).
