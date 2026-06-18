@@ -94,6 +94,33 @@ export default async function ImportReviewPage({
     descartadas: 0,
   }) as unknown as PersistedSummary
 
+  // Text-read-but-0-rows (PDF-04, UI-SPEC §4): the file WAS read (not the image-only
+  // hard block, which returns { error } upstream in 13-03 and never reaches this route
+  // with a statement), but no transaction line matched (likely a non-Santander layout).
+  // Show the honest 0/J header + the "Nenhuma transação reconhecida" Empty so the user
+  // sees the file was read and can choose CSV/OFX — NOT a silent empty grid, NOT the
+  // all-duplicates copy (which only applies when duplicates collapsed the rows away).
+  if (parsedRows.length === 0 && summary.duplicadas === 0) {
+    return (
+      <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
+        <h1 className="text-xl font-semibold">Revisar importação</h1>
+        <ImportSummaryHeader summary={summary} />
+        <Empty>
+          <EmptyHeader>
+            <EmptyTitle>Nenhuma transação reconhecida</EmptyTitle>
+            <EmptyDescription>
+              Lemos o arquivo, mas não reconhecemos nenhuma linha de transação. Se for
+              de outro banco, envie o CSV ou OFX dele.
+            </EmptyDescription>
+          </EmptyHeader>
+          <EmptyContent>
+            <Button render={<Link href="/importar">Voltar para importar</Link>} />
+          </EmptyContent>
+        </Empty>
+      </section>
+    )
+  }
+
   // Re-upload / all-duplicates: nothing new to confirm. Show the duplicate empty state.
   if (parsedRows.length === 0 || summary.novas === 0) {
     return (
@@ -176,6 +203,10 @@ export default async function ImportReviewPage({
     carro_id: null, // CAR-02: tagging happens in review; nothing pre-tagged at ingest
     origin: r.category_id === null ? 'não classificada' : 'memória',
     is_recurring: r.is_recurring,
+    // Thread the persisted PDF kind so the income-green AmountCell fires for estornos
+    // (the client ReviewRow type does NOT inherit RawTransaction.kind). OFX/CSV rows
+    // omit kind ⇒ default 'expense', so they stay green-free.
+    kind: r.kind ?? 'expense',
   }))
 
   return (
