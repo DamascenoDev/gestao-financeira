@@ -79,4 +79,22 @@ describe('dedupeKey (IMP-04 transaction-level)', () => {
     const emptyFitid = { ...csvRow, fitid: '' }
     expect(dedupeKey(USER, emptyFitid)).toBe(dedupeKey(USER, csvRow))
   })
+
+  it('a PDF-shaped row (no fitid) uses the csv basis — identical to CSV (PDF-05)', () => {
+    // PDF rows omit fitid (no bank-stable id), so they dedupe on the same
+    // csv:<date>:<cents>:<norm> tuple as CSV. A PDF row and a CSV row with the
+    // same (date, amount, descriptor) must collide.
+    const pdfRow = {
+      occurred_on: '2026-03-15',
+      amount_cents: 8990,
+      descriptor_norm: 'mercado exemplo loja',
+    }
+    expect(dedupeKey(USER, pdfRow)).toBe(
+      dedupeKey(USER, {
+        occurred_on: '2026-03-15',
+        amount_cents: 8990,
+        descriptor_norm: 'mercado exemplo loja',
+      }),
+    )
+  })
 })

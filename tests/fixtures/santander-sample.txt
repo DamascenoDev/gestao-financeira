@@ -1,0 +1,31 @@
+SANTANDER UNIQUE VISA
+Fatura
+Vencimento 07/06/2026
+@ TITULAR EXEMPLO - FINAL 0000
+
+Detalhamento da Fatura
+
+Despesas
+Compra Data Descrição Parcela R$ US$
+15/03 MERCADO EXEMPLO LOJA 89,90
+22/05 ASSINATURA STREAMING ABC 27,50
+10/05 RESTAURANTE FICTICIO 12/05 154,30
+
+Parcelamentos
+Compra Data Descrição Parcela R$ US$
+3 18/05 ELETRONICOS INVENTADOS 92,73
+VALOR TOTAL DESTE PLANO 1.112,76
+
+Pagamento e Demais Créditos
+Compra Data Descrição Parcela R$ US$
+20/05 ESTORNO COMPRA EXEMPLO -100,38
+21/05 PAGAMENTO DE FATURA-INTERNET -4.701,97
+
+ANUIDADE DIFERENCIADA 0,00
+
+VALOR TOTAL 437,33
+
+Resumo da Fatura
+Saldo Anterior R$ 4.701,97
+Limite de Crédito R$ 10.000,00
+Total desta fatura R$ 437,33
