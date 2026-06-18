@@ -60,12 +60,14 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
 ## Phase Details
 
 ### Phase 12: Produção & Live-Verify
+
 **Goal**: O app sai do stack local e fica no ar de verdade (Supabase pessoal remoto + Vercel produção), com o core value provado ao vivo no browser e a dívida WR-02 fechada antes de qualquer dado entrar em produção.
 **Depends on**: Phase 11 (toda a base code-complete no stack local)
 **Requirements**: DEPLOY-01, DEPLOY-02, DEPLOY-03, DEPLOY-04, DEPLOY-05, DEBT-01, DEBT-02
 **Gated on**: credenciais do usuário (Supabase pessoal: URL + keys + DB password/access token; Vercel: login/link; chave do provedor de IA / AI Gateway). Toda esta fase é credencial/interativa — `autonomous:false`.
 
 **Executa os planos diferidos JÁ ESCRITOS — sequenciar e rodar por caminho, NÃO re-planejar o wiring remoto do zero:**
+
   - `.planning/phases/01-funda-o-auth-rls-dinheiro-schema/01-04-PLAN.md` — wire `.env.local` + Supabase remoto, `db push` das migrations, deploy do skeleton na Vercel, verify de auth no browser (DEPLOY-01/02/03)
   - `.planning/phases/02-receitas-categorias-e-lan-amentos-manuais/02-05-PLAN.md` — verify de receitas/lançamentos manuais ao vivo
   - `.planning/phases/03-metas-ader-ncia-e-reservas/03-06-PLAN.md` — verify do dashboard de aderência (mensal+anual) + sub-fluxo de reservas
@@ -77,37 +79,63 @@ Note: `07-07-PLAN.md` is `autonomous:false` but is a LOCAL visual/UI human-verif
 **DEBT-01 (WR-02 / migration 0029):** criar e aplicar a migration 0029 que corrige o edge same-odometer em `v_abastecimento_consumo`. Fazer ANTES do `db push` para o remoto (idealmente no mesmo passo de aplicação de migrations da execução do 01-04), pra produção já nascer com a view corrigida.
 **DEBT-02 (doc hygiene):** chore trivial — adicionar `requirements_completed` (CAR-02/03/04) ao frontmatter dos SUMMARY das fases 9/10. Não é fase própria; é um chore dentro desta fase.
 **Success Criteria** (what must be TRUE):
+
   1. Supabase pessoal remoto provisionado com migrations 0001-0029 aplicadas (inclui a 0029 do WR-02), RLS ativo em todas as tabelas, typed client sem drift
   2. App no ar na Vercel (produção) com env vars/secrets configurados e `maxDuration` nas rotas de parsing; URL alcançável mostra login → dashboard
   3. Usuário loga em produção com a conta pessoal, a sessão persiste entre refresh, e a RLS isola os dados (nenhum acesso cross-user)
   4. Usuário sobe uma fatura real (OFX/CSV) em produção, vê a classificação (memória + IA no caso novo, com confirmação) e a aderência às metas (mensal **e** anual) funcionando ao vivo — core value provado
   5. `v_abastecimento_consumo` em produção computa km/l e R$/km corretos no edge same-odometer (WR-02 fechado); SUMMARYs das fases 9/10 trazem `requirements_completed`
+
 **Plans**: 7 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 12-01-PLAN.md — migration 0029 (WR-02/DEBT-01) on the local stack + DEBT-02 doc hygiene (autonomous)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 12-02-PLAN.md — ONE production deploy: remote Supabase (sa-east-1) db push 0001-0029 + Vercel (gru1) + live auth verify (executes 01-04; DEPLOY-01/02/03 + DEBT-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
 - [ ] 12-03-PLAN.md — live-verify receitas/categorias/extrato in production (executes 02-05; INC-02/TXN-03/TXN-04)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 12-04-PLAN.md — live-verify metas/aderência (mensal + anual) + reservas in production (executes 03-06; BUD-02/RSV-01/02/05 + DEPLOY-05 goal half)
+
+**Wave 5** *(blocked on Wave 4 completion)*
+
 - [ ] 12-05-PLAN.md — core-value live-verify: upload → private Storage + server parse → memory-classify → learn → auto-classify (executes 04-04; DEPLOY-04 + DEPLOY-05 + IMP/CLS)
+
+**Wave 6** *(blocked on Wave 5 completion)*
+
 - [ ] 12-06-PLAN.md — live-verify MEI module end-to-end in production (executes 05-04; MEI-01..06)
+
+**Wave 7** *(blocked on Wave 6 completion)*
+
 - [ ] 12-07-PLAN.md — live-verify LGPD export + type-to-confirm delete + deployed-bundle secret gate (executes 06-05; DATA-01/02 + SEC-01)
 
 ### Phase 13: PDF de Fatura
+
 **Goal**: Usuário sobe fatura em PDF pela mesma UI de upload e, após revisar/confirmar no grid, as transações entram no mesmo pipeline de classificação e metas — best-effort, com confirmação humana obrigatória (nunca auto-commit de linha PDF).
 **Depends on**: Phase 12 (precisa do Storage privado + pipeline de classificação rodando em produção; valida o PDF contra a infra real)
 **Requirements**: PDF-01, PDF-02, PDF-03, PDF-04, PDF-05
 **Spike-first**: validar `pdf-parse` v2 `getTable()` (primário) + `unpdf` (fallback de texto) contra as amostras REAIS do Santander em `fixtures/faturas-pdf/santander/` (gitignored — dado financeiro pessoal; Santander é o banco mais usado → alvo primário do spike) ANTES de comprometer o build. Stack já fixado em PROJECT.md/CLAUDE.md: route handler em runtime Node com `maxDuration`, parse do buffer baixado do Storage, review grid antes de persistir. Se um banco der PDF image-only, é problema de OCR (fora de escopo) → mensagem clara orientando CSV/OFX.
 **Success Criteria** (what must be TRUE):
+
   1. Usuário sobe um PDF pela mesma UI de upload (junto de CSV/OFX) e o arquivo persiste no Storage privado por `user_id`
   2. O sistema extrai as linhas de transação do PDF Santander real (`getTable`, `unpdf` fallback) e normaliza pro shape canônico (data, descrição, valor em centavos inteiros)
   3. As transações extraídas aparecem no review grid editável **antes** de persistir; nenhuma linha de PDF é auto-commitada — usuário corrige/confirma primeiro
   4. PDF sem texto extraível (image-only/escaneado) mostra mensagem clara orientando CSV/OFX daquele banco; nunca produz resultado vazio silencioso
   5. Após confirmação no grid, as transações do PDF entram no mesmo pipeline de classificação (memória → IA no caso novo) e contam nas metas, idêntico a CSV/OFX
+
 **Plans**: TBD
 **UI hint**: yes
 
 Plans:
+
 - [ ] 13-01: TBD
 
 ## Progress
