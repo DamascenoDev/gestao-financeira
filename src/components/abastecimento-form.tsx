@@ -32,6 +32,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import {
   Select,
   SelectContent,
@@ -232,11 +233,11 @@ export function AbastecimentoForm({
           <FieldGroup>
             <Field data-invalid={!!errors.occurredOn}>
               <FieldLabel htmlFor="ab-data">Data</FieldLabel>
-              <Input
+              <BrDateField
                 id="ab-data"
-                type="date"
                 value={data}
-                onChange={(e) => setData(e.target.value)}
+                onChange={setData}
+                invalid={!!errors.occurredOn}
                 aria-invalid={!!errors.occurredOn}
               />
               <FieldError

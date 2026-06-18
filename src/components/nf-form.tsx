@@ -19,6 +19,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import {
   Select,
   SelectContent,
@@ -169,11 +170,11 @@ export function NfForm({
           <FieldGroup>
             <Field data-invalid={!!errors.issuedOn}>
               <FieldLabel htmlFor="nf-date">Data</FieldLabel>
-              <Input
+              <BrDateField
                 id="nf-date"
-                type="date"
                 value={issuedOn}
-                onChange={(e) => setIssuedOn(e.target.value)}
+                onChange={setIssuedOn}
+                invalid={!!errors.issuedOn}
                 aria-invalid={!!errors.issuedOn}
               />
               <FieldError

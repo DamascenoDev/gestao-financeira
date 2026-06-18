@@ -24,6 +24,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import { formatCents, parseBRLToCents } from '@/lib/money'
 
 /**
@@ -160,11 +161,11 @@ export function SaidaForm({
 
             <Field data-invalid={!!errors.occurredOn}>
               <FieldLabel htmlFor="saida-date">Data</FieldLabel>
-              <Input
+              <BrDateField
                 id="saida-date"
-                type="date"
                 value={occurredOn}
-                onChange={(e) => setOccurredOn(e.target.value)}
+                onChange={setOccurredOn}
+                invalid={!!errors.occurredOn}
                 aria-invalid={!!errors.occurredOn}
               />
               <FieldError

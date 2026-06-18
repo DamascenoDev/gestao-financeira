@@ -34,7 +34,9 @@ describe('MeiSettingsForm', () => {
     const startInput = screen.getByLabelText(
       'Data de início do MEI',
     ) as HTMLInputElement
-    expect(startInput.value).toBe('2026-04-01')
+    // BrDateField (G-06) renders the ISO seed as pt-BR dd/mm/aaaa; the stored
+    // value stays ISO 2026-04-01 (the form keeps the same ISO state).
+    expect(startInput.value).toBe('01/04/2026')
   })
 
   it('first run renders an empty start date', () => {

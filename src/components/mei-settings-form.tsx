@@ -7,7 +7,7 @@ import { toast } from 'sonner'
 import { upsertMeiSettings, upsertMeiYearFlag } from '@/actions/mei'
 import { Button } from '@/components/ui/button'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
-import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import { Switch } from '@/components/ui/switch'
 import { meiSettingsSchema } from '@/lib/schemas/mei'
 
@@ -74,11 +74,11 @@ export function MeiSettingsForm({
       <FieldGroup>
         <Field data-invalid={!!errors.meiStartDate}>
           <FieldLabel htmlFor="mei-start">Data de início do MEI</FieldLabel>
-          <Input
+          <BrDateField
             id="mei-start"
-            type="date"
             value={startDate}
-            onChange={(e) => setStartDate(e.target.value)}
+            onChange={setStartDate}
+            invalid={!!errors.meiStartDate}
             aria-invalid={!!errors.meiStartDate}
             aria-describedby="mei-start-help"
           />

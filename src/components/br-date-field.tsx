@@ -7,8 +7,8 @@ import { cn } from '@/lib/utils'
 import { Input } from '@/components/ui/input'
 
 /**
- * Controlled pt-BR date field (G-06 fix). Replaces the native
- * `<input type="date">`, whose display order follows the browser/OS locale
+ * Controlled pt-BR date field (G-06 fix). Replaces the native HTML date
+ * input, whose display order follows the browser/OS locale
  * (en-US → MM/DD/YYYY) and is not reliably forceable per-app. This field
  * always renders/accepts dd/mm/aaaa while keeping the stored value as an ISO
  * `yyyy-MM-dd` string, so every parent form's existing ISO state + server-side

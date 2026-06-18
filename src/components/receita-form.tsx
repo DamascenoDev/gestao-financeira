@@ -48,6 +48,7 @@ import {
   FieldLabel,
 } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import { Switch } from '@/components/ui/switch'
 
 const FONTE_SUGGESTIONS = ['Salário', 'Pensão', 'Outros'] as const
@@ -203,11 +204,11 @@ export function ReceitaForm({ monthKey }: { monthKey: string }) {
             ) : (
               <Field data-invalid={!!errors.occurredOn}>
                 <FieldLabel htmlFor="occurredOn">Data</FieldLabel>
-                <Input
+                <BrDateField
                   id="occurredOn"
-                  type="date"
                   value={occurredOn}
-                  onChange={(e) => setOccurredOn(e.target.value)}
+                  onChange={setOccurredOn}
+                  invalid={!!errors.occurredOn}
                   aria-invalid={!!errors.occurredOn}
                 />
                 <FieldError

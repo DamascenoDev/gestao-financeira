@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/dialog'
 import { Field, FieldError, FieldGroup, FieldLabel } from '@/components/ui/field'
 import { Input } from '@/components/ui/input'
+import { BrDateField } from '@/components/br-date-field'
 import {
   Select,
   SelectContent,
@@ -202,11 +203,11 @@ export function TransacaoForm({
           <FieldGroup>
             <Field data-invalid={!!errors.occurredOn}>
               <FieldLabel htmlFor="tx-date">Data</FieldLabel>
-              <Input
+              <BrDateField
                 id="tx-date"
-                type="date"
                 value={occurredOn}
-                onChange={(e) => setOccurredOn(e.target.value)}
+                onChange={setOccurredOn}
+                invalid={!!errors.occurredOn}
                 aria-invalid={!!errors.occurredOn}
               />
               <FieldError
