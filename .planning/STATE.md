@@ -2,11 +2,11 @@
 gsd_state_version: 1.0
 milestone: v1.2
 milestone_name: Carro
-current_phase: 11
-status: verifying
-last_updated: "2026-06-17T20:10:33.193Z"
-last_activity: 2026-06-17
-last_activity_desc: Phase 11 complete
+current_phase: 2
+status: Awaiting next milestone
+last_updated: "2026-06-18T01:14:17.804Z"
+last_activity: 2026-06-18
+last_activity_desc: Milestone v1.2 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -25,14 +25,14 @@ current_phase_name: Detalhe do carro + gráfico de consumo
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Milestone v1.2 Carro — Phase 8 COMPLETA (3/3); Phase 9 em execução (09-01 entregue, Wave 1); próximo: 09-02 (UI extrato/transação-form) + 09-03 (UI import-review)
+- **Current focus:** **Milestone v1.2 "Carro" FECHADO 2026-06-18** (code-complete no stack local; fases 8-11; CAR-01..06 6/6; audit ship-ready em `milestones/v1.2-MILESTONE-AUDIT.md`; sem tag git — não deployado). Aguardando próximo milestone (`/gsd-new-milestone`). **Backlog aberto (não bloqueia o close):** 6 walkthroughs `autonomous:false` de deploy remoto + verify ao vivo (01-04, 02-05, 03-06, 04-04, 05-04, 06-05), pendentes das credenciais — candidato natural a "deploy & ship". Tech-debt: WR-02 (migration 0029 futura).
 
 ## Current Position
 
-Phase: 11
-Plan: Not started
-Status: 11-03 entregue (/carros/[id] enriquecido — capstone CAR-05: 3 KPI cards + agregação inline gasto-por-categoria + CarroConsumoChart + AbastecimentoHistory integrado; SEC-01 re-auditoria exit 0; suíte 735). Próximo: 11-04 (human-verify do detalhe enriquecido).
-Last activity: 2026-06-17 — Phase 11 complete
+Phase: Milestone v1.2 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-18 — Milestone v1.2 completed and archived
 
 ## Performance Metrics
 
@@ -177,3 +177,7 @@ Last activity: 2026-06-17 — Phase 11 complete
 
 ---
 *State initialized: 2026-06-16 after roadmap creation*
+
+## Operator Next Steps
+
+- Start the next milestone with /gsd-new-milestone
