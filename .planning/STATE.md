@@ -5,10 +5,10 @@ milestone_name: Produção & PDF
 current_phase: 13
 current_phase_name: pdf-de-fatura
 status: executing
-stopped_at: Phase 13 UI-SPEC approved
+stopped_at: "Phase 13 code complete; 2 human gates pending (13-02 db push → 13-04 real-PDF verify)"
 last_updated: "2026-06-18T17:22:23.871Z"
 last_activity: 2026-06-18
-last_activity_desc: Phase 13 execution started
+last_activity_desc: "Phase 13 — 13-01 (parser) + 13-03 (ingest wiring) complete; 13-02 + 13-04 code done, mid-flight at human gates: (1) 13-02 supabase db push local+prod + gen types, then (2) 13-04 real local Santander PDF end-to-end verify. All code green: tsc clean, build OK, 784 tests pass."
 progress:
   total_phases: 2
   completed_phases: 1
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 13 (pdf-de-fatura) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Last activity: 2026-06-18 — Phase 13 execution started
+Phase: 13 (pdf-de-fatura) — EXECUTING (code complete; 2 human gates pending)
+Plan: 4 of 4 (all code written; 13-02 + 13-04 mid-flight at human gates)
+Status: Awaiting human gates in order — (1) 13-02 supabase db push (local+prod) + npm run gen:types; (2) 13-04 real local Santander PDF end-to-end verify. Held executors: 13-02=a60156b92d4c7e106, 13-04=a5b3a6997f96083e5.
+Last activity: 2026-06-18 — 13-01 (parser/TDD) + 13-03 (ingest wiring) complete with SUMMARYs; 13-02 (migration 0031 written, push pending) + 13-04 (UI + route code done, real-PDF verify pending) mid-flight. tsc clean, build OK, 784 tests pass.
 
 ## Performance Metrics
 
