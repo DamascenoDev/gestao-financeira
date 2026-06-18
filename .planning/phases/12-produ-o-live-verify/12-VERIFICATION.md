@@ -1,18 +1,26 @@
 ---
 phase: 12-produ-o-live-verify
-status: gaps_found
+status: human_needed
 verified_by: live-verify (Chrome DevTools MCP, production *.vercel.app)
 date: 2026-06-18
 production_url: https://gestao-financeira-ebon-mu.vercel.app/
-next_action: "Run /gsd-plan-phase 12 --gaps to create fix plans, then execute, push (auto-redeploy), and resume waves 4-7 verification on the clean build."
+next_action: "All 8 gaps (G-01..G-08) FIXED + deployed; 12-03/04/05 APPROVED live; DEPLOY-04/05 core value proven. Remaining: user runs the 12-06 (MEI) and 12-07 (LGPD) browser walkthroughs (downloads + throwaway-account delete are hands-on), then close the phase."
+gaps_resolved: "G-01..G-06 verified live in prod; G-07/G-08 fixed + deployed (tests green)."
 ---
 
 # Phase 12 — Live-Verify Findings (gaps_found)
 
-Verification of waves 3-4 against the production deploy (12-02 bundle) surfaced 6 defects.
-Waves 2-3 PASSED (DEPLOY-01/02/03 live; INC-02/TXN-03/TXN-04 live). Wave 4 (12-04) FAILED on the
-defects below — **not approved**. Waves 5-7 (12-05 core value, 12-06 MEI, 12-07 LGPD) were NOT yet
-run because gap G-01 (Select) is systemic and would contaminate their selects/pickers.
+Verification of waves 3-4 against the production deploy surfaced 8 defects (G-01..G-08), now ALL
+resolved. Current state (2026-06-18):
+- **Waves 2-3 PASSED** (DEPLOY-01/02/03 live; INC-02/TXN-03/TXN-04 live) — 12-02/12-03 approved.
+- **G-01..G-06 fixed** (gap plans 12-08..12-11 + migration 0030) and **re-verified live in prod**.
+- **12-04 APPROVED** live after the fix (BUD-02 monthly+annual, RSV-01/02/05).
+- **12-05 APPROVED** live — DEPLOY-04/05 core value proven (22-row Nubank OFX → parse → review → classify
+  → counts in goals). Surfaced **G-07** (import-grid carro `__none__`) + **G-08** ("0 importadas" toast),
+  both fixed + deployed (tests green).
+- **Remaining (human-hands-on, not gaps):** 12-06 (MEI) and 12-07 (LGPD) browser walkthroughs — file
+  downloads (CSV/JSON) and a throwaway-account destructive delete that must be run by the user. Once
+  those pass, the phase closes.
 
 > **D-08 supersession:** the "single deploy / no redeploy" contract held only until bugs were found.
 > Closing these gaps requires a code change + a new production deploy; D-08 is intentionally superseded
