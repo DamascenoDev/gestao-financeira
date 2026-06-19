@@ -16,10 +16,17 @@ findings:
   warning: 3
   info: 1
   total: 4
-status: issues_found
+status: resolved
+resolution: "WR-01 fixed (436fe4f); WR-02 neutralized by WR-01; WR-03 deferred (pre-existing, product decision); IN-01 skipped (negligible)"
 ---
 
 # Phase 18: Code Review Report
+
+> **Resolution (2026-06-19):**
+> - **WR-01 — FIXED** (`436fe4f`): `import.ts` now narrows `kind` via a `CATEGORY_KINDS` type guard with a fail-safe default to `'alocacao'` instead of a blind `as CategoryKind` cast.
+> - **WR-02 — NEUTRALIZED** by the WR-01 fix: `classify.ts` only ever receives valid 2-value kinds (narrowed at the `import.ts` boundary), so the label/gate default divergence is unreachable in practice. No `classify.ts` change needed.
+> - **WR-03 — DEFERRED**: the missing `is_archived = false` filter on the categories query is **pre-existing** (not a Phase 18 regression) and excluding archived categories from AI suggestion is a product decision — out of CLSAI-09 scope. Recorded for a future phase.
+> - **IN-01 — SKIPPED**: prebuilt `Map<id,kind>` vs linear `find` over ~12 categories is negligible.
 
 **Reviewed:** 2026-06-19T15:20:00Z
 **Depth:** standard
