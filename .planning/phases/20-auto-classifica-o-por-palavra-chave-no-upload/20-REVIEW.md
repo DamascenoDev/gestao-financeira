@@ -17,8 +17,15 @@ findings:
   warning: 2
   info: 3
   total: 5
-status: issues_found
+status: resolved
+resolution: "WR-01 fixed (6697a10) + WR-02 documented; IN-01/02 noted, IN-03 closed by the WR-01 collision test"
 ---
+
+> **Resolution (2026-06-19, commit `6697a10`):**
+> - **WR-01 — FIXED**: `matchKeyword` gained a final stable tie-break on `categoryId`, so a same-keyword/same-`sort` collision across two categories resolves deterministically regardless of fetch/row order (no silent flip between uploads). New order-independence test added (closes **IN-03**, which noted the missing collision test). A defensive `.order()` on the fetch was dropped as redundant (the matcher is the single source of determinism; the test mock's select chain has no `.order()`).
+> - **WR-02 — DOCUMENTED (intentional)**: `confirmImport` persists `classification_source` as the coarse `'memória'` for any classified row — the `transactions` CHECK (migration `0020`) doesn't permit `'palavra-chave'`. This pre-dates Phase 20 (already labels manual picks `'memória'`); `'palavra-chave'` is a review-time badge signal; widening the persisted enum is an out-of-scope migration + PROD push. KW-05 confirm-learn is unaffected (category-gated). Added an explicit code comment.
+> - **IN-01** (unconditional keyword fetch) / **IN-02** (`categories(sort)` embed cardinality, masked by `?? 0`) — noted, negligible for this app; not changed.
+> tsc clean; keywords + import + grid suites 66/66 green. All domain invariants (pipeline ordering, binding pre-fill, RLS, badge, confirmImport unchanged) verified correct by the reviewer.
 
 # Phase 20: Code Review Report
 
