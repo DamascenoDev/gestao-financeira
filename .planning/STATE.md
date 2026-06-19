@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: IA de Classificação
-current_phase: 16
-current_phase_name: Review-Grid Suggestion Affordances
+current_phase: 17
+current_phase_name: v1-3-debt-cleanup-isolated
 status: executing
 stopped_at: Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
-last_updated: "2026-06-19T01:40:23.056Z"
+last_updated: "2026-06-19T02:17:35.636Z"
 last_activity: 2026-06-19
-last_activity_desc: Phase 16 execution started
+last_activity_desc: Phase 17 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
+  total_plans: 12
+  completed_plans: 9
   percent: 75
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 16 — Review-Grid Suggestion Affordances
+- **Current focus:** Phase 17 — v1-3-debt-cleanup-isolated
 
 ## Current Position
 
-Phase: 16 (Review-Grid Suggestion Affordances) — EXECUTING
-Plan: 1 of 1
-Status: Executing Phase 16
-Last activity: 2026-06-19 — Phase 16 execution started
+Phase: 17 (v1-3-debt-cleanup-isolated) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-19 — Phase 17 execution started
 
 Progress: [░░░░░░░░░░] 0% (v1.4 phases)
 
@@ -71,6 +71,7 @@ Items acknowledged and deferred at v1.3 milestone close on 2026-06-18 (audit sta
 | Phase 12 P12-10 | 8 min | 2 tasks | 3 files |
 | Phase 13 P01 | 4min | 3 tasks | 6 files |
 | Phase 13 P03 | 8min | 3 tasks | 3 files |
+| Phase 17 P01 | 8min | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -150,7 +151,7 @@ Items acknowledged and deferred at v1.3 milestone close on 2026-06-18 (audit sta
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T01:40:23.048Z
+**Last session:** 2026-06-19T02:17:21.822Z
 **Stopped at:** Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
 **Resume file:** .planning/phases/16-review-grid-suggestion-affordances/16-VERIFICATION.md
 
