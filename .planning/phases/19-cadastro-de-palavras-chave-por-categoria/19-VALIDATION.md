@@ -1,10 +1,11 @@
 ---
 phase: 19
 slug: cadastro-de-palavras-chave-por-categoria
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-19
+validated: 2026-06-19
 ---
 
 # Phase 19 — Validation Strategy
@@ -42,15 +43,15 @@ Test split: mocked action unit tests in `src/**/*.test.ts`; live-Docker integrat
 
 | Task ID | Plan | Wave | Requirement | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|-----------------|-----------|-------------------|-------------|--------|
-| (migration) | — | 1 | KW-06 | RLS "own" policy + grants on `category_keywords`; `gen:types` regen | typecheck | `npm run gen:types` → `npx tsc --noEmit` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-01 | `addKeyword` inserts owner + normalized keyword + revalidate | unit | `npx vitest run src/actions/category-keywords.test.ts -t add` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-01 | normalizes input; empty/whitespace → "Informe uma palavra-chave." (no insert) | unit | `… -t "normaliz\|empty"` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-01 | too-long (>60) rejected by Zod | unit | `… -t long` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-01 | duplicate → `{duplicate:true}` (pre-check + 23505 backstop), no error | unit | `… -t duplicate` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-01 | `removeKeyword` deletes by id + revalidate | unit | `… -t remove` | ❌ W0 | ⬜ pending |
-| (action) | — | 1 | KW-06 | non-UUID id rejected before DB (WR-06); no `claims.sub` → "Sessão expirada."; insert carries `user_id` | unit | `… -t "uuid\|session\|owner"` | ❌ W0 | ⬜ pending |
-| (RLS) | — | 1 | KW-06 | cross-user: B cannot select/delete A's keyword (live RLS) | integration (OPTIONAL — env-flaky) | `npx vitest run tests/category-keywords-rls.test.ts` | ❌ W0 | ⬜ pending |
-| (UI) | — | 2 | KW-01 | dialog renders chips, Empty at 0, add/remove call actions + toast | component (OPTIONAL) | `npx vitest run src/components/category-keywords-dialog.test.tsx` | ❌ W0 | ⬜ pending |
+| 19-01-02 | 01 | 1 | KW-06 | RLS "own" policy + grants on `category_keywords`; `gen:types` regen | typecheck | `npm run gen:types` → `npx tsc --noEmit` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-01 | `addKeyword` inserts owner + normalized keyword + revalidate | unit | `npx vitest run src/actions/category-keywords.test.ts -t add` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-01 | normalizes input; empty/whitespace → "Informe uma palavra-chave." (no insert) | unit | `… -t "normaliz\|empty"` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-01 | too-long (>60) rejected by Zod | unit | `… -t long` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-01 | duplicate → `{duplicate:true}` (pre-check + 23505 backstop), no error | unit | `… -t duplicate` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-01 | `removeKeyword` deletes by id + revalidate | unit | `… -t remove` | ✅ | ✅ green |
+| 19-01-03 | 01 | 1 | KW-06 | non-UUID id rejected before DB (WR-06); no `claims.sub` → "Sessão expirada."; insert carries `user_id` | unit | `… -t "uuid\|session\|owner"` | ✅ | ✅ green |
+| 19-RLS | 01 | 1 | KW-06 | cross-user: B cannot select/delete A's keyword (live RLS) | integration (OPTIONAL — env-flaky) | `npx vitest run tests/category-keywords-rls.test.ts` | ➖ | ◷ not created (optional; structural assertions + verified RLS policy are the gate) |
+| 19-02-03 | 02 | 2 | KW-01 | dialog renders chips, Empty at 0, add/remove call actions + toast | component | `npx vitest run src/components/category-keywords-dialog.test.tsx` | ✅ | ✅ green (4/4) |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · ◷ optional*
 
@@ -77,11 +78,23 @@ Test split: mocked action unit tests in `src/**/*.test.ts`; live-Docker integrat
 
 ## Validation Sign-Off
 
-- [ ] All KW-01/KW-06 behaviors have `<automated>` verify (mocked unit; live RLS optional)
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] gen:types → tsc clean gate present after migration task
-- [ ] No watch-mode flags
-- [ ] `nyquist_compliant: true` set in frontmatter after Wave 0 tests land green
+- [x] All KW-01/KW-06 behaviors have `<automated>` verify (mocked unit + dialog component; live RLS optional, not the gate)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (mandatory files landed; optional live RLS test intentionally not created)
+- [x] gen:types → tsc clean gate present after migration task
+- [x] No watch-mode flags
+- [x] `nyquist_compliant: true` set in frontmatter after Wave 0 tests land green
 
-**Approval:** pending
+**Approval:** approved 2026-06-19
+
+---
+
+## Validation Audit 2026-06-19
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+Wave 0 mandatory tests landed green: `src/actions/category-keywords.test.ts` (KW-01 + KW-06 structural — add/remove/normalize/empty/long/duplicate/uuid/session/owner) and `src/components/category-keywords-dialog.test.tsx` (4 behaviors) → **20/20 green**; `npx tsc --noEmit` clean. `tests/category-keywords-rls.test.ts` (live cross-user RLS) was intentionally NOT created — it is OPTIONAL/env-flaky (local Docker), and the structural KW-06 assertions + the verified RLS policy SQL are the agreed gate. No MISSING mandatory references → nyquist-auditor not spawned (Step 3). Phase is nyquist-compliant.
