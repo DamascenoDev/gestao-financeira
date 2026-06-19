@@ -1,10 +1,11 @@
 ---
 phase: 12-produ-o-live-verify
-status: human_needed
+status: passed
 verified_by: live-verify (Chrome DevTools MCP, production *.vercel.app)
 date: 2026-06-18
+resolved: 2026-06-19 — the 12-06 (MEI downloads) + 12-07 (LGPD export + destructive delete) residuals were completed live in Phase 17 (SC2 dasn CSV content; DATA-01 export; DATA-02 destructive delete executed). All Phase 12 human items now satisfied.
 production_url: https://gestao-financeira-ebon-mu.vercel.app/
-next_action: "All 8 gaps (G-01..G-08) FIXED + deployed; 12-03/04/05 APPROVED live; DEPLOY-04/05 core value proven. Remaining: user runs the 12-06 (MEI) and 12-07 (LGPD) browser walkthroughs (downloads + throwaway-account delete are hands-on), then close the phase."
+next_action: "RESOLVED via Phase 17. 12-06 MEI dasn CSV content (BOM/;/pt-BR) confirmed live; 12-07 LGPD DATA-01 export validated + DATA-02 destructive delete executed live 2026-06-19. Nothing outstanding."
 gaps_resolved: "G-01..G-06 verified live in prod; G-07/G-08 fixed + deployed (tests green)."
 ---
 
