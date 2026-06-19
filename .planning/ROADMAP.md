@@ -128,9 +128,11 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
   3. Quando um descritor casa palavras-chave de mais de uma categoria, a palavra-chave mais longa (match mais específico) vence.
   4. Uma linha classificada por palavra-chave é sobrescrevível na grid de revisão; nada persiste até o confirm; o confirm aprende o padrão merchant→categoria na memória como hoje (sem auto-commit em `transactions`/`merchant_patterns` antes do confirm).
 
-**Plans**: 2 plans
-- [ ] 20-01-PLAN.md — matcher matchKeyword + ClassificationSource + fetch RLS + keyword pass no PASS 1 (KW-02/03/04/05-lógica)
+**Plans**: 1/2 plans executed
+
+- [x] 20-01-PLAN.md — matcher matchKeyword + ClassificationSource + fetch RLS + keyword pass no PASS 1 (KW-02/03/04/05-lógica)
 - [ ] 20-02-PLAN.md — fix origin←classification_source em page.tsx + os dois badges 'palavra-chave' + teste de componente (KW-02/05 UI)
+
 **UI hint**: yes
 
 ## Progress
@@ -158,7 +160,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 4/4 | Complete — SC1/SC2/SC4 + DATA-02 delete executed live | 2026-06-19 |
 | 18. AI classifica compras corretamente | v1.5 | 1/2 | In Progress|  |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete   | 2026-06-19 |
-| 20. Auto-classificação por palavra-chave no upload | v1.5 | 0/0 | Not started | - |
+| 20. Auto-classificação por palavra-chave no upload | v1.5 | 1/2 | In Progress|  |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
