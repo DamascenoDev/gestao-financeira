@@ -8,8 +8,6 @@
 // `dropped` (mirrors parseCsv/parseOfx). PDF text is already Unicode (pdf.js),
 // so the latin1 decodeStatement heuristic must NOT run on it (Pitfall 7).
 
-import { PDFParse } from 'pdf-parse'
-
 import { parseBRLToCents } from '@/lib/money'
 import { normalizeDescriptor } from '@/lib/normalize'
 import { MAX_PARSED_ROWS, type ParseResult, type RawTransaction } from './types'
@@ -25,12 +23,36 @@ const NOISE_LABEL =
   /pagamento de fatura|^anuidade|valor total|saldo anterior|total de|total despesas|saldo desta|^resumo|limite|iof|encargos|juros|multa/i
 
 /**
+ * Minimal DOM shims for the Node serverless runtime. pdfjs-dist (wrapped by pdf-parse)
+ * references browser globals — notably `DOMMatrix` — at MODULE LOAD. In the production
+ * Turbopack build the externalized pdf-parse is required in a Node context with no DOM,
+ * throwing `ReferenceError: DOMMatrix is not defined` and 500-ing the WHOLE /importar
+ * server action (it 500'd every upload — OFX/CSV included — because pdf.ts statically
+ * imported pdf-parse). Text-only extraction (getText) never transforms/renders, so
+ * no-op class stubs are enough to clear the load-time references. Installed JIT, only
+ * when a PDF is actually parsed.
+ */
+function ensurePdfDomShims(): void {
+  const g = globalThis as unknown as Record<string, unknown>
+  for (const name of ['DOMMatrix', 'Path2D', 'ImageData']) {
+    if (typeof g[name] === 'undefined') g[name] = class {}
+  }
+}
+
+/**
  * Extract the full text of a PDF buffer via pdf-parse v2 getText() (the only
  * async/IO part). Returns '' for an image-only / zero-text PDF without throwing
  * — the image-only HARD BLOCK (text.trim() === '') is decided by the ingest
  * action, not here (so the pure parser stays testable).
+ *
+ * `pdf-parse` is imported LAZILY (after the DOM shims) so it stays OUT of the
+ * /importar server action's static module graph — OFX/CSV uploads never load it,
+ * and a PDF load failure degrades to the ingest action's parse try/catch, never a
+ * module-load 500.
  */
 export async function extractPdfText(buffer: Buffer): Promise<string> {
+  ensurePdfDomShims()
+  const { PDFParse } = await import('pdf-parse')
   const parser = new PDFParse({ data: new Uint8Array(buffer) })
   try {
     const { text } = await parser.getText()
