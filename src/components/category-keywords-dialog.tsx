@@ -6,6 +6,7 @@ import { toast } from 'sonner'
 import { X } from 'lucide-react'
 
 import { addKeyword, removeKeyword } from '@/actions/category-keywords'
+import { normalizeDescriptor } from '@/lib/normalize'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -62,6 +63,10 @@ export function CategoryKeywordsDialog({
   const inputRef = React.useRef<HTMLInputElement>(null)
 
   function handleRemove(kw: CategoryKeyword) {
+    // WR-03: handleRemove shares this transition + error state with the add field.
+    // Clear any stale add-validation error so a successful remove never leaves the
+    // input rendered red.
+    setError(null)
     startTransition(async () => {
       const r = await removeKeyword(kw.id)
       if ('error' in r) toast.error(r.error)
@@ -78,6 +83,13 @@ export function CategoryKeywordsDialog({
     }
     setError(null)
 
+    // WR-01/WR-02: the server stores the NORMALIZED keyword (the chip shows that,
+    // not the raw input). Echo the same normalized value in the toasts so the
+    // message can never reference a string that appears nowhere in the list
+    // (e.g. "Uber *TRIP" vs the chip "uber trip"). normalizeDescriptor is THE
+    // single shared derivation (src/lib/normalize.ts) — same function the action
+    // uses, so no drift.
+    const normalized = normalizeDescriptor(raw)
     startTransition(async () => {
       const r = await addKeyword(category.id, raw)
       if ('error' in r) {
@@ -85,12 +97,12 @@ export function CategoryKeywordsDialog({
         return
       }
       if ('duplicate' in r) {
-        toast.info(`"${raw}" já está cadastrada nesta categoria.`)
+        toast.info(`"${normalized}" já está cadastrada nesta categoria.`)
         return
       }
       // { ok: true }: persisted — clear + return focus to the input so the user
       // can keep typing the next keyword without reaching for the mouse.
-      toast.success('Palavra-chave adicionada.')
+      toast.success(`"${normalized}" adicionada.`)
       setValue('')
       inputRef.current?.focus()
     })

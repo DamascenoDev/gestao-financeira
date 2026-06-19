@@ -61,7 +61,7 @@ describe('CategoryKeywordsDialog', () => {
     expect(screen.getByText('Nenhuma palavra-chave')).toBeInTheDocument()
   })
 
-  it('calls addKeyword with (category.id, value) on submit and toasts success', async () => {
+  it('calls addKeyword with (category.id, value) on submit and toasts the normalized value (WR-01)', async () => {
     const { addKeyword } = await import('@/actions/category-keywords')
     const { toast } = await import('sonner')
     render(
@@ -81,7 +81,9 @@ describe('CategoryKeywordsDialog', () => {
     // flush the awaited transition
     await Promise.resolve()
     await Promise.resolve()
-    expect(toast.success).toHaveBeenCalledWith('Palavra-chave adicionada.')
+    // WR-01: the toast echoes the NORMALIZED value (matches the chip), not the raw
+    // input. normalizeDescriptor('ifood') === 'ifood'.
+    expect(toast.success).toHaveBeenCalledWith('"ifood" adicionada.')
   })
 
   it('calls removeKeyword with the chip id when the X is clicked', async () => {
