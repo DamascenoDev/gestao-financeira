@@ -1,10 +1,11 @@
 ---
 phase: 20
 slug: auto-classifica-o-por-palavra-chave-no-upload
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-19
+validated: 2026-06-19
 ---
 
 # Phase 20 — Validation Strategy
@@ -41,12 +42,12 @@ All Phase 20 tests use the existing in-memory `makeBuilder` mock + pure-function
 
 | Task ID | Wave | Requirement | Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|-------------|----------|-----------|-------------------|-------------|--------|
-| matcher | 1 | KW-02, KW-04 | `matchKeyword` substring + longest-wins + tie(category sort) + empty guard | unit | `npx vitest run src/lib/classifier/keywords.test.ts` | ❌ W0 | ⬜ pending |
-| pipeline | 1 | KW-02, KW-03 | memory miss → keyword sets category_id + source='palavra-chave'; keyword NOT in missNorms; memory prevails; keyword before IA | integration | `npx vitest run src/actions/import.test.ts` (extend) | ✅ extend | ⬜ pending |
-| pipeline | 1 | KW-04 | >1 category matches → longest keyword wins end-to-end | integration | `npx vitest run src/actions/import.test.ts -t long` | ✅ extend | ⬜ pending |
-| confirm | 1 | KW-05 | nothing persists till confirm; confirm learns merchant→category as today. **Coverage = `confirmImport` left UNCHANGED (category-gated learn loop already learns any classified row, origin-agnostic — research-verified) + the existing confirm suite stays green (20-01 guard).** A dedicated keyword-origin confirm-learn assertion is OPTIONAL (executor may add one mirroring a memória-confirm test if cheap — strengthens KW-05 but not required, since no code path changed). | integration | existing `import.test.ts` confirm suite stays green; `npx tsc --noEmit` | ✅ unchanged-path | ⬜ pending |
-| badge | 2 | KW-05 | 'palavra-chave' renders in ProvenanceBadge (lowercase, no icon) + OriginBadge (Title Case + Tags icon); page.tsx derives origin from classification_source | component | `npx vitest run src/components/import-review-table.test.tsx` (extend) | ✅ extend | ⬜ pending |
-| types | 1 | KW-02 | union edits compile (ClassificationSource + ReviewRow.origin + OriginVariant) | typecheck | `npx tsc --noEmit` | ✅ | ⬜ pending |
+| matcher | 1 | KW-02, KW-04 | `matchKeyword` substring + longest-wins + tie(category sort) + categoryId final tie-break (WR-01) + empty guard | unit | `npx vitest run src/lib/classifier/keywords.test.ts` | ✅ | ✅ green (7) |
+| pipeline | 1 | KW-02, KW-03 | memory miss → keyword sets category_id + source='palavra-chave'; keyword NOT in missNorms; memory prevails; keyword before IA | integration | `npx vitest run src/actions/import.test.ts` (extend) | ✅ extend | ✅ green |
+| pipeline | 1 | KW-04 | >1 category matches → longest keyword wins end-to-end | integration | `npx vitest run src/actions/import.test.ts -t long` | ✅ extend | ✅ green |
+| confirm | 1 | KW-05 | nothing persists till confirm; confirm learns merchant→category as today. **Coverage = `confirmImport` left UNCHANGED (category-gated learn loop already learns any classified row, origin-agnostic — research-verified) + the existing confirm suite stays green (20-01 guard).** A dedicated keyword-origin confirm-learn assertion is OPTIONAL (executor may add one mirroring a memória-confirm test if cheap — strengthens KW-05 but not required, since no code path changed). | integration | existing `import.test.ts` confirm suite stays green; `npx tsc --noEmit` | ✅ unchanged-path | ✅ green |
+| badge | 2 | KW-05 | 'palavra-chave' renders in ProvenanceBadge (lowercase, no icon) + OriginBadge (Title Case + Tags icon); page.tsx derives origin from classification_source | component | `npx vitest run src/components/import-review-table.test.tsx` (extend) | ✅ extend | ✅ green |
+| types | 1 | KW-02 | union edits compile (ClassificationSource + ReviewRow.origin + OriginVariant) | typecheck | `npx tsc --noEmit` | ✅ | ✅ green |
 
 *Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
 
@@ -69,10 +70,24 @@ All Phase 20 tests use the existing in-memory `makeBuilder` mock + pure-function
 
 ## Validation Sign-Off
 
-- [ ] All KW-02/03/04/05 behaviors have `<automated>` verify (matcher unit + mocked pipeline + component)
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references
-- [ ] No watch-mode flags
-- [ ] `nyquist_compliant: true` set in frontmatter after Wave 0 tests land green
+- [x] All KW-02/03/04/05 behaviors have `<automated>` verify (matcher unit + mocked pipeline + component)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (matcher test landed; import + grid suites extended)
+- [x] No watch-mode flags
+- [x] `nyquist_compliant: true` set in frontmatter — Wave 0 tests green
+
+**Approval:** approved 2026-06-19
+
+---
+
+## Validation Audit 2026-06-19
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+All Phase 20 behaviors covered by green automated tests: `keywords.test.ts` (matcher, 7 incl. WR-01 collision), extended `import.test.ts` (KW-02/03/04 ordering + exclusion + longest-wins), extended `import-review-table.test.tsx` (badge surfaces). KW-05 confirm-learn covered by the unchanged category-gated path + the existing confirm suite staying green. `npx tsc --noEmit` clean; the three touched suites 66/66; full suite 857 green. No MISSING references → nyquist-auditor not spawned (Step 3). Phase is nyquist-compliant. No migration / no PROD gate.
 
 **Approval:** pending
