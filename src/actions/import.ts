@@ -38,14 +38,12 @@ import {
 import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.types'
 
-/**
- * Route-segment maxDuration on the action module itself (CLSAI-06 / Pitfall 6). The
- * importar PAGE also sets 60, but Vercel segment-vs-action inheritance is an open
- * question (RESEARCH Open Q1) — bounding the segment that actually RUNS the work
- * (parse + ONE batched LLM classify inside ingestStatement) guarantees the timeout
- * regardless of inheritance. The live-PROD confirmation is a manual-only verify.
- */
-export const maxDuration = 60
+// maxDuration NOTE (CLSAI-06 / RESEARCH Open Q1): a `'use server'` module may ONLY
+// export async functions — a `export const maxDuration` here makes Next.js reject the
+// whole module ("has no exports at all") and the build fails. So the timeout is bound
+// on the importing route SEGMENT instead: `src/app/(app)/importar/page.tsx` sets
+// `maxDuration = 60`, which covers the action invoked from that page (parse + ONE
+// batched LLM classify). The live-PROD inheritance confirmation is a manual-only verify.
 
 /**
  * Import Server Actions (IMP-01/02/03/04, CLS-01) — the upload vertical slice.
