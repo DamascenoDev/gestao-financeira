@@ -49,8 +49,15 @@ export interface RawTransaction {
   kind?: 'expense' | 'credit'
 }
 
-/** Classification origin for the review row + persisted classification_source. */
-export type ClassificationSource = 'memória' | 'manual' | 'sugerida' | null
+/** Classification origin for the review row + persisted classification_source.
+ *  'palavra-chave' (KW-02): a deterministic keyword pre-fill that runs on a memory
+ *  MISS, before the AI — binding like 'memória', set by PASS 1 in the ingest action. */
+export type ClassificationSource =
+  | 'memória'
+  | 'palavra-chave'
+  | 'manual'
+  | 'sugerida'
+  | null
 
 /**
  * A review-ready row: a RawTransaction plus the dedup key and the (possibly null)

@@ -5,6 +5,7 @@ import { z } from 'zod'
 
 import { classifyDescriptors } from '@/lib/ai/classify'
 import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
+import { matchKeyword, type KeywordRule } from '@/lib/classifier/keywords'
 import { lookupMemory } from '@/lib/classifier/memory'
 import { csvHeaderSignature } from '@/lib/csv-profile'
 import { lookupCsvProfile } from '@/lib/csv-profile.server'
@@ -434,6 +435,22 @@ export async function ingestStatement(
     kind: isCategoryKind(c.kind) ? c.kind : 'alocacao',
   }))
 
+  // PALAVRA-CHAVE (KW-02/03/04): pre-fetch the user's keyword rules ONCE (mirror the
+  // batched categoryList fetch — never a per-row query, the WR-02 anti-pattern). The
+  // join to categories(sort) carries the deterministic tie-break for equal-length
+  // matches. RLS on category_keywords (0036) scopes this to the caller — NO app-layer
+  // user_id filter (same as categories/merchant_patterns). The category_id is, by FK,
+  // one of the user's own categories.
+  const { data: kwRows } = await supabase
+    .from('category_keywords')
+    .select('category_id, keyword, categories(sort)')
+  const keywordRules: KeywordRule[] = (kwRows ?? []).map((k) => ({
+    categoryId: k.category_id,
+    keyword: k.keyword,
+    // FK guarantees a categories row; ?? 0 satisfies strict-null (sort default is 0).
+    sort: k.categories?.sort ?? 0,
+  }))
+
   // Pre-mark cross-statement duplicates: a row whose dedupe_key already exists in
   // the user's transactions is `duplicada` (Plan 03's confirm collapses them via
   // the partial unique index; we surface the count here for the summary).
@@ -472,8 +489,18 @@ export async function ingestStatement(
       reservaId = hit.reserva_id
       source = 'memória'
     } else {
-      // MISS — collect for the ONE batched classify; row stays unclassified.
-      missNorms.add(raw.descriptor_norm)
+      // PALAVRA-CHAVE (KW-02/03/04): memory prevailed first; now try the deterministic
+      // keyword layer BEFORE the AI. A hit is a BINDING pre-fill (mirrors memory) — it
+      // sets category_id + source and is EXCLUDED from missNorms so the AI batch shrinks.
+      const kw = matchKeyword(raw.descriptor_norm, keywordRules)
+      if (kw) {
+        categoryId = kw.categoryId
+        // reservaId stays null — category-only (CONTEXT.md); reserva tagging is manual.
+        source = 'palavra-chave'
+      } else {
+        // TRUE miss — only now collect for the ONE batched classify; row unclassified.
+        missNorms.add(raw.descriptor_norm)
+      }
     }
 
     rows.push({

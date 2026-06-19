@@ -30,6 +30,13 @@ let existingStatementId = 'stmt-existing'
 let existingStatementStatus = 'imported'
 // memory lookup: when the descriptor_norm is a key here, return the hit mapping.
 let memoryHits: Record<string, { category_id: string; reserva_id: string | null }> = {}
+// KW-02: the user's keyword rules (RLS-scoped fetch). Shape mirrors the
+// `category_keywords` select with the embedded `categories(sort)` join.
+let keywordRows: Array<{
+  category_id: string
+  keyword: string
+  categories: { sort: number }
+}> = []
 // transactions dedupe pre-check: dedupe_keys already present in the user's txns.
 let existingDedupeKeys: Set<string> = new Set()
 // csv profile lookup result (null ⇒ no saved profile).
@@ -197,6 +204,10 @@ function makeBuilder(from: string) {
     if (from === 'categories') {
       return resolve({ data: [{ id: 'cat-merc', name: 'Mercado' }], error: null })
     }
+    if (from === 'category_keywords') {
+      // KW-02: the RLS-scoped keyword fetch (one batched read, never per-row).
+      return resolve({ data: keywordRows, error: null })
+    }
     if (from === 'reservas') {
       // assertOwnedReserva: eq('id', id) → 1 row when owned, else 0.
       const id = filters.find(([c]) => c === 'id')?.[1] as string
@@ -312,6 +323,7 @@ beforeEach(() => {
   existingStatementId = 'stmt-existing'
   existingStatementStatus = 'imported'
   memoryHits = {}
+  keywordRows = []
   existingDedupeKeys = new Set()
   csvProfile = null
   downloadBytes = ofxBytes('itau-sample.ofx')
@@ -635,6 +647,88 @@ describe('ingestStatement', () => {
     expect(r.rows.every((x) => x.suggestion === undefined)).toBe(true)
     expect(r.summary.iaIndisponivel).toBe(true)
     expect(r.summary.total).toBe(4)
+  })
+
+  // --- Phase 20: the deterministic keyword layer (memória → palavra-chave → IA) ---
+
+  it('ordering memória>keyword>IA: keyword row is pre-filled and EXCLUDED from the AI batch (KW-02/03)', async () => {
+    // itau-sample.ofx → 3 descriptors: padaria sao joao, netflix com, uber trip.
+    // netflix is a memory hit; uber matches a keyword; padaria is the only TRUE miss.
+    memoryHits = { 'netflix com': { category_id: 'cat-stream', reserva_id: null } }
+    keywordRows = [{ category_id: 'cat-transp', keyword: 'uber', categories: { sort: 1 } }]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    // The uber row is bound by the keyword layer — category set, source 'palavra-chave',
+    // reserva untouched.
+    const uber = r.rows.find((x) => x.descriptor_norm === 'uber trip')!
+    expect(uber.category_id).toBe('cat-transp')
+    expect(uber.classification_source).toBe('palavra-chave')
+    expect(uber.reserva_id).toBeNull()
+
+    // Memory still prevails for netflix.
+    const netflix = r.rows.find((x) => x.descriptor_norm === 'netflix com')!
+    expect(netflix.category_id).toBe('cat-stream')
+    expect(netflix.classification_source).toBe('memória')
+
+    // The AI is called EXACTLY ONCE with ONLY the true miss — the keyword (and memory)
+    // descriptors are absent from the batch (KW-03/CLSAI-03).
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    const sent = classifyDescriptors.mock.calls[0]![0]
+    expect(sent).toEqual(['padaria sao joao'])
+    expect(sent).not.toContain('uber trip')
+    expect(sent).not.toContain('netflix com')
+  })
+
+  it('longest-wins end-to-end (KW-04): the longer keyword binds the row over a shorter one', async () => {
+    // padaria sao joao matches both 'padaria' (sort 0) and the longer 'padaria sao'
+    // (sort 1) → the LONGER keyword wins, so cat-mkt binds, not cat-alim.
+    keywordRows = [
+      { category_id: 'cat-alim', keyword: 'padaria', categories: { sort: 0 } },
+      { category_id: 'cat-mkt', keyword: 'padaria sao', categories: { sort: 1 } },
+    ]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    const padaria = r.rows.find((x) => x.descriptor_norm === 'padaria sao joao')!
+    expect(padaria.category_id).toBe('cat-mkt')
+    expect(padaria.classification_source).toBe('palavra-chave')
+  })
+
+  it('keyword não polui o lote da IA: the keyword descriptor_norm is absent from classifyDescriptors (KW-03)', async () => {
+    keywordRows = [{ category_id: 'cat-transp', keyword: 'uber', categories: { sort: 0 } }]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    const sent = classifyDescriptors.mock.calls[0]![0]
+    expect(sent).not.toContain('uber trip')
+    // The two true misses (padaria, netflix) are what reaches the AI.
+    expect([...sent].sort()).toEqual(['netflix com', 'padaria sao joao'])
+  })
+
+  it('memória prevalece: a descriptor that is BOTH a memory hit and a keyword stays source=memória (KW-03)', async () => {
+    // netflix is a memory hit AND would match a 'netflix' keyword — the keyword pass
+    // only runs in the memory-MISS else, so memory wins and netflix never goes to the AI.
+    memoryHits = { 'netflix com': { category_id: 'cat-stream', reserva_id: null } }
+    keywordRows = [{ category_id: 'cat-kw', keyword: 'netflix', categories: { sort: 0 } }]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    const netflix = r.rows.find((x) => x.descriptor_norm === 'netflix com')!
+    expect(netflix.category_id).toBe('cat-stream')
+    expect(netflix.classification_source).toBe('memória')
+
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    expect(classifyDescriptors.mock.calls[0]![0]).not.toContain('netflix com')
   })
 })
 
