@@ -26,15 +26,18 @@ Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` lim
 
 </details>
 
-## Current Milestone: none (v1.4 shipped)
+## Current Milestone: v1.5 Classificação determinística
 
-v1.4 está arquivado e seus live-smokes diferidos foram **fechados ao vivo em 2026-06-19** (quick-task `260619-d68`; Phases 14/15/16 → `passed`). Próximo milestone a definir via `/gsd-new-milestone`.
+**Goal:** Reduzir a dependência da IA fraca (flash-lite) dando à classificação uma camada determinística e controlada pelo usuário — regras de palavra-chave → categoria que ele mesmo cadastra — além de um prompt de IA mais esperto para o que sobrar.
 
-**Achados no smoke — corrigidos + verificados ao vivo (2026-06-19):** PDF worker (`fb91b58`), content_hash de statement não-confirmado (`f0b9fb6`), botão aplicar-todas (`7e741bf`), truncação do classify `maxOutputTokens` 1500→8192 (`fa8b218`). Categoria default "Marketplace" (migration `0035`/`f33e38b`) pendente de `supabase db push`.
+**Target features:**
+- **Regras de palavra-chave por categoria** — o usuário cadastra keywords no `/categorias` (Transporte: "Uber","Posto"; Marketplace: "Shopee","Shein"…); o ingest roda **memória → palavra-chave → IA**, **auto-classificando** o match no upload (source "palavra-chave", sobrescrevível), com **maior keyword vence** no conflito. Match por substring no `descriptor_norm` (já minúsculo/sem acento). Cadastro manual (não aprendido).
+- **Ajuste do prompt da IA** — kind-aware: a IA para de escolher categorias de alocação (Investimentos/Reserva) para compras (envia o `kind` da categoria + uma linha-guia no prompt).
+- **Push do seed Marketplace (`0035`) p/ PROD** — passo rastreado do milestone (`supabase db push`).
 
-**Candidato forte p/ próximo milestone — regras de palavra-chave por categoria:** o usuário cadastra keywords (Transporte: "Uber","Posto"; Marketplace: "Shopee","Shein"…) que auto-classificam por substring — uma camada DETERMINÍSTICA entre a memória e a IA, reduzindo a dependência do flash-lite (que vinha classificando marketplace como Investimentos). Requer schema (keywords por categoria) + um pass no pipeline de ingest (memória → palavra-chave → IA) + UI no cadastro de categorias. Escopo de milestone, não quick-task — merece brainstorm/plan.
+**Contexto:** app single-user pt-BR; convive com a memória aprendida no confirm + a IA não-auto-commit existentes; a camada de palavra-chave é determinística/grátis/instantânea. Fases continuam de 17 → **18+**.
 
-Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker já corrigido).
+Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker já corrigido em v1.4-followup).
 
 ## Requirements
 

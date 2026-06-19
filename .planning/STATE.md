@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.4
-milestone_name: IA de Classificação
-current_phase: 4
-status: Awaiting next milestone
-stopped_at: Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
-last_updated: "2026-06-19T11:54:29.977Z"
+milestone: v1.5
+milestone_name: Classificação determinística
+status: planning
+last_updated: "2026-06-19T15:15:55.333Z"
 last_activity: 2026-06-19
-last_activity_desc: Milestone v1.4 completed and archived
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 12
-  completed_plans: 12
-  percent: 100
-current_phase_name: v1-3-debt-cleanup-isolated
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,10 +26,10 @@ current_phase_name: v1-3-debt-cleanup-isolated
 
 ## Current Position
 
-Phase: Milestone v1.4 complete (deferred live-smokes now closed)
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-19 — Completed quick task 260619-d68: closed v1.4 live-smokes (14/15/16 → passed), AI suggestion proven live in PROD
+Status: Defining requirements
+Last activity: 2026-06-19 — Milestone v1.5 started
 
 ## Deferred Items
 
