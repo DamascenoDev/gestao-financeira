@@ -10,7 +10,7 @@ import { csvHeaderSignature } from '@/lib/csv-profile'
 import { lookupCsvProfile } from '@/lib/csv-profile.server'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseBRLToCents } from '@/lib/money'
-import type { CategoryKind } from '@/lib/schemas/category'
+import { CATEGORY_KINDS, type CategoryKind } from '@/lib/schemas/category'
 import {
   assertOwnedCarro,
   assertOwnedCategories,
@@ -423,12 +423,15 @@ export async function ingestStatement(
     .from('categories')
     .select('id, name, kind')
   // database.types tipa `kind` como `string` (NOT NULL + check-constrained no DB para
-  // 'consumo'|'alocacao'); narrow para CategoryKind para satisfazer a assinatura widened
-  // de classifyDescriptors sob TS estrito. Os valores são sempre um dos dois membros.
+  // 'consumo'|'alocacao'); narrow para CategoryKind via o enum canônico em vez de um cast
+  // cego (WR-01). Um valor inesperado (ex.: um CHECK futuro mais amplo) cai em 'alocacao'
+  // — fail-safe: o kind gate o rejeita para um gasto em vez de rotulá-lo como gastável.
+  const isCategoryKind = (k: string): k is CategoryKind =>
+    (CATEGORY_KINDS as readonly string[]).includes(k)
   const categoryList = (categories ?? []).map((c) => ({
     id: c.id,
     name: c.name,
-    kind: c.kind as CategoryKind,
+    kind: isCategoryKind(c.kind) ? c.kind : 'alocacao',
   }))
 
   // Pre-mark cross-statement duplicates: a row whose dedupe_key already exists in
