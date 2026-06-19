@@ -30,12 +30,11 @@ Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` lim
 
 v1.4 está arquivado e seus live-smokes diferidos foram **fechados ao vivo em 2026-06-19** (quick-task `260619-d68`; Phases 14/15/16 → `passed`). Próximo milestone a definir via `/gsd-new-milestone`.
 
-**Candidatos do próximo ciclo** (todos em `.planning/todos/pending/`, achados no smoke):
-- **PDF quebrado em PROD** — worker do pdfjs não empacotado na função Vercel (regressão vs v1.3; `Cannot find module pdf.worker.mjs`). Prioridade — PDF é caminho de ingestão suportado.
-- **`content_hash` bloqueia re-importar statement não confirmado** — UX: arquivo revisado mas não confirmado não pode ser re-enviado.
-- **Botão "Aplicar todas as sugestões"** na grid de revisão (pedido do usuário).
+**Achados no smoke — corrigidos + verificados ao vivo (2026-06-19):** PDF worker (`fb91b58`), content_hash de statement não-confirmado (`f0b9fb6`), botão aplicar-todas (`7e741bf`), truncação do classify `maxOutputTokens` 1500→8192 (`fa8b218`). Categoria default "Marketplace" (migration `0035`/`f33e38b`) pendente de `supabase db push`.
 
-Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker acima).
+**Candidato forte p/ próximo milestone — regras de palavra-chave por categoria:** o usuário cadastra keywords (Transporte: "Uber","Posto"; Marketplace: "Shopee","Shein"…) que auto-classificam por substring — uma camada DETERMINÍSTICA entre a memória e a IA, reduzindo a dependência do flash-lite (que vinha classificando marketplace como Investimentos). Requer schema (keywords por categoria) + um pass no pipeline de ingest (memória → palavra-chave → IA) + UI no cadastro de categorias. Escopo de milestone, não quick-task — merece brainstorm/plan.
+
+Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker já corrigido).
 
 ## Requirements
 
@@ -62,9 +61,12 @@ Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
 - ✓ **(diferido do v1.4) Live-smokes real-key/PROD — FECHADO 2026-06-19** (quick-task `260619-d68`): conta PROD recriada + chave BYOK, `0033`/`0034` confirmados ao vivo (save + testar conexão), **sugestão real da IA renderizada** num upload de merchant novo (`gemini-2.5-flash-lite`), `maxDuration` ok. Phases 14/15/16 → `passed`.
-- [ ] **(novo, achado no smoke) `content_hash` bloqueia re-importar statement NÃO confirmado** — `.planning/todos/pending/20260619-content-hash-blocks-unconfirmed-reimport.md`.
-- [ ] **(novo, achado no smoke) Upload de PDF quebrado em PROD** (worker do pdfjs não empacotado) — `.planning/todos/pending/20260619-pdf-worker-missing-in-prod.md`.
-- [ ] **(novo, pedido do usuário) Botão "Aplicar todas as sugestões" na grid** — `.planning/todos/pending/20260619-apply-all-suggestions-button.md`.
+- ✓ **(achados no smoke — corrigidos + verificados ao vivo 2026-06-19):**
+  - **PDF quebrado em PROD** → `outputFileTracingIncludes` força o worker pdfjs no bundle da função (`fb91b58`); PDF volta a parsear ao vivo.
+  - **`content_hash` bloqueava re-import de statement NÃO confirmado** → "0 novas" só dispara quando status='imported' (`f0b9fb6`).
+  - **Botão "Aplicar todas as sugestões"** na grid de revisão (`7e741bf`).
+  - **`classifyDescriptors` truncava o JSON em statements grandes** → `maxOutputTokens` 1500→8192 (`fa8b218`); IA classifica faturas grandes (PDF) sem perder sugestões.
+- [ ] **(pendente `supabase db push`) Categoria default "Marketplace"** (Shopee/Ali/Shein/ML) — migration `0035` (`f33e38b`); dá à IA um bucket de compras (estava classificando marketplace como Investimentos). Aplicar com `db push`, ou add via `/categorias` para efeito imediato.
 - _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
 
 ### Out of Scope
