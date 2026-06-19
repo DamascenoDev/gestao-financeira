@@ -10,38 +10,25 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 ## Current State
 
-**v1.3 "Produção & PDF" — SHIPPED 2026-06-18. O app está NO AR.** Treze fases code-complete subiram para produção de verdade: Supabase pessoal remoto (`sa-east-1`, migrations 0001-0032, RLS ativo) + Vercel (`gru1`, `maxDuration` nas rotas de parsing). Login pessoal, sessão persistente e isolamento RLS verificados ao vivo no browser. **Core value provado em produção:** fatura real (OFX) → parse server-side → review grid → classificação por **memória** → aderência às metas (mensal + anual). Upload de **PDF de fatura** (Santander) adicionado pela mesma UI, fluindo pelo mesmo pipeline ingest→review→confirm→classify→metas (parser `getText`, bloco image-only, estorno→credit, migrations 0031/0032) — verificado end-to-end ao vivo (98 linhas). WR-02 fechado (migration 0029). Primeira tag git: `v1.3`.
+**v1.4 "IA de Classificação (BYOK)" — SHIPPED 2026-06-19.** A classificação assistida por IA está **wired** no seam `suggestCategory()` com BYOK multi-provedor (Gemini/Claude): migração `0033` (Vault `ai_settings` + RLS + RPCs get/save/remove, decrypt server-only), Settings UI write-only em `/conta/configuracoes-ia`, e o pipeline memory-first → uma chamada `classifyDescriptors` batched/enum-gated por upload → `row.suggestion` não-vinculante → grid renderiza procedência (memória vs IA) + confiança + ordenação baixa-confiança-primeiro → aprende SÓ no confirm (nunca auto-commit). **Integration-checker: a cadeia 14→15→16 está 100% wired, 0 defeitos.** Dívida v1.3 quitada na Phase 17 (G-07/G-08 live, walkthroughs MEI/LGPD, VALIDATION.md 12/13, **delete destrutivo DATA-02 executado ao vivo**). Tag git: `v1.4`.
 
-Suíte ~761 testes, `tsc --noEmit` + `npm run build` limpos. Auditoria do milestone: `tech_debt` (12/12 requisitos satisfeitos, 0 blockers — ver `milestones/v1.3-MILESTONE-AUDIT.md`).
+Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` limpos. Auditoria do milestone: `tech_debt` (17/17 requisitos mapeados + wired, 0 blockers — ver `milestones/v1.4-MILESTONE-AUDIT.md`).
 
-**Dívida carregada (não bloqueia o core value):** redeploy dos fixes G-07/G-08 (cosméticos do grid de importação, GREEN local), walkthroughs hands-on 12-06 (MEI) + 12-07 (LGPD), e VALIDATION.md de Nyquist (Phase 12 ausente, Phase 13 draft). Detalhe em STATE.md `## Deferred Items`.
-
-**Classificação por IA NÃO foi construída** — o core value do v1.3 é **memory-only** (estabelecimento conhecido auto-classifica; novo = pick manual que vira padrão). O seam `suggestCategory()` + `validateSuggestion` enum wrapper + `SuggestionSlot` estão prontos (additivo); a IA fica para v1.4 (CLS-AI).
+**Dívida carregada (deploy/credencial-gated, não bloqueia o código):** os live-smokes real-key/PROD das Phases 14/15/16 ficaram diferidos — PROD push do `0033` (talvez já no ar via hotfix `0034`), smoke com chave real (merchant novo → sugestão IA), e herança de `maxDuration` PROD. **Agora exigem recriar a conta PROD (`/auth/signup`) + recolar a chave BYOK** — a conta PROD foi apagada na Phase 17 (DATA-02). Detalhe em STATE.md `## Deferred Items`.
 
 <details>
-<summary>Milestones anteriores (v1.0–v1.2)</summary>
+<summary>Milestones anteriores (v1.0–v1.3)</summary>
 
 - **v1.0 MVP** (Phases 1-6) — core ledger + upload OFX/CSV/IA-seam + metas/reservas + MEI/DASN + endurecimento. Code-complete no stack local; deploy/live-verify executado na Phase 12 (v1.3).
 - **v1.1 Identidade visual** (Phase 7) — re-skin navy+gold, dark mode, charts, mobile nav. SHIPPED 2026-06-17.
-- **v1.2 Carro** (Phases 8-11) — cadastro multi-car, etiquetagem não-destrutiva de gastos ao carro, abastecimento híbrido (XOR fatura/manual) + odômetro, consumo km/l tanque-cheio + R$/km com gráfico. 6/6 CAR. SHIPPED 2026-06-18 (`milestones/v1.2-*`). Design seed: `docs/superpowers/specs/2026-06-17-modulo-carro-design.md`.
+- **v1.2 Carro** (Phases 8-11) — cadastro multi-car, etiquetagem não-destrutiva, abastecimento híbrido + odômetro, consumo km/l + R$/km com gráfico. 6/6 CAR. SHIPPED 2026-06-18 (`milestones/v1.2-*`).
+- **v1.3 Produção & PDF** (Phases 12-13) — app no ar (Supabase `sa-east-1` + Vercel `gru1`), core value memory-only provado ao vivo, PDF de fatura (Santander) pelo mesmo pipeline. SHIPPED 2026-06-18 (`milestones/v1.3-*`).
 
 </details>
 
-## Current Milestone: v1.4 IA de Classificação (BYOK)
+## Current Milestone: none (v1.4 shipped)
 
-**Goal:** Ligar classificação assistida por IA no seam `suggestCategory()` já pronto — memory-first, IA só no cache-miss, usuário confirma antes de virar padrão — com BYOK multi-provedor (Gemini/Claude/DeepSeek) configurável numa Settings UI com chave criptografada; e quitar a dívida carregada do v1.3.
-
-**Target features:**
-- **Settings UI BYOK** — escolher provedor (Gemini/Claude/DeepSeek) + colar chave própria; chave criptografada at-rest (Supabase Vault), escopo `user_id` + RLS; botão testar conexão.
-- **IA no seam `suggestCategory()`** — memory-first (zero IA p/ merchant conhecido), IA só p/ descritor novo, batch dos não-vistos por upload numa chamada, `validateSuggestion` enum-constrained (Zod), `SuggestionSlot` na review grid.
-- **Confirmação humana no loop** — sugestão IA aparece na review grid → confirmo → vira padrão na memória → auto-classifica próximas faturas. Nunca auto-commit.
-- **Guardrails custo/erro** — memory-first; fallback gracioso sem chave / erro de provedor (cai no pick manual).
-- **Dívida v1.3** — redeploy fixes G-07/G-08; walkthroughs hands-on MEI (12-06) + LGPD (12-07); VALIDATION.md de Nyquist (Phases 12 + 13).
-
-**Decisões deste milestone:**
-- Multi-provedor via pacotes `@ai-sdk` diretos (não AI Gateway) — habilita BYOK-por-provedor-pessoal (chave colada no app, não no dashboard Vercel).
-- Modelos default sugeridos: Gemini 2.5 Flash-Lite / Claude Haiku / DeepSeek-chat (texto curto, barato) — research confirma IDs/preços atuais.
-- Cripto da chave: default Supabase Vault (research valida vs pgcrypto/app-layer).
+v1.4 está arquivado. Próximo milestone a definir via `/gsd-new-milestone`. **Primeiro item natural do próximo ciclo:** fechar os live-smokes diferidos do v1.4 (recriar conta PROD + chave BYOK → confirmar `0033` no ar + smoke real-key + maxDuration) para flipar 14/15/16 de `human_needed` para `passed`.
 
 Candidato deferido: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
 
@@ -61,14 +48,16 @@ Candidato deferido: **PDF avançado** (parser por banco / OCR) — só se um ban
 - ✓ Modelo de dados escopado por `user_id` (multi-user-ready, sem migração para a esposa) — **v1.3** (RLS isola dados em produção)
 - ✓ Classificação por **memória de padrões** (merchant→categoria aprendido na confirmação; auto-classifica nas próximas faturas) — **v1.3** (core value provado ao vivo)
 - ✓ **(v1.2)** Aba Carro: multi-car, etiquetagem não-destrutiva de gastos ao carro, abastecimento híbrido (XOR fatura/manual) + odômetro, consumo km/l tanque-cheio + R$/km com gráfico — **v1.2** (CAR-01..06 6/6; em produção desde v1.3)
+- ✓ **Classificação assistida por IA** (CLSAI-01..08) — memory-first + uma chamada IA batched/enum-gated no cache-miss + `row.suggestion` na grid (procedência + confiança + ordenação) + aprende só no confirm (sem auto-commit) — **v1.4** (código completo + 100% wired; smoke real-key ao vivo diferido)
+- ✓ **BYOK multi-provedor** (BYOK-01..05) — Settings UI write-only, chave criptografada at-rest (Supabase Vault) escopada `user_id` + RLS, decrypt server-only, testar/remover — **v1.4** (LOCAL-provado; PROD push do `0033` diferido)
+- ✓ **Dívida v1.3 quitada** (DEBT-03..06) — G-07/G-08 live, walkthroughs MEI/LGPD, VALIDATION.md 12/13, delete destrutivo DATA-02 executado ao vivo — **v1.4** (Phase 17)
 
 ### Active
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- [ ] **Classificação assistida por IA** (v1.4 — CLS-AI): para estabelecimento novo a IA sugere categoria, eu confirmo, vira padrão salvo na memória e auto-classifica nas próximas faturas. Wire no seam `suggestCategory()` + `validateSuggestion` enum wrapper + `SuggestionSlot` já prontos (additivo). Memory-first, IA só no cache-miss, confirmação antes de virar padrão.
-- [ ] **BYOK multi-provedor** (v1.4): Settings UI escolhe provedor (Gemini/Claude/DeepSeek) + cola a própria chave; chave criptografada at-rest (Supabase Vault) escopada `user_id` + RLS; testar conexão. Pacotes `@ai-sdk` diretos.
-- [ ] **Dívida v1.3** (v1.4): redeploy G-07/G-08, walkthroughs MEI (12-06) + LGPD (12-07) ao vivo, VALIDATION.md de Nyquist (Phases 12 + 13).
+- [ ] **(diferido do v1.4) Fechar os live-smokes real-key/PROD** — recriar conta PROD + chave BYOK → confirmar `0033` no ar + smoke real-key (merchant novo → sugestão IA) + herança de `maxDuration` PROD → flipar Phases 14/15/16 para `passed`.
+- _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
 
 ### Out of Scope
 
@@ -137,4 +126,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-18 — milestone v1.4 "IA de Classificação (BYOK)" iniciado via `/gsd-new-milestone`. Foco: wire IA no seam `suggestCategory()` (memory-first, confirmação humana) + BYOK multi-provedor (Gemini/Claude/DeepSeek, Settings UI com chave criptografada) + quitar dívida v1.3. Fases continuam a partir de 14.*
+*Last updated: 2026-06-19 — milestone v1.4 "IA de Classificação (BYOK)" SHIPPED + arquivado (`milestones/v1.4-*`). IA wired no seam `suggestCategory()` (memory-first, BYOK Gemini/Claude, sem auto-commit) + dívida v1.3 quitada (Phase 17, incl. delete destrutivo DATA-02 ao vivo). Close `tech_debt`: código completo + 100% wired; live-smokes real-key/PROD diferidos (conta PROD apagada → exigem re-signup + re-colar chave). Próximo milestone via `/gsd-new-milestone`.*

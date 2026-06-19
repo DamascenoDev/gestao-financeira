@@ -1,5 +1,20 @@
 # Milestones
 
+## v1.4 IA de Classificação (Shipped: 2026-06-19)
+
+**Phases completed:** 4 phases, 12 plans, 17 tasks
+
+**Key accomplishments:**
+
+- Installed the two first-party Vercel AI providers (@ai-sdk/google 3.0.83, @ai-sdk/anthropic 3.0.85) behind an approved legitimacy gate, and laid down three RED Nyquist Wave 0 tests pinning the BYOK schema, provider factory, and provider-error→pt-BR contracts.
+- Authored and (LOCAL-)applied `0033_ai_settings.sql` — the encryption/storage root of the v1.4 BYOK chain: a Vault-backed `ai_settings` table that stores only a `key_secret_id` reference (never a plaintext key), RLS isolating each user's row, and three SECURITY DEFINER RPCs (get/save/remove) where decrypt is reachable only through an `auth.uid()`-filtered trust boundary. Regenerated `database.types.ts` and proved cross-user decrypt isolation, key rotation, and removal on the LOCAL stack.
+- BYOK substrate: Zod provider/apiKey gate, client-safe provider registry, per-call gemini/claude factory, and a server-only decrypt DAL that is the app's sole handler of the plaintext key.
+- 1. [Rule 3 - Blocking] Test-ping uses `LanguageModelV3.doGenerate`, not `generateText` from `'ai'`
+- Batched, schema-constrained `doGenerate` classifier (`classifyDescriptors`) over Gemini+Claude with a flat $ref-free JSONSchema7, post-hoc enum-gating via `validateSuggestion`, a never-throw empty-Map fallback, and a PII-safe descriptor_norm-only prompt — plus the additive `ParsedReviewRow.suggestion` hint field.
+- Wired the real AI into the ingest pipeline as a memory-first two-pass loop around ONE batched `classifyDescriptors` call (zero calls when every descriptor is a memory hit), attaching non-binding `row.suggestion` hints on misses without ever auto-committing to `category_id`, plus a `suggestCategory` 1-item delegate, a payload-only-`descriptor_norm` PII guard, and `maxDuration = 60`.
+
+---
+
 ## v1.3 Produção & PDF (Shipped: 2026-06-18)
 
 **Phases completed:** 2 phases (12-13), 15 plans, 18 tasks

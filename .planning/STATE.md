@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.4
 milestone_name: IA de Classificação
-current_phase: 17
-current_phase_name: v1-3-debt-cleanup-isolated
-status: phase_complete
-stopped_at: Phase 17 COMPLETE — SC1/SC2/SC4 + DATA-02 destructive delete executed live (2026-06-19). All v1.4 phases (14-17) done; milestone ready for audit→complete→cleanup
-last_updated: "2026-06-19T02:20:54.808Z"
+current_phase: 4
+status: Awaiting next milestone
+stopped_at: Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
+last_updated: "2026-06-19T11:54:29.977Z"
 last_activity: 2026-06-19
-last_activity_desc: Phase 17 complete — DATA-02 destructive account delete executed live in PROD (user-authorized). v1.4 all phases done.
+last_activity_desc: Milestone v1.4 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 12
   completed_plans: 12
   percent: 100
+current_phase_name: v1-3-debt-cleanup-isolated
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,21 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 17 (v1-3-debt-cleanup-isolated) — COMPLETE (4/4)
-Plan: 17-01 ✓ (VALIDATION 12+13) · 17-02 ✓ (SC1 deploy-ancestry + SC2 MEI CSV + DATA-01) · 17-03 ✓ (SC3 runbook) · 17-04 ✓ (DATA-02 destructive delete executed live)
-Status: Phase 17 done. v1.4 milestone — all 4 phases (14-17) complete. Next: `/gsd-autonomous` (sem --only) → audit→complete→cleanup. NOTE: prod account was deleted; sign up fresh + re-enter BYOK AI key to use the app.
-Last activity: 2026-06-19 — Phase 17 complete; DATA-02 destructive account delete executed live in PROD (user-authorized)
-
-Progress: [░░░░░░░░░░] 0% (v1.4 phases)
-
-**v1.4 phase list (dependency order key-storage → AI call → grid; debt isolated):**
-
-| Phase | Goal | Requirements | Status |
-|-------|------|--------------|--------|
-| 14. Key Storage + BYOK Settings | Provedor + chave criptografada (Vault) + RLS + testar/remover; raiz da cadeia | BYOK-01..05 | Not started |
-| 15. Classification Wire | Memory-first + batched AI no `suggestCategory()` + enum vivo + fallback gracioso | CLSAI-01..06 | Not started |
-| 16. Review-Grid Suggestion Affordances | `SuggestionSlot` + procedência (memória vs IA) + dica de confiança/ordenação | CLSAI-07, CLSAI-08 | Not started |
-| 17. v1.3 Debt Cleanup (ISOLATED, human-verify) | Redeploy G-07/08 + walkthroughs prod MEI/LGPD (delete destrutivo) + VALIDATION.md 12/13 | DEBT-03..06 | Not started |
+Phase: Milestone v1.4 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-19 — Milestone v1.4 completed and archived
 
 ## Deferred Items
 
