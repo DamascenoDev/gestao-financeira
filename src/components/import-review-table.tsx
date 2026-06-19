@@ -215,7 +215,7 @@ export type ReviewRow = {
   // CAR-02: the per-row carro tag chosen in review (null = "Nenhum"/untagged). Free of
   // category — additive on persist (D4); does NOT affect origem/accent/metas.
   carro_id: string | null
-  origin: 'memória' | 'manual' | 'não classificada'
+  origin: 'memória' | 'palavra-chave' | 'manual' | 'não classificada'
   is_recurring: boolean
   /**
    * PDF estorno/credit marker (D-06 / UI-SPEC §Color). DISTINCT from

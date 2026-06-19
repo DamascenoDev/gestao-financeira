@@ -201,7 +201,16 @@ export default async function ImportReviewPage({
     category_id: r.category_id,
     reserva_id: r.reserva_id,
     carro_id: null, // CAR-02: tagging happens in review; nothing pre-tagged at ingest
-    origin: r.category_id === null ? 'não classificada' : 'memória',
+    // KW-02: derive origin from the persisted classification_source so a keyword
+    // hit surfaces the 'palavra-chave' badge instead of being mislabeled 'memória'.
+    // A classified parsed row only ever carries 'memória' or 'palavra-chave' at
+    // parse-time (manual/IA do not apply); fall back to 'memória' for the rest.
+    origin:
+      r.category_id === null
+        ? 'não classificada'
+        : r.classification_source === 'palavra-chave'
+          ? 'palavra-chave'
+          : 'memória',
     is_recurring: r.is_recurring,
     // Thread the persisted PDF kind so the income-green AmountCell fires for estornos
     // (the client ReviewRow type does NOT inherit RawTransaction.kind). OFX/CSV rows

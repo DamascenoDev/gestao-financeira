@@ -1,4 +1,4 @@
-import { Brain, Pencil, Sparkles, TriangleAlert } from 'lucide-react'
+import { Brain, Pencil, Sparkles, Tags, TriangleAlert } from 'lucide-react'
 
 import { cn } from '@/lib/utils'
 
@@ -13,7 +13,12 @@ import { cn } from '@/lib/utils'
  *
  * The text label is ALWAYS present so color is never the sole signal (a11y).
  */
-export type OriginVariant = 'memória' | 'manual' | 'não classificada' | 'sugerida'
+export type OriginVariant =
+  | 'memória'
+  | 'palavra-chave'
+  | 'manual'
+  | 'não classificada'
+  | 'sugerida'
 
 const VARIANT: Record<
   OriginVariant,
@@ -23,6 +28,14 @@ const VARIANT: Record<
     label: 'Memória',
     className: 'bg-muted text-muted-foreground',
     Icon: Brain,
+  },
+  // KW-05: keyword origin is deterministic/owned like memória → SAME neutral muted
+  // token (never the gold IA treatment), but a DISTINCT Tags icon (Brain stays
+  // reserved for memória) so the two states differ beyond the Title-Case label.
+  'palavra-chave': {
+    label: 'Palavra-chave',
+    className: 'bg-muted text-muted-foreground',
+    Icon: Tags,
   },
   manual: {
     label: 'Manual',
