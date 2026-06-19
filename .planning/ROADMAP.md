@@ -66,7 +66,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 **Hard constraint (research):** dependência estrita **key storage/encryption → AI call → review-grid UI**. A dívida v1.3 (Phase 17) é **isolada** das fases de feature porque contém um delete destrutivo em produção.
 
 - [~] **Phase 14: Key Storage + BYOK Settings** - Migração 0033 (Vault + RLS + decrypt RPC) + Settings UI com chave write-only criptografada + testar conexão — 5/5 plans, code-complete + LOCAL-verified (797/797, RLS smoke + key-never-on-client provados); **PROD push do 0033 deferido (item humano)**
-- [ ] **Phase 15: Classification Wire** - Provider factory + classify batched + corpo real de `suggestCategory()` (memory-first, enum vivo, fallback gracioso)
+- [~] **Phase 15: Classification Wire** - Provider factory + classify batched + corpo real de `suggestCategory()` (memory-first, enum vivo, fallback gracioso) — 2/2 plans, code-complete + LOCAL-verified (812/812; memory-first/1-call/enum-gate/no-auto-commit/PII-descriptorNorm provados por teste; bug de fallback do upload pego no review + corrigido); **smoke com chave real + maxDuration PROD = itens humanos**
 - [ ] **Phase 16: Review-Grid Suggestion Affordances** - `SuggestionSlot` recebe `row.suggestion` + badge de procedência (memória vs IA) + dica de confiança + ordenação baixa-confiança-primeiro
 - [ ] **Phase 17: v1.3 Debt Cleanup (ISOLATED)** - Redeploy G-07/G-08 + walkthroughs prod MEI/LGPD (delete destrutivo) + VALIDATION.md Nyquist (Phases 12+13)
 
@@ -149,7 +149,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 | 12. Produção & Live-Verify | v1.3 | 11/11 | Complete | 2026-06-18 |
 | 13. PDF de Fatura | v1.3 | 4/4 | Complete | 2026-06-18 |
 | 14. Key Storage + BYOK Settings | v1.4 | 5/5 | Code-complete (LOCAL-verified; PROD push deferred) | 2026-06-18 |
-| 15. Classification Wire | v1.4 | 0/TBD | Not started | - |
+| 15. Classification Wire | v1.4 | 2/2 | Code-complete (LOCAL-verified; real-key smoke deferred) | 2026-06-18 |
 | 16. Review-Grid Suggestion Affordances | v1.4 | 0/TBD | Not started | - |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/TBD | Not started | - |
 
