@@ -1,5 +1,12 @@
 # Phase 19 — UI Review
 
+**Status:** resolved — 22/24, 3 warnings all addressed (commit `201ce59`)
+
+> **Resolution (2026-06-19):**
+> - **Warning #1 (add-success toast drift) — RATIFIED**: the WR-01 behavior (toast echoes the normalized value, matching the chip) is the better UX; the locked copy in `19-UI-SPEC.md §Copywriting Contract` was updated to `"{keyword}" adicionada.` (keyword = normalized). Contract and code now agree.
+> - **Warning #2 (bare `<Field>` without `<FieldGroup>`) — DOCUMENTED EXCEPTION**: the auditor offered "wrap OR document". A `FieldGroup` around a single `Field` adds no grouping value; accepted as a single-field exception, not wrapped.
+> - **Warning #3 (hardcoded `id="kw-input"` collision) — FIXED** (`201ce59`): switched to `React.useId()` so per-row dialog instances never share an input id / `htmlFor`.
+
 **Audited:** 2026-06-19
 **Baseline:** 19-UI-SPEC.md (approved design contract — base-nova navy+gold, REUSE-only)
 **Screenshots:** not captured — the feature is a per-row dialog gated behind an auth'd `/categorias` route + a dropdown-menu interaction; a blind root-URL `playwright screenshot` cannot reach it. Dev server WAS up (ports 3000 & 5173 → 200), but no meaningful unauthenticated/un-interacted capture is possible. Audit is code-level against the contract.
