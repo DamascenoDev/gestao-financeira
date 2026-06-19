@@ -9,7 +9,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { Trash2 } from 'lucide-react'
+import { Sparkles, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -90,6 +90,111 @@ export type CarroOption = { id: string; apelido: string }
  *  value). Imported from lib/carro.ts so it agrees with CarroPicker + SelectionActionBar
  *  and cannot drift (it used to be a divergent `__nenhum__` literal). Never persisted. */
 const NENHUM_CARRO = CARRO_NONE
+
+/**
+ * CLSAI-08: the single low-confidence threshold (tunable). A row with an AI suggestion
+ * whose `confidence < LOW_CONFIDENCE` is "low confidence" → it shows the amber "baixa
+ * confiança" tag and sorts first on the initial load. Exported so a unit edge can pin it.
+ * Never surfaced as a number/percentage — only the tag is shown.
+ */
+export const LOW_CONFIDENCE = 0.6
+
+/** A KindBadge-shaped pill (matches category-badge.tsx KindBadge markup exactly so the
+ *  provenance/confidence affordances align with the existing pills in this column). */
+function AffordancePill({
+  className,
+  children,
+}: {
+  className?: string
+  children: React.ReactNode
+}) {
+  return (
+    <span
+      className={cn(
+        'inline-flex h-5 w-fit items-center gap-1 rounded-4xl px-2 py-0.5 text-xs font-medium',
+        className,
+      )}
+    >
+      {children}
+    </span>
+  )
+}
+
+/**
+ * CLSAI-07: the per-row provenance badge — mutually exclusive (the `category_id === null`
+ * gate guarantees memória and IA can't both show, since a memória row has category_id set).
+ *  - memória: `category_id` set AND `origin === 'memória'` → neutral pill, no icon.
+ *  - IA: an unapplied non-null suggestion on an unclassified row → gold pill + Sparkles.
+ *  - none: neither → nothing.
+ * Color is never the sole signal — each pill carries its text label (a11y).
+ */
+function ProvenanceBadge({ row }: { row: ReviewRow }) {
+  if (row.category_id !== null) {
+    if (row.origin === 'memória') {
+      return (
+        <AffordancePill className="bg-secondary text-secondary-foreground">
+          memória
+        </AffordancePill>
+      )
+    }
+    return null
+  }
+  if (row.suggestion?.categoryId) {
+    return (
+      <AffordancePill className="bg-primary/10 text-primary">
+        <Sparkles className="size-3 shrink-0" aria-hidden />
+        IA
+      </AffordancePill>
+    )
+  }
+  return null
+}
+
+/**
+ * CLSAI-08: the per-row "baixa confiança" tag — shown ONLY for an unapplied AI suggestion
+ * (`category_id === null` + non-null `suggestion.categoryId`) whose `confidence` is below
+ * LOW_CONFIDENCE. Amber (the established "needs attention" hue in this grid), never red,
+ * never a number. At/above the threshold → nothing.
+ */
+function ConfidenceTag({ row }: { row: ReviewRow }) {
+  if (
+    row.category_id === null &&
+    row.suggestion?.categoryId &&
+    row.suggestion.confidence < LOW_CONFIDENCE
+  ) {
+    return (
+      <AffordancePill className="bg-consumption/10 text-consumption">
+        baixa confiança
+      </AffordancePill>
+    )
+  }
+  return null
+}
+
+/** CLSAI-08: true when the row is an unapplied low-confidence AI suggestion. */
+function isLowConfidenceAi(row: ReviewRow): boolean {
+  return (
+    row.category_id === null &&
+    !!row.suggestion?.categoryId &&
+    row.suggestion.confidence < LOW_CONFIDENCE
+  )
+}
+
+/**
+ * CLSAI-08: order low-confidence AI rows FIRST while preserving the prior relative order
+ * for every other row (stable partition — NOT a re-sort of the tail). Returns a NEW array;
+ * never mutates the input. The caller applies it ONLY when AI suggestions exist, so the
+ * no-suggestions path stays byte-identical to v1.3.
+ */
+export function lowConfidenceFirst(rows: ReviewRow[]): ReviewRow[] {
+  const lead: ReviewRow[] = []
+  const rest: ReviewRow[] = []
+  for (const r of rows) {
+    if (isLowConfidenceAi(r)) lead.push(r)
+    else rest.push(r)
+  }
+  return [...lead, ...rest]
+}
 
 /**
  * A pre-persist review row (un-persisted parsed transaction). Client-side state — a
@@ -750,6 +855,19 @@ function InlineReviewCategoryCell({
     }
   }
 
+  // CLSAI-07: resolve the suggestion's categoryId → name from the user's own categories
+  // (already RLS-scoped, already in the grid — no new fetch). A null categoryId
+  // ("nenhuma encaixa") yields null so the slot stays inert ("—"), exactly as v1.3.
+  const suggestedCategoryId = row.suggestion?.categoryId ?? null
+  const suggestionForSlot = suggestedCategoryId
+    ? {
+        categoryId: suggestedCategoryId,
+        name:
+          categories.find((c) => c.id === suggestedCategoryId)?.name ??
+          suggestedCategoryId,
+      }
+    : null
+
   return (
     <div className="flex flex-col gap-1">
       <Select value={row.category_id ?? null} onValueChange={(v) => onChange(v ?? '')}>
@@ -777,7 +895,21 @@ function InlineReviewCategoryCell({
         </SelectContent>
       </Select>
 
-      {row.category_id === null ? <SuggestionSlot /> : null}
+      {/* Provenance + confidence sit on the chip's reserved row, one wrap-friendly
+          line so a long category name + tag never force a column-width change. The
+          chip itself only renders on the unclassified branch (memória rows keep no
+          chip). Bridge + apply (onClassify) write nothing — confirmImport stays the
+          sole merchant_patterns write. */}
+      <div className="flex flex-wrap items-center gap-1">
+        <ProvenanceBadge row={row} />
+        {row.category_id === null ? (
+          <SuggestionSlot
+            suggestion={suggestionForSlot}
+            onApply={(catId) => onClassify(row.id, catId, null)}
+          />
+        ) : null}
+        <ConfidenceTag row={row} />
+      </div>
 
       <Dialog
         open={pendingCategoryId !== null}
