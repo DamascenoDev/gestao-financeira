@@ -127,7 +127,12 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
   2. Walkthrough hands-on em produção do MEI (12-06: downloads CSV/JSON) confirma os reqs MEI-* ao vivo
   3. Walkthrough hands-on em produção do LGPD (12-07: export de dados + delete de conta) confirma DATA-*/SEC-01 ao vivo — executado com **backup do DB tirado ANTES**, **`user_id` throwaway explicitamente criado e confirmado**, **double-confirm do delete**, e **nunca via dev server** (que aponta para PROD); o cascade fica escopado ao `user_id` throwaway via RLS
   4. `VALIDATION.md` de Nyquist gerado/preenchido para as Phases 12 e 13 (12 ausente, 13 draft → ambas completas)
-**Plans**: TBD
+**Plans**: 4 plans
+Plans:
+- [ ] 17-01-PLAN.md — SC4/DEBT-06: criar 12-VALIDATION.md + finalizar 13-VALIDATION.md (Nyquist pragmático-retroativo) [autonomous]
+- [ ] 17-02-PLAN.md — SC1/DEBT-03 + SC2/DEBT-04: confirmar G-07/G-08 no bundle PROD + conteúdo dos downloads MEI CSV/JSON ao vivo (browser MCP, não-destrutivo) [human-verify]
+- [ ] 17-03-PLAN.md — SC3/DEBT-05 (doc): escrever o runbook de segurança do delete destrutivo (5 guard-rails) [autonomous]
+- [ ] 17-04-PLAN.md — SC3/DEBT-05 (exec): humano executa o delete destrutivo da conta throwaway pelo runbook [human-executed, wave 2]
 **Execution note**: operational / human-verify (`autonomous:false` style) — NÃO auto-executar sem o humano no loop; contém um passo destrutivo em produção.
 
 ## Progress
@@ -152,7 +157,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 | 14. Key Storage + BYOK Settings | v1.4 | 5/5 | Code-complete (LOCAL-verified; PROD push deferred) | 2026-06-18 |
 | 15. Classification Wire | v1.4 | 2/2 | Code-complete (LOCAL-verified; real-key smoke deferred) | 2026-06-18 |
 | 16. Review-Grid Suggestion Affordances | v1.4 | 1/1 | Complete (LOCAL-verified + live in PROD) | 2026-06-18 |
-| 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/TBD | Not started | - |
+| 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/4 | Not started | - |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
