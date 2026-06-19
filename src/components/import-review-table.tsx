@@ -124,6 +124,8 @@ function AffordancePill({
  * CLSAI-07: the per-row provenance badge — mutually exclusive (the `category_id === null`
  * gate guarantees memória and IA can't both show, since a memória row has category_id set).
  *  - memória: `category_id` set AND `origin === 'memória'` → neutral pill, no icon.
+ *  - palavra-chave (KW-05): `category_id` set AND `origin === 'palavra-chave'` → SAME
+ *    neutral pill, no icon (deterministic/owned like memória, never the gold IA treatment).
  *  - IA: an unapplied non-null suggestion on an unclassified row → gold pill + Sparkles.
  *  - none: neither → nothing.
  * Color is never the sole signal — each pill carries its text label (a11y).
@@ -134,6 +136,13 @@ function ProvenanceBadge({ row }: { row: ReviewRow }) {
       return (
         <AffordancePill className="bg-secondary text-secondary-foreground">
           memória
+        </AffordancePill>
+      )
+    }
+    if (row.origin === 'palavra-chave') {
+      return (
+        <AffordancePill className="bg-secondary text-secondary-foreground">
+          palavra-chave
         </AffordancePill>
       )
     }

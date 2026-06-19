@@ -128,6 +128,47 @@ describe('ImportReviewTable — suggestion affordances', () => {
     expect(screen.queryByText(/^IA$/)).toBeNull()
   })
 
+  it('keyword-provenance-badge: a keyword-classified row shows the lowercase "palavra-chave" pill and no chip/IA badge', () => {
+    renderTable([
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'palavra-chave',
+      }),
+    ])
+
+    // ProvenanceBadge surface (Categoria cell): lowercase, no icon.
+    expect(screen.getAllByText(/^palavra-chave$/).length).toBeGreaterThan(0)
+    expect(screen.queryByText(/Aplicar sugestão/i)).toBeNull()
+    expect(screen.queryByText(/^IA$/)).toBeNull()
+  })
+
+  it('keyword-origin-badge: a keyword-classified row shows the Title-Case "Palavra-chave" badge in the Origem column', () => {
+    renderTable([
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'palavra-chave',
+      }),
+    ])
+
+    // OriginBadge surface (Origem column): Title-Case label.
+    expect(screen.getAllByText(/^Palavra-chave$/).length).toBeGreaterThan(0)
+  })
+
+  it('keyword-distinct-from-memoria: keyword and memória rows never show the other state', () => {
+    const { unmount } = renderTable([
+      makeRow({ category_id: 'cat-mercado', origin: 'palavra-chave' }),
+    ])
+    // A keyword row must not surface the memória label in either casing.
+    expect(screen.queryByText(/^memória$/)).toBeNull()
+    expect(screen.queryByText(/^Memória$/)).toBeNull()
+    unmount()
+
+    renderTable([makeRow({ category_id: 'cat-mercado', origin: 'memória' })])
+    // A memória row must not surface the keyword label in either casing.
+    expect(screen.queryByText(/^palavra-chave$/)).toBeNull()
+    expect(screen.queryByText(/^Palavra-chave$/)).toBeNull()
+  })
+
   it('low-confidence-tag: confidence < 0.6 shows "baixa confiança", >= 0.6 does not', () => {
     const { unmount } = renderTable([
       makeRow({
