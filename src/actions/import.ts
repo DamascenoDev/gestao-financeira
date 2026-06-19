@@ -10,6 +10,7 @@ import { csvHeaderSignature } from '@/lib/csv-profile'
 import { lookupCsvProfile } from '@/lib/csv-profile.server'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseBRLToCents } from '@/lib/money'
+import type { CategoryKind } from '@/lib/schemas/category'
 import {
   assertOwnedCarro,
   assertOwnedCategories,
@@ -420,8 +421,15 @@ export async function ingestStatement(
   // Pre-fetch the user's categories once for the AI suggestion pass (id: name lines).
   const { data: categories } = await supabase
     .from('categories')
-    .select('id, name')
-  const categoryList = categories ?? []
+    .select('id, name, kind')
+  // database.types tipa `kind` como `string` (NOT NULL + check-constrained no DB para
+  // 'consumo'|'alocacao'); narrow para CategoryKind para satisfazer a assinatura widened
+  // de classifyDescriptors sob TS estrito. Os valores são sempre um dos dois membros.
+  const categoryList = (categories ?? []).map((c) => ({
+    id: c.id,
+    name: c.name,
+    kind: c.kind as CategoryKind,
+  }))
 
   // Pre-mark cross-statement duplicates: a row whose dedupe_key already exists in
   // the user's transactions is `duplicada` (Plan 03's confirm collapses them via

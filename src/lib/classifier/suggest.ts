@@ -17,6 +17,7 @@ import { z } from 'zod'
 
 import { classifyDescriptors } from '@/lib/ai/classify'
 import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
+import type { CategoryKind } from '@/lib/schemas/category'
 
 /**
  * Suggest a category id for an unknown merchant (memory miss) via a single PII-safe
@@ -32,7 +33,7 @@ import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
  */
 export async function suggestCategory(
   descriptorNorm: string,
-  categories: { id: string; name: string }[],
+  categories: { id: string; name: string; kind: CategoryKind }[],
 ): Promise<string | null> {
   // No-throw contract (CLSAI-06): `getDecryptedAiSettings` can throw on a Supabase
   // query / `get_ai_api_key` RPC error — degrade to null (manual pick) instead of
@@ -56,7 +57,7 @@ export async function suggestCategory(
  */
 export function validateSuggestion(
   candidate: unknown,
-  categories: { id: string; name: string }[],
+  categories: { id: string; name: string; kind: CategoryKind }[],
 ): string | null {
   const ids = categories.map((c) => c.id)
   if (ids.length === 0) return null

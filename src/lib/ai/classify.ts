@@ -26,6 +26,7 @@ import { z } from 'zod'
 import { modelFor } from '@/lib/ai/provider-factory'
 import { validateSuggestion } from '@/lib/classifier/suggest'
 import type { AiProvider } from '@/lib/schemas/ai-settings'
+import type { CategoryKind } from '@/lib/schemas/category'
 
 /**
  * Schema de saída FLAT e portável entre providers: `categoryId` é uma string livre
@@ -72,8 +73,10 @@ const JSON_SCHEMA: JSONSchema7 = {
 
 const SYSTEM_PROMPT = [
   'Você classifica descritores de transações financeiras brasileiras em categorias.',
-  'Receberá uma lista de categorias (id: nome) e uma lista de descritores normalizados.',
+  'Receberá uma lista de categorias (id: nome (tipo)) e uma lista de descritores normalizados.',
+  'O tipo é consumo ou alocação: consumo = compra/gasto; alocação = mover dinheiro para investimento ou reserva.',
   'Para cada descritor, escolha o id da categoria que melhor se encaixa.',
+  'Todo descritor é um GASTO. NUNCA atribua uma categoria de alocação a um gasto; se a melhor opção for de alocação, retorne categoryId: null para esse descritor.',
   'Se NENHUMA categoria se encaixar com confiança, retorne categoryId: null para esse descritor.',
   'confidence é um número de 0 a 1 indicando sua certeza. Responda APENAS o JSON do schema.',
 ].join(' ')
@@ -84,9 +87,11 @@ const SYSTEM_PROMPT = [
  */
 function buildUserText(
   descriptors: string[],
-  categories: { id: string; name: string }[],
+  categories: { id: string; name: string; kind: CategoryKind }[],
 ): string {
-  const catLines = categories.map((c) => `${c.id}: ${c.name}`).join('\n')
+  const catLines = categories
+    .map((c) => `${c.id}: ${c.name} (${c.kind === 'consumo' ? 'consumo' : 'alocação'})`)
+    .join('\n')
   const descLines = descriptors.map((d) => `- ${d}`).join('\n')
   return `Categorias:\n${catLines}\n\nDescritores:\n${descLines}`
 }
@@ -100,7 +105,7 @@ function buildUserText(
  */
 export async function classifyDescriptors(
   descriptors: string[],
-  categories: { id: string; name: string }[],
+  categories: { id: string; name: string; kind: CategoryKind }[],
   aiSettings: { provider: AiProvider; model: string; apiKey: string },
 ): Promise<Map<string, { categoryId: string | null; confidence: number }>> {
   const out = new Map<string, { categoryId: string | null; confidence: number }>()
@@ -127,10 +132,14 @@ export async function classifyDescriptors(
     const textPart = result.content.find((c) => c.type === 'text')
     const parsed = classifyResultSchema.parse(JSON.parse(textPart?.text ?? ''))
     for (const r of parsed.results) {
-      out.set(r.descriptor, {
-        categoryId: validateSuggestion(r.categoryId, categories),
-        confidence: r.confidence,
-      })
+      const gatedId = validateSuggestion(r.categoryId, categories) // enum gate (CLSAI-04)
+      // Kind gate (CLSAI-09): um descritor de fatura é sempre um GASTO; uma categoria de
+      // alocação é errada por definição → null. `categories` já está em escopo (o param).
+      // Só `kind === 'consumo'` passa; tanto `'alocacao'` quanto `undefined` (id nulado
+      // pelo enum gate) → null. confidence sempre preservada.
+      const kind = categories.find((c) => c.id === gatedId)?.kind
+      const categoryId = kind === 'consumo' ? gatedId : null
+      out.set(r.descriptor, { categoryId, confidence: r.confidence })
     }
   } catch (err) {
     // CLSAI-06 / V7: degrada para manual sem lançar; log genérico — nunca a chave nem
