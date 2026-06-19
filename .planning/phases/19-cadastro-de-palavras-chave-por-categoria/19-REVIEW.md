@@ -17,8 +17,18 @@ findings:
   warning: 3
   info: 3
   total: 6
-status: issues_found
+status: resolved
+resolution: "WR-01+WR-02+WR-03 fixed (3fa1104); IN-01/02/03 deferred (negligible for single-user app)"
 ---
+
+> **Resolution (2026-06-19, commit `3fa1104`):**
+> - **WR-01 — FIXED**: add success + duplicate toasts echo `normalizeDescriptor(raw)`, matching the persisted chip.
+> - **WR-02 — FIXED (by WR-01)**: the user now sees the normalized term in the toast, so normalization is no longer silent.
+> - **WR-03 — FIXED**: `handleRemove` clears the shared add-validation error.
+> - **IN-01 — DEFERRED**: each table row mounts its own `CategoryRowActions`/dialog instance, so controlled-open state does not bleed across categories.
+> - **IN-02 — DEFERRED**: the unbounded page-level keyword fetch hits Supabase's 1000-row default only at implausible scale for a single-user personal-finance app; not worth a limit now.
+> - **IN-03 — DEFERRED**: dual result-type tidiness — cosmetic.
+> KW-06 security was verified sound end-to-end (no IDOR / RLS regression); no blockers.
 
 # Phase 19: Code Review Report
 
