@@ -207,6 +207,11 @@ export default async function ImportReviewPage({
     // (the client ReviewRow type does NOT inherit RawTransaction.kind). OFX/CSV rows
     // omit kind ⇒ default 'expense', so they stay green-free.
     kind: r.kind ?? 'expense',
+    // CLSAI-07/08: thread the Phase-15 AI guess so the review grid can render the
+    // "Aplicar sugestão" chip, the "IA" provenance badge, and the "baixa confiança"
+    // tag. NON-binding — never applied to category_id here (no auto-commit). Absent on
+    // older persisted rows ⇒ grid renders byte-identical to v1.3.
+    suggestion: r.suggestion,
   }))
 
   return (

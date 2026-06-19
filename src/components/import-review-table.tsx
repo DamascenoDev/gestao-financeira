@@ -127,6 +127,15 @@ export type ReviewRow = {
    * value). Optional/graceful: the grid must not break when absent.
    */
   is_foreign?: boolean
+  /**
+   * CLSAI-07/08: the NON-binding AI guess threaded from `ParsedReviewRow.suggestion`
+   * (Phase 15). `categoryId` null = "nenhuma encaixa" (inert slot, no chip). NEVER
+   * auto-applied to `category_id` — the user applies it manually (apply fills the
+   * Select only; no merchant_patterns write). `confidence < LOW_CONFIDENCE` drives the
+   * "baixa confiança" tag + the low-confidence-first initial sort. Optional so old
+   * persisted rows + the v1.3 path stay byte-identical (absent ⇒ grid as v1.3).
+   */
+  suggestion?: { categoryId: string | null; confidence: number; source: 'ia' }
 }
 
 /** "dd/MM" from a yyyy-MM-dd civil date (no tz ambiguity). */
