@@ -78,7 +78,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 
 - [ ] **Phase 18: AI classifica compras corretamente** - Marketplace em PROD + prompt da IA kind-aware (para de mandar compra para Investimentos/Reserva)
 - [x] **Phase 19: Cadastro de palavras-chave por categoria** - O usuário registra/remove keywords numa categoria em `/categorias`, escopado por user_id + RLS (completed 2026-06-19)
-- [ ] **Phase 20: Auto-classificação por palavra-chave no upload** - Pipeline memória → palavra-chave → IA, auto-classificando o match no upload (maior keyword vence, sobrescrevível, aprende no confirm)
+- [x] **Phase 20: Auto-classificação por palavra-chave no upload** - Pipeline memória → palavra-chave → IA, auto-classificando o match no upload (maior keyword vence, sobrescrevível, aprende no confirm) (completed 2026-06-19)
 
 ## Phase Details (v1.5)
 
@@ -128,10 +128,10 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
   3. Quando um descritor casa palavras-chave de mais de uma categoria, a palavra-chave mais longa (match mais específico) vence.
   4. Uma linha classificada por palavra-chave é sobrescrevível na grid de revisão; nada persiste até o confirm; o confirm aprende o padrão merchant→categoria na memória como hoje (sem auto-commit em `transactions`/`merchant_patterns` antes do confirm).
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 - [x] 20-01-PLAN.md — matcher matchKeyword + ClassificationSource + fetch RLS + keyword pass no PASS 1 (KW-02/03/04/05-lógica)
-- [ ] 20-02-PLAN.md — fix origin←classification_source em page.tsx + os dois badges 'palavra-chave' + teste de componente (KW-02/05 UI)
+- [x] 20-02-PLAN.md — fix origin←classification_source em page.tsx + os dois badges 'palavra-chave' + teste de componente (KW-02/05 UI)
 
 **UI hint**: yes
 
@@ -160,7 +160,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 4/4 | Complete — SC1/SC2/SC4 + DATA-02 delete executed live | 2026-06-19 |
 | 18. AI classifica compras corretamente | v1.5 | 1/2 | In Progress|  |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete   | 2026-06-19 |
-| 20. Auto-classificação por palavra-chave no upload | v1.5 | 1/2 | In Progress|  |
+| 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete   | 2026-06-19 |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
