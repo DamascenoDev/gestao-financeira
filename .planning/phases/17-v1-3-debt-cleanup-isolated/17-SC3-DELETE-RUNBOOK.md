@@ -198,8 +198,8 @@ to **defer / skip** the SC3 destructive delete:
 - This matches the CONTEXT "Deferred Ideas" decision: deferring SC3 leaves the phase open solely on
   that single item, decided at execution time.
 - Record the defer decision here:
-  - Deferred on (date): ______________________________
-  - Reason: ______________________________
+  - Deferred on (date): **2026-06-19**
+  - Reason: **User chose "Defer DATA-02" at the 17-04 checkpoint — destructive PROD delete to be done in a dedicated hands-on session, not rushed inside the autonomous run.**
 
-- [ ] **DEFER (optional):** I chose to defer the SC3 destructive delete. Phase 17 remains open only
+- [x] **DEFER (optional):** I chose to defer the SC3 destructive delete. Phase 17 remains open only
       on DATA-02; the rest of the phase is unaffected.
