@@ -61,6 +61,9 @@ export function CategoryKeywordsDialog({
   const [value, setValue] = React.useState('')
   const [error, setError] = React.useState<string | null>(null)
   const inputRef = React.useRef<HTMLInputElement>(null)
+  // UI-review fix: per-row dialog instances must not share a hardcoded input id
+  // (duplicate id/htmlFor across rows breaks the label association). useId is unique.
+  const inputId = React.useId()
 
   function handleRemove(kw: CategoryKeyword) {
     // WR-03: handleRemove shares this transition + error state with the add field.
@@ -150,10 +153,10 @@ export function CategoryKeywordsDialog({
 
         <form onSubmit={onSubmit}>
           <Field data-invalid={!!error}>
-            <FieldLabel htmlFor="kw-input">Nova palavra-chave</FieldLabel>
+            <FieldLabel htmlFor={inputId}>Nova palavra-chave</FieldLabel>
             <div className="flex gap-2">
               <Input
-                id="kw-input"
+                id={inputId}
                 ref={inputRef}
                 value={value}
                 onChange={(e) => setValue(e.target.value)}

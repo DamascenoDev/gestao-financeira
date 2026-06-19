@@ -109,7 +109,7 @@ All copy pt-BR, calm/direct/second-person, no exclamation — matching the inher
 | Input placeholder | **"Ex.: uber"** (lowercase — keywords are stored normalized) |
 | Primary CTA (add) | **"Adicionar"** (verb; `Button` type=submit; pending → **"Adicionando…"**) |
 | Chip remove button `aria-label` | **"Remover palavra-chave {keyword}"** |
-| Success toast — add | **"Palavra-chave adicionada."** |
+| Success toast — add | **"\"{keyword}\" adicionada."** — `{keyword}` is the NORMALIZED value (matches the chip the server persists). _Ratified 2026-06-19 from the WR-01 code-review fix: echoing the normalized term keeps the toast consistent with the chip and the duplicate toast, vs the original generic "Palavra-chave adicionada." which could mismatch what was stored._ |
 | Success toast — remove | **"Palavra-chave removida."** |
 | Duplicate (friendly, NOT an error) | **toast.info** — **"\"{keyword}\" já está cadastrada nesta categoria."** (no inline FieldError, no red state — it is a benign no-op) |
 | Inline validation error (empty after trim) | **"Informe uma palavra-chave."** (shown as `FieldError`, mirrors `categoria-form.tsx` "Informe o nome") |
