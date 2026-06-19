@@ -48,13 +48,23 @@ Progress: [░░░░░░░░░░] 0% (v1.4 phases)
 
 ## Deferred Items
 
-Items acknowledged and deferred at v1.3 milestone close on 2026-06-18 (audit status `tech_debt`; full detail in `milestones/v1.3-MILESTONE-AUDIT.md`):
+**v1.3-close items (2026-06-18) — ALL RESOLVED by Phase 17 (2026-06-19):**
+
+| Category | Item | Resolution |
+|----------|------|-----------|
+| verification | 12-VERIFICATION.md (Phase 12) | ✅ RESOLVED — Phase 17 SC2 (MEI dasn CSV content) + SC3 (LGPD DATA-01 export + DATA-02 destructive delete executed live). 12-VERIFICATION flipped to `passed`. |
+| quick_task | import-grid-gaps (20260618) | ✅ RESOLVED — G-07/G-08 (`2ae93fb`) confirmed in live PROD bundle via deploy-ancestry (Phase 17 SC1). SUMMARY.md added; status complete. |
+| nyquist | 12/13-VALIDATION.md | ✅ RESOLVED — Phase 17 SC4: 12-VALIDATION.md created (nyquist_compliant:false, honest) + 13-VALIDATION.md finalized (nyquist_compliant:true). |
+
+**v1.4-close items acknowledged + deferred on 2026-06-19 (audit status `tech_debt`; full detail in `milestones/v1.4-MILESTONE-AUDIT.md`):**
 
 | Category | Item | Status |
 |----------|------|--------|
-| verification | 12-VERIFICATION.md (Phase 12) | human_needed — 12-06 (MEI) + 12-07 (LGPD) prod browser walkthroughs pending user (downloads + throwaway-account destructive delete); re-verify v1.0 reqs MEI-*/DATA-*/SEC-01, not v1.3 reqs |
-| quick_task | import-grid-gaps (20260618) | missing — G-07/G-08 fixes committed `2ae93fb` + GREEN locally; live prod bundle redeploy pending user (cosmetic: import-grid sentinel + "0 importadas" toast) |
-| nyquist | 12-VALIDATION.md / 13-VALIDATION.md | Phase 12 MISSING, Phase 13 draft (nyquist_compliant:false) — both verified by other means (Phase 13 VERIFICATION 9/9, Phase 12 live MCP) |
+| verification | 14-VERIFICATION.md (Phase 14) | human_needed — code-complete + LOCAL-proven; PROD push of migration 0033 deferred (may already be live via 0034 hotfix `9c5d270` — confirm `supabase db push` + gen:types) |
+| verification | 15-VERIFICATION.md (Phase 15) | human_needed — code-complete + LOCAL-proven; real-key classification smoke + PROD maxDuration≥60 inheritance deferred (credential/deploy-gated) |
+| verification | 16-VERIFICATION.md (Phase 16) | human_needed — UI proven by component test; real-key grid render deferred (depends on Phase 15 smoke) |
+
+⚠️ The deferred 14/15/16 live-smokes now require a FRESH prod account (`/auth/signup`) + re-entered BYOK key — the prod account was deleted in Phase 17 (DATA-02).
 
 ## Performance Metrics
 
