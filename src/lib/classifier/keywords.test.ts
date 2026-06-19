@@ -37,6 +37,16 @@ describe('matchKeyword', () => {
     expect(matchKeyword('pao de queijo', tie)).toEqual({ categoryId: 'b' })
   })
 
+  it('WR-01: same keyword + same sort on two categories → deterministic by categoryId, order-independent', () => {
+    const collision: KeywordRule[] = [
+      { categoryId: 'zzz', keyword: 'uber', sort: 0 },
+      { categoryId: 'aaa', keyword: 'uber', sort: 0 },
+    ]
+    // Lower categoryId wins regardless of input order — no silent flip between uploads.
+    expect(matchKeyword('uber trip', collision)).toEqual({ categoryId: 'aaa' })
+    expect(matchKeyword('uber trip', [...collision].reverse())).toEqual({ categoryId: 'aaa' })
+  })
+
   it("defensive: a rule with keyword '' never matches (would includes-match everything)", () => {
     const withEmpty: KeywordRule[] = [{ categoryId: 'wild', keyword: '', sort: 0 }]
     expect(matchKeyword('qualquer descritor', withEmpty)).toBeNull()

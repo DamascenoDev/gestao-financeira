@@ -41,7 +41,15 @@ export function matchKeyword(
     if (
       best === null ||
       rule.keyword.length > best.keyword.length ||
-      (rule.keyword.length === best.keyword.length && rule.sort < best.sort)
+      (rule.keyword.length === best.keyword.length && rule.sort < best.sort) ||
+      // WR-01: final stable tie-break. The DB allows the SAME keyword on two
+      // categories (unique is per-category) and `categories.sort` is not unique
+      // (defaults to 0), so length+sort can tie. Break on categoryId so the winner
+      // is deterministic regardless of fetch/row order — a descriptor never silently
+      // flips category between uploads.
+      (rule.keyword.length === best.keyword.length &&
+        rule.sort === best.sort &&
+        rule.categoryId < best.categoryId)
     ) {
       best = rule
     }

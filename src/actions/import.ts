@@ -444,6 +444,9 @@ export async function ingestStatement(
   const { data: kwRows } = await supabase
     .from('category_keywords')
     .select('category_id, keyword, categories(sort)')
+  // WR-01: no .order() needed here — matchKeyword's final tie-break on categoryId
+  // makes the winner deterministic regardless of fetch/row order (proven order-
+  // independent in keywords.test.ts). The matcher is the single source of determinism.
   const keywordRules: KeywordRule[] = (kwRows ?? []).map((k) => ({
     categoryId: k.category_id,
     keyword: k.keyword,
@@ -815,6 +818,14 @@ export async function confirmImport(
       description: r.base.descriptor_raw,
       descriptor_norm: r.base.descriptor_norm,
       dedupe_key: r.base.dedupe_key,
+      // WR-02 (intentional): the PERSISTED transaction provenance is a coarse
+      // approximation — any classified row records 'memória' (the transactions
+      // classification_source CHECK from migration 0020 permits only 'memória'/'manual'/
+      // 'sugerida'/null, NOT 'palavra-chave'). This pre-dates Phase 20 (it already
+      // labels manual picks as 'memória'). The 'palavra-chave' provenance is a
+      // REVIEW-TIME signal (the grid badge); widening the persisted enum would need a
+      // new migration + PROD push and is out of scope for KW-02..05. KW-05's "confirm
+      // learns merchant→category as today" is unaffected — the learn loop is category-gated.
       classification_source: r.categoryId ? 'memória' : null,
       is_recurring: recurring.has(r.base.descriptor_norm),
       // CAR-02 (D4): additive carro tag — the row persists tagged or untagged. Free
