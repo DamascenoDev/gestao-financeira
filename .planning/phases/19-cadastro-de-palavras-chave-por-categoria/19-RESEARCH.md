@@ -436,16 +436,15 @@ vi.mock('next/cache', () => ({ revalidatePath: (p: string) => revalidatePath(p) 
 
 **Note:** A1–A3 are effectively user-confirmed via the LOCKED CONTEXT/UI-SPEC; A4 is a test-strategy judgment the planner may override.
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **Should the dialog keep a local optimistic copy of the chip list for instant feedback, or rely solely on `revalidatePath` re-render?**
    - What we know: UI-SPEC explicitly leaves this to Claude's discretion ("as long as the persisted source of truth is the server").
-   - What's unclear: nothing blocking.
-   - Recommendation: Start with `revalidatePath`-only (simplest, matches `categoria-form.tsx`). Add optimistic removal only if the round-trip feels laggy; the input clear+refocus already gives immediate add feedback.
+   - **RESOLVED: `revalidatePath`-only** (simplest, matches `categoria-form.tsx`). Add optimistic removal only if the round-trip feels laggy; the input clear+refocus already gives immediate add feedback. Non-blocking discretion item; adopted in 19-02.
 
 2. **Filename of the new dialog/action.**
-   - What we know: CONTEXT marks names as Claude's discretion (suggested `category-keywords-dialog.tsx`, `category-keywords.ts`, `category-keyword.ts`).
-   - Recommendation: Use the suggested names (this RESEARCH assumes them) for kebab-case consistency with the rest of `src/components`/`src/actions`/`src/lib/schemas`.
+   - What we know: CONTEXT marks names as Claude's discretion.
+   - **RESOLVED: suggested kebab-case names** — `category-keywords-dialog.tsx`, `category-keywords.ts`, `category-keyword.ts` — for consistency with `src/components`/`src/actions`/`src/lib/schemas`. Adopted in both plans.
 
 ## Environment Availability
 
