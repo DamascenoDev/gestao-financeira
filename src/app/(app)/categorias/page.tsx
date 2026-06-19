@@ -54,6 +54,25 @@ export default async function CategoriasPage() {
     )
   }
 
+  // Per-category keywords (KW-01). RLS scopes the select to the caller — do NOT
+  // filter by user_id here (same as the categories/totals fetches above). Grouped
+  // into a Map by category_id, mirroring txCountByCategory.
+  const { data: keywordRows } = await supabase
+    .from('category_keywords')
+    .select('id, category_id, keyword')
+    .order('keyword', { ascending: true })
+
+  const keywordsByCategory = new Map<
+    string,
+    { id: string; keyword: string }[]
+  >()
+  for (const row of keywordRows ?? []) {
+    if (!row.category_id) continue
+    const list = keywordsByCategory.get(row.category_id) ?? []
+    list.push({ id: row.id, keyword: row.keyword })
+    keywordsByCategory.set(row.category_id, list)
+  }
+
   const rows: Pick<
     CategoryRow,
     'id' | 'name' | 'kind' | 'color' | 'is_archived' | 'sort'
@@ -106,6 +125,7 @@ export default async function CategoriasPage() {
           <TableBody>
             {rows.map((row) => {
               const txCount = txCountByCategory.get(row.id) ?? 0
+              const keywords = keywordsByCategory.get(row.id) ?? []
               const kind = row.kind as CategoryKind
               return (
                 <TableRow key={row.id}>
@@ -126,6 +146,7 @@ export default async function CategoriasPage() {
                         kind,
                         color: row.color,
                         txCount,
+                        keywords,
                       }}
                       targets={targets}
                     />
