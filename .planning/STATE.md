@@ -4,16 +4,16 @@ milestone: v1.4
 milestone_name: IA de Classificação
 current_phase: 17
 current_phase_name: v1-3-debt-cleanup-isolated
-status: executing
-stopped_at: Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
+status: human_needed
+stopped_at: Phase 17 human-verify — SC1 (deploy-ancestry) + SC2 (MEI CSV) + SC4 (12/13 VALIDATION) + SC3 runbook done; DATA-02 destructive delete DEFERRED
 last_updated: "2026-06-19T02:20:54.808Z"
 last_activity: 2026-06-19
-last_activity_desc: Phase 17 execution started
+last_activity_desc: Phase 17 — 3/4 plans done; DATA-02 destructive delete deferred by user (run 17-SC3-DELETE-RUNBOOK.md)
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 12
-  completed_plans: 10
+  completed_plans: 11
   percent: 75
 ---
 
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 17 (v1-3-debt-cleanup-isolated) — EXECUTING
-Plan: 3 of 4
-Status: Ready to execute
-Last activity: 2026-06-19 — Phase 17 execution started
+Phase: 17 (v1-3-debt-cleanup-isolated) — HUMAN-VERIFY (3/4 done, 1 deferred)
+Plan: 17-01 ✓ (VALIDATION 12+13) · 17-02 ✓ (SC1 deploy-ancestry + SC2 MEI CSV + DATA-01) · 17-03 ✓ (SC3 runbook) · 17-04 ⏭ DEFERRED (DATA-02 destructive delete)
+Status: Open only on DATA-02 — run `.planning/phases/17-v1-3-debt-cleanup-isolated/17-SC3-DELETE-RUNBOOK.md` in a dedicated session
+Last activity: 2026-06-19 — Phase 17 SC1/SC2/SC4 verified live + docs; destructive delete deferred by user
 
 Progress: [░░░░░░░░░░] 0% (v1.4 phases)
 
