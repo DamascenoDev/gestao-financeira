@@ -24,13 +24,13 @@ export const PROVIDER_LABEL: Record<AiProvider, string> = {
 
 /**
  * Cheap hard-coded default model per provider — bare aliases, no date suffix.
- * gemini → 2.0-flash: NON-thinking, fast, cheap, high availability. (History:
- * 2.5-flash-lite was chronically 503 "high demand" on the free tier; 3.5-flash
- * is a thinking model that stalls 50s under the test's 1-token cap and risks the
- * 60s function limit — both wrong for a small-token classification workhorse.)
- * claude → haiku 4.5.
+ * gemini → 2.5-flash-lite: the only Gemini model with FREE-TIER quota on this
+ * project (2.0-flash is limit:0 / paid-only — a 429 RESOURCE_EXHAUSTED; 3.5-flash
+ * is a thinking model that stalls the 1-token test). Non-thinking + cheap; tolerate
+ * the occasional transient 503 "high demand" (retry). Move to a paid model only if
+ * the 503s become disruptive. claude → haiku 4.5.
  */
 export const DEFAULT_MODEL: Record<AiProvider, string> = {
-  gemini: 'gemini-2.0-flash',
+  gemini: 'gemini-2.5-flash-lite',
   claude: 'claude-haiku-4-5',
 }
