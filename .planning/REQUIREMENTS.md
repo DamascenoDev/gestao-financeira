@@ -32,7 +32,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap.
 
 - [ ] **DEBT-03**: Os fixes cosméticos G-07/G-08 (sentinel do grid de importação + toast "0 importadas") estão no **bundle de produção** (redeploy do commit `2ae93fb`)
 - [ ] **DEBT-04**: Walkthrough hands-on em **produção** do MEI (12-06: downloads CSV/JSON) confirma os reqs MEI-* ao vivo
-- [ ] **DEBT-05**: Walkthrough hands-on em **produção** do LGPD (12-07: export de dados + delete de conta throwaway) confirma DATA-*/SEC-01 ao vivo — executado com **backup do DB + `user_id` throwaway confirmado + double-confirm do delete, nunca via dev server** (que aponta para PROD)
+- [x] **DEBT-05**: Walkthrough hands-on em **produção** do LGPD (12-07: export de dados + delete de conta throwaway) confirma DATA-*/SEC-01 ao vivo — executado com **backup do DB + `user_id` throwaway confirmado + double-confirm do delete, nunca via dev server** (que aponta para PROD)
 - [x] **DEBT-06**: `VALIDATION.md` de Nyquist gerado/preenchido para as Phases 12 e 13 (12 ausente, 13 draft)
 
 ## Future Requirements
@@ -82,7 +82,7 @@ Mapa requisito→fase. Preenchido na criação do roadmap.
 | CLSAI-08 | Phase 16 | Pending |
 | DEBT-03 | Phase 17 | Pending |
 | DEBT-04 | Phase 17 | Pending |
-| DEBT-05 | Phase 17 | Pending |
+| DEBT-05 | Phase 17 | Complete |
 | DEBT-06 | Phase 17 | Complete |
 
 **Coverage:**
