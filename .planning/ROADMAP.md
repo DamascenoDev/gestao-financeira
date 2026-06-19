@@ -90,7 +90,9 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
   1. A categoria default "Marketplace" está presente na conta em PROD (migration `0035` aplicada via `supabase db push`), disponível como alvo de classificação.
   2. Num upload com um descritor de marketplace nunca visto (ex.: AliExpress, Mercado Livre, Shopee), a sugestão da IA cai em "Marketplace" (ou outra categoria de consumo) — nunca em Investimentos/Reserva.
   3. Cada categoria é enviada ao prompt com seu `kind` (consumo/alocação) e o prompt instrui explicitamente o modelo a não escolher categorias de alocação para compras/gastos.
-**Plans**: TBD
+**Plans**: 2 plans
+- [ ] 18-01-PLAN.md — CLSAI-09: prompt kind-aware (tag inline + glossário + regra dura) + gate de código + threading {id,name,kind} + 4 fixtures + 2 novos describes (autônomo)
+- [ ] 18-02-PLAN.md — MKT-01: verificar 0035 em PROD (Claude) + human-verify (usuário roda `db push`, re-signup, "Marketplace" + sugestão de consumo)
 
 ### Phase 19: Cadastro de palavras-chave por categoria
 **Goal**: O usuário consegue manter, na tela `/categorias`, a lista de palavras-chave de cada categoria — adicionar e remover keywords manualmente — com os dados isolados por usuário.
@@ -138,7 +140,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 | 15. Classification Wire | v1.4 | 2/2 | Complete (LOCAL + PROD live-smoke 2026-06-19) | 2026-06-19 |
 | 16. Review-Grid Suggestion Affordances | v1.4 | 1/1 | Complete (LOCAL-verified + live in PROD) | 2026-06-18 |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 4/4 | Complete — SC1/SC2/SC4 + DATA-02 delete executed live | 2026-06-19 |
-| 18. AI classifica compras corretamente | v1.5 | 0/0 | Not started | - |
+| 18. AI classifica compras corretamente | v1.5 | 0/2 | Planned | - |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 0/0 | Not started | - |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 0/0 | Not started | - |
 
