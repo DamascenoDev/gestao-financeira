@@ -121,7 +121,21 @@ export async function classifyDescriptors(
     })
 
     const textPart = result.content.find((c) => c.type === 'text')
+    // TEMP DIAGNOSTIC (quick-task 260619-d68): reveal what the model actually returns
+    // — finishReason (MAX_TOKENS?), output length, parsed count, and the raw category
+    // ids (owned UUIDs vs hallucinated names) before the enum gate. Remove once green.
+    console.log('[classify-debug]', {
+      model: aiSettings.model,
+      finishReason: result.finishReason,
+      textLen: textPart?.text?.length ?? 0,
+      descriptorsSent: descriptors.length,
+    })
     const parsed = classifyResultSchema.parse(JSON.parse(textPart?.text ?? ''))
+    console.log('[classify-debug:parsed]', {
+      parsedResults: parsed.results.length,
+      rawCategoryIds: parsed.results.slice(0, 5).map((r) => r.categoryId),
+      ownedIdSample: categories.slice(0, 3).map((c) => c.id),
+    })
     for (const r of parsed.results) {
       out.set(r.descriptor, {
         categoryId: validateSuggestion(r.categoryId, categories),

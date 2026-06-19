@@ -1,6 +1,7 @@
 import 'server-only' // build fails loudly if a client module imports this
 
 import { createClient } from '@/lib/supabase/server'
+import { DEFAULT_MODEL } from '@/lib/ai/settings'
 import type { AiProvider } from '@/lib/schemas/ai-settings'
 
 /**
@@ -33,9 +34,15 @@ export async function getDecryptedAiSettings(): Promise<{
 
   if (!row || !key) return null
 
+  // Read the model LIVE from DEFAULT_MODEL, NOT the per-row `model` column. There is
+  // no model picker (CLSAI-F2 deferred), so the stored column is only ever a past
+  // DEFAULT_MODEL value — reading the constant means a model swap takes effect on
+  // deploy WITHOUT users re-saving their key, and removes the stale-stored-model
+  // footgun. The `ai_settings.model` column is now vestigial (still written on save).
+  const provider = row.provider as AiProvider
   return {
-    provider: row.provider as AiProvider,
-    model: row.model,
+    provider,
+    model: DEFAULT_MODEL[provider],
     apiKey: key,
   }
 }
