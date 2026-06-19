@@ -83,6 +83,36 @@
 
 ---
 
+## Milestone: v1.4 — IA de Classificação (BYOK)
+
+**Shipped:** 2026-06-19
+**Phases:** 4 (14–17) | **Plans:** 12 | **Tasks:** 17
+
+### What Was Built
+BYOK key storage (migration 0033: Vault `ai_settings` + RLS + decrypt-server-only RPCs) → memory-first batched AI classification in `suggestCategory()` (one enum-gated `classifyDescriptors` call per upload, never-throw fallback, no auto-commit, PII-safe descriptor_norm payload) → review-grid affordances (provenance memória/IA + confidence + low-confidence-first). Phase 17 cleared all v1.3 debt operationally, including a destructive PROD account delete (DATA-02) executed live.
+
+### What Worked
+- **Memory-first seam paid off:** the v1.3 `suggestCategory()` + `SuggestionSlot` seam made the AI wire additive — integration-checker found the 14→15→16 chain 100% wired, 0 defects, first pass.
+- **Honest deferral of credential-gated smokes:** unit tests proved every no-key/error/enum-drift path; only the real-provider call + PROD push were marked `human_needed` rather than faked.
+- **Safety-gated destructive op:** the SC3 runbook (5 ordered guard-rails) + read-only deploy-ancestry for SC1 (instead of a risky live re-confirm write) kept the personal PROD account safe until the user explicitly authorized the full delete.
+
+### What Was Inefficient
+- **Traceability drift:** BYOK/CLSAI rows sat at "Pending" and CLSAI wasn't in the 15/16 SUMMARY frontmatter — the audit had to reconcile reality vs the table. Mark requirements in SUMMARY frontmatter at execution time.
+- **Stale cross-phase status:** Phase 12's `human_needed` + the import-grid-gaps quick task lingered as "open" until Phase 17 resolved them — the markers should flip when the resolving work lands, not at the next milestone close.
+
+### Patterns Established
+- **Operational/human-verify phase as `autonomous:false`** with a doc runbook + agent-driven non-destructive checks (browser MCP for read-only live-verify; deploy-ancestry for "is it in the bundle").
+- **Pragmatic-retroactive Nyquist VALIDATION** for already-shipped phases: document what actually shipped + was verified, honest `nyquist_compliant`, no fabricated runs.
+
+### Key Lessons
+- Confirm "is the fix live" via git deploy-ancestry + a read-only bundle/behavior check before triggering any write on a real account.
+- A deleted PROD account turns deferred live-smokes into re-setup work — sequence destructive cleanup AFTER pending live verification, not before.
+
+### Cost Observations
+- Model mix: ~100% opus (Opus 4.8 1M). Heavy subagent orchestration (planner/checker/executor/verifier/integration-checker) kept the main thread lean across the phase + full lifecycle.
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
