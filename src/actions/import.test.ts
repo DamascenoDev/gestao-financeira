@@ -25,6 +25,9 @@ let claimsSub: string | null = 'user-1'
 // statements upsert: returns a row id (fresh) or null (content_hash hit ⇒ "0 novas").
 let statementInsertedRow: { id: string } | null = { id: 'stmt-1' }
 let existingStatementId = 'stmt-existing'
+// status of the existing statement returned on a content_hash hit. 'imported' ⇒
+// confirmed ⇒ "0 novas" short-circuit; anything else ⇒ unconfirmed ⇒ re-parse.
+let existingStatementStatus = 'imported'
 // memory lookup: when the descriptor_norm is a key here, return the hit mapping.
 let memoryHits: Record<string, { category_id: string; reserva_id: string | null }> = {}
 // transactions dedupe pre-check: dedupe_keys already present in the user's txns.
@@ -131,8 +134,11 @@ function makeBuilder(from: string) {
       return Promise.resolve({ data: { parsed_rows: statementParsedRows }, error: null })
     }
     if (from === 'statements' && op !== 'upsert') {
-      // read-back of the existing statement on the "0 novas" path
-      return Promise.resolve({ data: { id: existingStatementId }, error: null })
+      // read-back of the existing statement on the content_hash-hit path (id + status)
+      return Promise.resolve({
+        data: { id: existingStatementId, status: existingStatementStatus },
+        error: null,
+      })
     }
     if (from === 'merchant_patterns') {
       const norm = filters.find(([c]) => c === 'descriptor_norm')?.[1] as string
@@ -304,6 +310,7 @@ beforeEach(() => {
   claimsSub = 'user-1'
   statementInsertedRow = { id: 'stmt-1' }
   existingStatementId = 'stmt-existing'
+  existingStatementStatus = 'imported'
   memoryHits = {}
   existingDedupeKeys = new Set()
   csvProfile = null
@@ -378,13 +385,26 @@ describe('ingestStatement', () => {
     expect(storageApi.download).not.toHaveBeenCalled()
   })
 
-  it('returns "0 novas" (alreadyImported, empty rows) on a content_hash hit', async () => {
+  it('returns "0 novas" (alreadyImported, empty rows) on a content_hash hit of a CONFIRMED statement', async () => {
     statementInsertedRow = null // upsert ignoreDuplicates ⇒ no row ⇒ hash already present
+    existingStatementStatus = 'imported' // prior import was confirmed ⇒ short-circuit
     const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
     expect('alreadyImported' in r && r.alreadyImported).toBe(true)
     if ('rows' in r) {
       expect(r.rows).toEqual([])
       expect(r.summary.novas).toBe(0)
+      expect(r.statementId).toBe('stmt-existing')
+    }
+  })
+
+  it('RE-PARSES on a content_hash hit when the existing statement is UNCONFIRMED', async () => {
+    statementInsertedRow = null // upsert ignoreDuplicates ⇒ conflict ⇒ existing row
+    existingStatementStatus = 'parsed' // never confirmed ⇒ must be re-importable
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    // NOT short-circuited: re-parsed the fixture and reused the existing statement id.
+    expect('alreadyImported' in r && r.alreadyImported).toBe(false)
+    if ('rows' in r && r.rows) {
+      expect(r.rows.length).toBeGreaterThan(0)
       expect(r.statementId).toBe('stmt-existing')
     }
   })

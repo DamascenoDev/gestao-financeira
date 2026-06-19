@@ -301,23 +301,37 @@ export async function ingestStatement(
     return { error: 'Não foi possível registrar o arquivo. Tente de novo.' }
   }
 
+  let statementId: string
   if (!inserted) {
-    // content_hash hit → the "0 novas" path. Read back the existing statement id
-    // WITHOUT re-parsing (no side effects on a re-upload).
+    // content_hash hit. Read back the existing statement + its status.
     const { data: existing } = await supabase
       .from('statements')
-      .select('id')
+      .select('id, status')
       .eq('content_hash', hash)
       .maybeSingle()
-    return {
-      statementId: existing?.id ?? '',
-      rows: [],
-      summary: { total: 0, novas: 0, naoClassificadas: 0, duplicadas: 0, descartadas: 0 },
-      alreadyImported: true,
+    if (!existing) {
+      // Conflict reported but the row is unreadable (race / RLS) — fail safe.
+      return { error: 'Não foi possível registrar o arquivo. Tente de novo.' }
     }
+    // Only treat the file as "already imported" (0 novas, no re-parse) when the prior
+    // import was actually CONFIRMED (status 'imported'). An UNCONFIRMED statement
+    // (parsed/uploaded/parsing/failed) created ZERO transactions, so the same file must
+    // be allowed to re-review — otherwise a file you opened but never confirmed could
+    // never be re-imported (the "0 novas / já importado" UX bug).
+    if (existing.status === 'imported') {
+      return {
+        statementId: existing.id,
+        rows: [],
+        summary: { total: 0, novas: 0, naoClassificadas: 0, duplicadas: 0, descartadas: 0 },
+        alreadyImported: true,
+      }
+    }
+    // Unconfirmed re-upload: reuse the existing statement row and RE-PARSE below; the
+    // persist step refreshes its parsed_rows + resets status to 'parsed'.
+    statementId = existing.id
+  } else {
+    statementId = inserted.id
   }
-
-  const statementId = inserted.id
 
   // Parse by extension. CSV needs a mapping; resolve it from the argument, a saved
   // profile, or auto-map — else return the needsMapping branch.
@@ -518,6 +532,7 @@ export async function ingestStatement(
       parsed_rows: rows as unknown as Json,
       summary: summary as unknown as Json,
       tx_count: rows.length,
+      status: 'parsed', // (re)parsed and awaiting review; confirmImport sets 'imported'
     })
     .eq('id', statementId)
 
