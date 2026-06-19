@@ -18,8 +18,8 @@ import { suggestCategory, validateSuggestion } from './suggest'
 
 const MERCADO_ID = '11111111-1111-4111-8111-111111111111'
 const CATEGORIES = [
-  { id: MERCADO_ID, name: 'Mercado' },
-  { id: '22222222-2222-4222-8222-222222222222', name: 'Transporte' },
+  { id: MERCADO_ID, name: 'Mercado', kind: 'consumo' as const },
+  { id: '22222222-2222-4222-8222-222222222222', name: 'Transporte', kind: 'consumo' as const },
 ]
 
 describe('suggestCategory — 1-item delegate, no-key → null (CLSAI-01)', () => {

@@ -23,9 +23,12 @@ import { classifyDescriptors } from './classify'
 
 const MERCADO_ID = '11111111-1111-4111-8111-111111111111'
 const TRANSPORTE_ID = '22222222-2222-4222-8222-222222222222'
+const INVESTIMENTOS_ID = '33333333-3333-4333-8333-333333333333'
 const CATEGORIES = [
-  { id: MERCADO_ID, name: 'Mercado' },
-  { id: TRANSPORTE_ID, name: 'Transporte' },
+  { id: MERCADO_ID, name: 'Mercado', kind: 'consumo' as const },
+  { id: TRANSPORTE_ID, name: 'Transporte', kind: 'consumo' as const },
+  // alocação entry feeds the kind gate (CLSAI-09) — a spend must NEVER map here.
+  { id: INVESTIMENTOS_ID, name: 'Investimentos', kind: 'alocacao' as const },
 ]
 
 const FAKE_SETTINGS = {
@@ -155,5 +158,53 @@ describe('classifyDescriptors — PII payload guard (SEC-03)', () => {
     expect(sent).not.toMatch(/\d{2}\/\d{2}\/\d{4}/)
     expect(sent).not.toMatch(/\d{4}-\d{2}-\d{2}/)
     expect(sent).not.toMatch(/amount_cents|occurred_on|descriptor_raw/)
+  })
+})
+
+describe('classifyDescriptors — kind-aware prompt (CLSAI-09)', () => {
+  it('tags each category line with its kind and carries the hard anti-allocation rule', async () => {
+    const doGenerate = withDoGenerate(vi.fn().mockResolvedValue(textResult({ results: [] })))
+    await classifyDescriptors(['aliexpress'], CATEGORIES, FAKE_SETTINGS)
+
+    const prompt = doGenerate.mock.calls[0]?.[0]?.prompt as {
+      role: string
+      content: string | { type: string; text: string }[]
+    }[]
+    const systemMsg = prompt.find((m) => m.role === 'system')?.content as string
+    const userMsg = JSON.stringify(prompt.find((m) => m.role === 'user')?.content)
+
+    // user message tags consumo + alocação categories inline
+    expect(userMsg).toContain('(consumo)')
+    expect(userMsg).toContain('(alocação)')
+    // system message carries the glossary + the hard anti-allocation rule tokens
+    expect(systemMsg).toContain('NUNCA atribua')
+    expect(systemMsg).toContain('categoryId: null')
+  })
+})
+
+describe('classifyDescriptors — kind gate (CLSAI-09)', () => {
+  it('nulls an allocation pick for a spend, preserving confidence', async () => {
+    withDoGenerate(
+      vi.fn().mockResolvedValue(
+        textResult({
+          results: [{ descriptor: 'aliexpress', categoryId: INVESTIMENTOS_ID, confidence: 0.8 }],
+        }),
+      ),
+    )
+    const map = await classifyDescriptors(['aliexpress'], CATEGORIES, FAKE_SETTINGS)
+    // owned id, but kind='alocacao' → gated to null; confidence kept (mirrors enum-drift)
+    expect(map.get('aliexpress')).toEqual({ categoryId: null, confidence: 0.8 })
+  })
+
+  it('passes a consumo pick straight through (no regression)', async () => {
+    withDoGenerate(
+      vi.fn().mockResolvedValue(
+        textResult({
+          results: [{ descriptor: 'aliexpress', categoryId: MERCADO_ID, confidence: 0.85 }],
+        }),
+      ),
+    )
+    const map = await classifyDescriptors(['aliexpress'], CATEGORIES, FAKE_SETTINGS)
+    expect(map.get('aliexpress')).toEqual({ categoryId: MERCADO_ID, confidence: 0.85 })
   })
 })

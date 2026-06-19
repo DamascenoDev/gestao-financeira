@@ -280,7 +280,7 @@ const getDecryptedAiSettings = vi.fn(async () => aiSettings)
 const classifyDescriptors = vi.fn(
   async (
     _descriptors: string[],
-    _categories: { id: string; name: string }[],
+    _categories: { id: string; name: string; kind: 'consumo' | 'alocacao' }[],
     _settings: unknown,
   ) => aiSuggestions,
 )
@@ -290,7 +290,7 @@ vi.mock('@/lib/ai/settings.server', () => ({
 vi.mock('@/lib/ai/classify', () => ({
   classifyDescriptors: (
     descriptors: string[],
-    categories: { id: string; name: string }[],
+    categories: { id: string; name: string; kind: 'consumo' | 'alocacao' }[],
     settings: unknown,
   ) => classifyDescriptors(descriptors, categories, settings),
 }))
