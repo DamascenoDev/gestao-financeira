@@ -3,8 +3,9 @@
 import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
+import { classifyDescriptors } from '@/lib/ai/classify'
+import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
 import { lookupMemory } from '@/lib/classifier/memory'
-import { suggestCategory } from '@/lib/classifier/suggest'
 import { csvHeaderSignature } from '@/lib/csv-profile'
 import { lookupCsvProfile } from '@/lib/csv-profile.server'
 import { contentHash, dedupeKey } from '@/lib/dedupe'
@@ -81,6 +82,13 @@ export interface IngestSummary {
    * instead of silently importing nothing.
    */
   descartadas: number
+  /**
+   * CLSAI-06: the AI suggestion pass was skipped or degraded (no key, or
+   * `classifyDescriptors` returned an empty Map). NON-BLOCKING — the upload + review
+   * grid stay fully usable; Phase 16 surfaces this hint in the UI. Optional/absent
+   * when there was no miss set OR the AI returned at least one suggestion.
+   */
+  iaIndisponivel?: boolean
 }
 
 export type IngestResult =
@@ -388,7 +396,7 @@ export async function ingestStatement(
     }
   }
 
-  // Pre-fetch the user's categories once for the (deferred) suggestion seam.
+  // Pre-fetch the user's categories once for the AI suggestion pass (id: name lines).
   const { data: categories } = await supabase
     .from('categories')
     .select('id, name')
@@ -412,15 +420,17 @@ export async function ingestStatement(
     }
   }
 
+  // PASS 1 — memory-first (CLS-01 / CLSAI-02): the unchanged per-row `lookupMemory`
+  // front door. A HIT auto-classifies with ZERO external calls; a MISS leaves the row
+  // unclassified AND its descriptor_norm is collected into the unique miss set for the
+  // single batched AI call below. NO AI function is called inside this loop.
   const rows: ParsedReviewRow[] = []
+  const missNorms = new Set<string>()
   for (let i = 0; i < rawRows.length; i += 1) {
     const raw = rawRows[i]!
     const key = keysByRaw[i]!
     const isDuplicate = dupSet.has(key)
 
-    // Memory-first classification (CLS-01): a HIT auto-classifies with zero
-    // external calls; a MISS leaves the row unclassified (suggestCategory is the
-    // deferred-AI seam → null in v1) for a manual pick on the review screen.
     const hit = await lookupMemory(supabase, raw.descriptor_norm)
     let categoryId: string | null = null
     let reservaId: string | null = null
@@ -430,10 +440,8 @@ export async function ingestStatement(
       reservaId = hit.reserva_id
       source = 'memória'
     } else {
-      // Seam returns null in v1 — no PII egress, SEC-03 holds by construction.
-      await suggestCategory(raw.descriptor_norm, categoryList)
-      categoryId = null
-      source = null
+      // MISS — collect for the ONE batched classify; row stays unclassified.
+      missNorms.add(raw.descriptor_norm)
     }
 
     rows.push({
@@ -447,6 +455,35 @@ export async function ingestStatement(
     })
   }
 
+  // ONE call (CLSAI-03) — exactly one `classifyDescriptors` over the DEDUPED unique
+  // miss `descriptor_norm` set. Memory-first: when there is NO miss, skip the AI path
+  // ENTIRELY (no key read, no call). On no-key OR a degraded empty Map, set the
+  // non-blocking `iaIndisponivel` note (CLSAI-06) — the upload never fails on the AI.
+  let suggestions = new Map<string, { categoryId: string | null; confidence: number }>()
+  let iaIndisponivel = false
+  if (missNorms.size > 0) {
+    const aiSettings = await getDecryptedAiSettings()
+    if (!aiSettings) {
+      iaIndisponivel = true // no key — expected pre-IA fallback
+    } else {
+      suggestions = await classifyDescriptors([...missNorms], categoryList, aiSettings)
+      if (suggestions.size === 0) iaIndisponivel = true // provider error degraded to {}
+    }
+  }
+
+  // PASS 2 — map the AI results back to the miss rows (CLSAI-01/05). A suggestion is a
+  // NON-BINDING hint: it is attached as `row.suggestion` and NEVER written to
+  // `row.category_id` (no auto-commit), and a memory hit is never overwritten.
+  if (suggestions.size > 0) {
+    for (const row of rows) {
+      if (row.category_id !== null) continue // never overwrite a memory hit
+      const s = suggestions.get(row.descriptor_norm)
+      if (s && s.categoryId !== null) {
+        row.suggestion = { categoryId: s.categoryId, confidence: s.confidence, source: 'ia' }
+      }
+    }
+  }
+
   const duplicadas = rows.filter((r) => r.duplicate).length
   const summary: IngestSummary = {
     total: rows.length,
@@ -454,6 +491,7 @@ export async function ingestStatement(
     naoClassificadas: rows.filter((r) => r.category_id === null).length,
     duplicadas,
     descartadas: dropped, // CR-01: rows skipped as malformed (surfaced honestly)
+    ...(iaIndisponivel ? { iaIndisponivel: true } : {}),
   }
 
   // Persist the review payload on the statement so the review RSC (Plan 03) reads

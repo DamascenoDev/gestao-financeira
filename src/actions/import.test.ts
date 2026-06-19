@@ -258,6 +258,37 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => supabaseMock),
 }))
 
+// --- AI seam mocks (Phase 15) ----------------------------------------------
+//
+// The two-pass ingest wire calls getDecryptedAiSettings() once (only when there is
+// at least one memory miss) and classifyDescriptors() at most once per upload. Both
+// are mocked here so the edge tests drive the no-key / batched-call / no-auto-commit
+// paths deterministically without a live Supabase or provider.
+//
+// aiSettings: null ⇒ no key (fallback). aiSuggestions: the Map classifyDescriptors
+// returns, keyed by descriptor_norm. classifyDescriptors is a spy so a test can
+// assert its call count (0-call-when-all-hits) and the exact deduped descriptor array.
+let aiSettings: { provider: string; model: string; apiKey: string } | null = null
+let aiSuggestions: Map<string, { categoryId: string | null; confidence: number }> = new Map()
+const getDecryptedAiSettings = vi.fn(async () => aiSettings)
+const classifyDescriptors = vi.fn(
+  async (
+    _descriptors: string[],
+    _categories: { id: string; name: string }[],
+    _settings: unknown,
+  ) => aiSuggestions,
+)
+vi.mock('@/lib/ai/settings.server', () => ({
+  getDecryptedAiSettings: (...args: unknown[]) => getDecryptedAiSettings(...(args as [])),
+}))
+vi.mock('@/lib/ai/classify', () => ({
+  classifyDescriptors: (
+    descriptors: string[],
+    categories: { id: string; name: string }[],
+    settings: unknown,
+  ) => classifyDescriptors(descriptors, categories, settings),
+}))
+
 import {
   confirmImport,
   createSignedStatementUpload,
@@ -294,6 +325,10 @@ beforeEach(() => {
   ledgerInserts.length = 0
   transactionInserts.length = 0
   pdfText = ''
+  aiSettings = null
+  aiSuggestions = new Map()
+  getDecryptedAiSettings.mockClear()
+  classifyDescriptors.mockClear()
 })
 
 // --- createSignedStatementUpload (IMP-01) ----------------------------------
@@ -449,6 +484,121 @@ describe('ingestStatement', () => {
     if (!('rows' in r)) throw new Error('expected a review result, not an error')
     expect(r.rows).toEqual([])
     expect(r.summary.total).toBe(0)
+  })
+
+  // --- Phase 15: the two-pass AI wire (memory-first, one batched call) -------
+
+  it('0-call-when-all-hits (CLSAI-02): every descriptor a memory hit → ZERO AI calls', async () => {
+    // The itau fixture's three descriptors are all known to memory → no miss set.
+    memoryHits = {
+      'padaria sao joao': { category_id: 'cat-merc', reserva_id: null },
+      'netflix com': { category_id: 'cat-merc', reserva_id: null },
+      'uber trip': { category_id: 'cat-merc', reserva_id: null },
+    }
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+    // Memory-first: NO classify call AND no key read when the miss set is empty.
+    expect(classifyDescriptors).not.toHaveBeenCalled()
+    expect(getDecryptedAiSettings).not.toHaveBeenCalled()
+    expect(r.rows.every((x) => x.classification_source === 'memória')).toBe(true)
+  })
+
+  it('1-call-N-unique (CLSAI-03): M rows / N unique misses → exactly ONE call with N deduped descriptors', async () => {
+    // itau-dup-descriptor: 4 rows, 2 unique descriptors (padaria ×3, netflix ×1).
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+    expect(r.rows.length).toBe(4)
+    // Exactly ONE batched call.
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    const sentDescriptors = classifyDescriptors.mock.calls[0]![0]
+    // The deduped unique miss set — N=2, not M=4.
+    expect([...sentDescriptors].sort()).toEqual(['netflix com', 'padaria sao joao'])
+  })
+
+  it('no-auto-commit (CLSAI-05): a miss row gets row.suggestion but category_id stays null', async () => {
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+    aiSuggestions = new Map([
+      ['padaria sao joao', { categoryId: 'cat-merc', confidence: 0.9 }],
+      // netflix gets a null categoryId → no suggestion attached.
+      ['netflix com', { categoryId: null, confidence: 0.2 }],
+    ])
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    const padarias = r.rows.filter((x) => x.descriptor_norm === 'padaria sao joao')
+    expect(padarias.length).toBe(3)
+    for (const row of padarias) {
+      // The hint is attached…
+      expect(row.suggestion).toEqual({
+        categoryId: 'cat-merc',
+        confidence: 0.9,
+        source: 'ia',
+      })
+      // …but NEVER applied to category_id (no auto-commit).
+      expect(row.category_id).toBeNull()
+      expect(row.classification_source).toBeNull()
+    }
+    // A null-categoryId suggestion attaches nothing.
+    const netflix = r.rows.find((x) => x.descriptor_norm === 'netflix com')!
+    expect(netflix.suggestion).toBeUndefined()
+    expect(netflix.category_id).toBeNull()
+    // Still surfaced as unclassified in the summary (no row was auto-classified).
+    expect(r.summary.naoClassificadas).toBe(4)
+  })
+
+  it('no-auto-commit: a memory hit is never overwritten by a suggestion', async () => {
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    // padaria is a memory hit; netflix is the only miss.
+    memoryHits = { 'padaria sao joao': { category_id: 'cat-hit', reserva_id: null } }
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+    aiSuggestions = new Map([['netflix com', { categoryId: 'cat-ai', confidence: 0.8 }]])
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+    // Only the miss descriptor was sent.
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    expect(classifyDescriptors.mock.calls[0]![0]).toEqual(['netflix com'])
+
+    const padarias = r.rows.filter((x) => x.descriptor_norm === 'padaria sao joao')
+    for (const row of padarias) {
+      expect(row.category_id).toBe('cat-hit')
+      expect(row.classification_source).toBe('memória')
+      expect(row.suggestion).toBeUndefined()
+    }
+  })
+
+  it('fallback-no-key (CLSAI-06): no key → no AI call, upload OK, non-blocking iaIndisponivel note', async () => {
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    aiSettings = null // no key
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+    // The key was read (there WAS a miss), but no classify call followed.
+    expect(getDecryptedAiSettings).toHaveBeenCalledTimes(1)
+    expect(classifyDescriptors).not.toHaveBeenCalled()
+    expect(r.rows.every((x) => x.suggestion === undefined)).toBe(true)
+    // Upload returns normally with the non-blocking note.
+    expect(r.summary.iaIndisponivel).toBe(true)
+    expect(r.summary.total).toBe(4)
+  })
+
+  it('fallback-empty-map (CLSAI-06): key present but classify returns empty Map → upload OK, iaIndisponivel note', async () => {
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+    aiSuggestions = new Map() // provider error degraded to empty Map
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+    expect(classifyDescriptors).toHaveBeenCalledTimes(1)
+    expect(r.rows.every((x) => x.suggestion === undefined)).toBe(true)
+    expect(r.summary.iaIndisponivel).toBe(true)
   })
 })
 
