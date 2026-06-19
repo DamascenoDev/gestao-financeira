@@ -32,7 +32,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap.
 
 - [x] **DEBT-03**: Os fixes cosméticos G-07/G-08 (sentinel do grid de importação + toast "0 importadas") estão no **bundle de produção** (redeploy do commit `2ae93fb`) — confirmado via deploy-ancestry (`2ae93fb` ancestral do hotfix de prod `97366e5` ancestral do HEAD), 17-02
 - [x] **DEBT-04**: Walkthrough hands-on em **produção** do MEI (12-06: downloads CSV/JSON) confirma os reqs MEI-* ao vivo — `dasn-2026.csv` capturado ao vivo: UTF-8 BOM + `;` + pt-BR, 17-02
-- [ ] **DEBT-05**: Walkthrough hands-on em **produção** do LGPD (12-07: export de dados + delete de conta throwaway) confirma DATA-*/SEC-01 ao vivo — executado com **backup do DB + `user_id` throwaway confirmado + double-confirm do delete, nunca via dev server** (que aponta para PROD). **PARCIAL:** runbook PRONTO (17-03) + DATA-01 export validado (17-02); **delete destrutivo (DATA-02) DIFERIDO por decisão do usuário 2026-06-19** — executar via `17-SC3-DELETE-RUNBOOK.md`
+- [x] **DEBT-05**: Walkthrough hands-on em **produção** do LGPD (12-07: export de dados + delete de conta) confirma DATA-*/SEC-01 ao vivo. **COMPLETO:** runbook (17-03) + DATA-01 export validado (17-02) + **delete destrutivo (DATA-02) EXECUTADO ao vivo 2026-06-19** — gate type-to-`APAGAR` provado, delete via site PROD (`POST /conta 200`→`303`→`/auth/login`), conta apagada. Usuário autorizou apagar a conta inteira (só tinha dados de teste; GR1 backup dispensado, GR2 throwaway N/A — conta única)
 - [x] **DEBT-06**: `VALIDATION.md` de Nyquist gerado/preenchido para as Phases 12 e 13 (12 ausente, 13 draft)
 
 ## Future Requirements
@@ -82,7 +82,7 @@ Mapa requisito→fase. Preenchido na criação do roadmap.
 | CLSAI-08 | Phase 16 | Pending |
 | DEBT-03 | Phase 17 | Complete |
 | DEBT-04 | Phase 17 | Complete |
-| DEBT-05 | Phase 17 | Partial (DATA-02 deferred) |
+| DEBT-05 | Phase 17 | Complete |
 | DEBT-06 | Phase 17 | Complete |
 
 **Coverage:**

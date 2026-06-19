@@ -198,8 +198,24 @@ to **defer / skip** the SC3 destructive delete:
 - This matches the CONTEXT "Deferred Ideas" decision: deferring SC3 leaves the phase open solely on
   that single item, decided at execution time.
 - Record the defer decision here:
-  - Deferred on (date): **2026-06-19**
-  - Reason: **User chose "Defer DATA-02" at the 17-04 checkpoint — destructive PROD delete to be done in a dedicated hands-on session, not rushed inside the autonomous run.**
+  - Deferred on (date): **2026-06-19** → **SUPERSEDED — executed same day (see below)**
+  - Reason: initially deferred at the 17-04 checkpoint; then the user authorized deleting the whole
+    account ("pode deletar tudo… não fiz os cadastros ainda, não tem problema apagar tudo").
 
-- [x] **DEFER (optional):** I chose to defer the SC3 destructive delete. Phase 17 remains open only
-      on DATA-02; the rest of the phase is unaffected.
+- [ ] **DEFER (optional):** ~~deferred~~ — superseded; the delete was executed on 2026-06-19.
+
+---
+
+## EXECUTION RECORD (2026-06-19)
+
+Executed by the orchestrator via browser MCP under explicit user authorization. The PROD account held
+only phase-12 test data (no real cadastros), so the whole account was deleted directly rather than via a
+separate throwaway.
+
+- **GR1 backup:** WAIVED by user (disposable data); no dashboard access to take one.
+- **GR2 throwaway:** N/A — single test-data account, authorized for direct delete.
+- **GR3 `APAGAR` gate:** ✓ focus Cancelar → disabled empty → disabled lowercase `apagar` → enabled only on exact `APAGAR`.
+- **GR4 PROD-only:** ✓ executed on `https://gestao-financeira-ebon-mu.vercel.app/conta` (not dev server).
+- **GR5 cascade + signout:** ✓ "Apagando…" → `POST /conta 200` → `303` redirect → `/auth/login` (account gone, signed out).
+
+DATA-02 verified end-to-end in production. To use the app again: sign up at `/auth/signup` and re-enter the BYOK AI key.

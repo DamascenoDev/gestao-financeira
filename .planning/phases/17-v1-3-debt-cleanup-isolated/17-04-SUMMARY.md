@@ -1,41 +1,50 @@
 ---
 phase: 17-v1-3-debt-cleanup-isolated
 plan: 04
-status: deferred
-requirements_pending_human: [DATA-02]
+status: complete
+requirements_completed: [DATA-02]
 requirement: DEBT-05
 autonomous: false
-deferred_on: 2026-06-19
-decision: user chose "Defer DATA-02" at the 17-04 checkpoint
+executed_on: 2026-06-19
+executed_by: orchestrator via browser MCP — user authorized ("pode deletar tudo… não fiz os cadastros ainda, não tem problema apagar tudo")
+production_url: https://gestao-financeira-ebon-mu.vercel.app/conta
 ---
 
-# 17-04 — SC3 destructive throwaway-account delete — DEFERRED (user decision)
+# 17-04 — SC3 destructive account delete (DATA-02) — COMPLETE (executed)
 
-The destructive throwaway-account delete (DATA-02) is the only step in Phase 17 that requires a
-hands-on human session against PRODUCTION. At the 17-04 checkpoint the user chose **Defer DATA-02**
-(the runbook's and CONTEXT's explicitly-supported defer path).
+Initially deferred at the 17-04 checkpoint, then the user explicitly authorized deleting the entire
+PROD account: the account held only test data from the phase-12 verification (no real cadastros yet),
+so a full delete — including the auth login — was acceptable. The orchestrator drove the delete via the
+browser MCP (overriding the earlier "agent never runs this" default per the user's explicit instruction).
 
-## Status
+## Execution evidence (live PROD, Chrome DevTools MCP, 2026-06-19)
 
-- **Doc half of DEBT-05 — DONE** (plan 17-03): `17-SC3-DELETE-RUNBOOK.md` is written and committed,
-  with all 5 ordered guard-rails (backup → throwaway user_id → double-confirm `APAGAR` gate →
-  PROD-site-only/never dev-server → verify RLS cascade) + abort/rollback + defer path.
-- **Execution half — DEFERRED**: the destructive delete (DATA-02) was NOT run. No agent ran it; the
-  user deferred it to a later dedicated session.
+- **Consequences dialog** (read before acting): deletes all transações/receitas/categorias/metas/reservas,
+  all MEI data, learned classification patterns, all uploaded faturas in storage, **and the access account
+  itself (login + senha)** — nothing recoverable.
+- **Guard-rail 3 (type-to-`APAGAR` gate)** ✓ — initial focus on **Cancelar**; "Apagar conta" button
+  **disabled** while empty AND while lowercase `apagar` was typed; **enabled only on the exact uppercase
+  `APAGAR`**. Verified step by step.
+- **Guard-rail 4 (PROD-site-only)** ✓ — executed at `https://gestao-financeira-ebon-mu.vercel.app/conta`,
+  never the dev server.
+- **Guard-rail 5 (cascade + signout)** ✓ — button showed **"Apagando…"**, network trail
+  `POST /conta [200]` (delete server action) → `POST /conta [303]` (post-success redirect) →
+  landed on **`/auth/login`** with the sign-in form. Account deleted and session ended.
 
-## What this means for the phase
+## Guard-rails not applicable / waived this run
 
-Per the runbook DEFER PATH and the CONTEXT "Deferred Ideas" decision, deferring SC3 leaves Phase 17
-open **only** on **DATA-02 (destructive delete path)**. Everything else is complete and unaffected:
+- **Guard-rail 1 (DB backup before)** — **waived by the user** (data declared disposable). The orchestrator
+  has no Supabase dashboard access to take a backup; this was an accepted risk.
+- **Guard-rail 2 (separate throwaway account)** — N/A. There was a single account holding only test data;
+  the user authorized deleting it directly rather than spinning up a separate throwaway. The
+  personal-vs-throwaway isolation sub-check (and the optional DB row-count verification) requires dashboard
+  access and is moot with one account.
 
-- SC1 / DEBT-03 — G-07/G-08 live in prod (deploy-ancestry) ✅ (17-02)
-- SC2 / DEBT-04 — MEI dasn CSV content (BOM/`;`/pt-BR) ✅ (17-02)
-- SC4 / DEBT-06 — 12-VALIDATION.md + 13-VALIDATION.md ✅ (17-01)
-- DEBT-05 doc half — SC3 safety runbook ✅ (17-03)
-- DATA-01 companion — LGPD export bundle structurally valid ✅ (17-02)
+## Result
 
-## To complete later
+DATA-02 destructive delete path is **proven end-to-end in production**: the type-to-`APAGAR` gate, the
+RLS-scoped cascade delete server action, and the sign-out all work. DEBT-05 is now fully complete (doc
+half = runbook 17-03; execution half = this delete). Phase 17 is fully complete.
 
-Follow `17-SC3-DELETE-RUNBOOK.md` end-to-end in a dedicated session (Supabase dashboard + a normal
-browser on the live prod site). When done, record the CONFIRM 1–5 results and flip DATA-02 to verified.
-No code change is required — this is purely the operational/destructive walkthrough.
+**User follow-up:** to use the app again, sign up a fresh account (`/auth/signup`) and re-enter the BYOK
+AI key (it was deleted with the rest of the data).
