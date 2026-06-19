@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Classificação determinística
 status: planning
-last_updated: "2026-06-19T15:15:55.333Z"
+last_updated: "2026-06-19T16:00:00.000Z"
 last_activity: 2026-06-19
 progress:
-  total_phases: 0
+  total_phases: 3
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,14 +22,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 17 — v1-3-debt-cleanup-isolated
+- **Current focus:** Phase 18 — AI classifica compras corretamente (v1.5; roadmap criado, planejamento pendente)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 18 — AI classifica compras corretamente (not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-19 — Milestone v1.5 started
+Status: Roadmap criado (3 fases: 18, 19, 20) — planejamento pendente
+Last activity: 2026-06-19 — Roadmap v1.5 criado (Phases 18–20, 8/8 requisitos mapeados)
 
 ## Deferred Items
 
@@ -153,9 +153,11 @@ Last activity: 2026-06-19 — Milestone v1.5 started
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T02:20:41.216Z
-**Stopped at:** Phase 16 complete (1/1 plan, 819/819, live in PROD); v1.4 features (14-16) done
-**Resume file:** .planning/phases/16-review-grid-suggestion-affordances/16-VERIFICATION.md
+**Last session:** 2026-06-19T16:00:00.000Z
+**Stopped at:** Roadmap v1.5 criado (Phases 18–20); planejamento pendente
+**Resume file:** .planning/ROADMAP.md (seção v1.5)
+
+**Roadmap do milestone v1.5 "Classificação determinística" criado.** Derivei 3 fases novas (18-20, modo `mvp`, vertical slices) das 8 requirements (KW-01..06, CLSAI-09, MKT-01). Numeração CONTINUA das fases 1-17 já executadas (v1.4 terminou na 17; nada renumerado). **Mapeamento (8/8, 0 órfãos):** **Phase 18 — AI classifica compras corretamente** (MKT-01, CLSAI-09): aplicar a migration `0035_categories_marketplace.sql` em PROD via `supabase db push` (bucket "Marketplace" presente na conta) + tornar o prompt de `src/lib/ai/classify.ts` *kind-aware* (enviar o `kind` consumo/alocação de cada categoria + linha-guia instruindo o modelo a NUNCA atribuir alocação a compras) — corrige a classe "AliExpress/Mercado Livre → Investimentos". Independente; sensato primeiro (Marketplace é alvo da IA e das regras). **Phase 19 — Cadastro de palavras-chave por categoria** (KW-01, KW-06): tabela de keywords escopada por `user_id` + RLS (multi-user-ready) + UI no `/categorias` (`src/components/categoria-form.tsx`) para adicionar/remover keywords manualmente (não aprendido). **Phase 20 — Auto-classificação por palavra-chave no upload** (KW-02/03/04/05): wire da camada determinística no pipeline de ingest (`src/actions/import.ts`) ENTRE o PASS-1 de memória (`lookupMemory`) e o PASS-2 de IA (`classifyDescriptors`) — match por substring no `descriptor_norm` já normalizado, auto-classifica o hit (`source = "palavra-chave"`, sem clique, espelhando o pré-preenchimento da memória), **maior keyword vence** no conflito, ordem **memória → palavra-chave → IA** (memória prevalece; keyword roda antes da IA; IA só nos misses restantes → menos chamadas), sobrescrevível na grid, sem auto-commit (persiste + aprende merchant→categoria SÓ no confirm, como hoje). Depende de 19 (keywords cadastradas) + 18 (Marketplace como alvo). **Escritos:** ROADMAP.md (anexada `### 🟢 v1.5 Classificação determinística` + Phase Details v1.5 + 3 linhas de Progress; milestones v1.0–v1.4 preservados verbatim), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 18/19/20; coverage 8/8, 0 órfãos), STATE.md. **Invariantes honrados:** classificação memória-primeiro + IA-no-cache-miss + aprende-só-no-confirm (sem auto-commit), RLS por `user_id` em toda tabela de domínio, `descriptor_norm` como chave (point-in-time), só `descriptor_norm` egressa para a IA (PII-safe SEC-03). **Próxima ação:** `/gsd-plan-phase 18` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 
 **Última sessão (2026-06-17) — Completed 11-02-PLAN.md — KPIs no CarroCard da lista /carros + wiring do RSC (não-worktree, sequencial em `main`, Wave 1, depends_on []).** Completa a promessa diferida da Phase 8 (card identity-only) com a metade-lista do CAR-05.2: gasto total + km/l médio por card, lidos da view `v_carro_resumo` existente. **Task 1 (commit `58a0f2c`, feat, TDD RED+GREEN):** `src/components/carro-card.tsx` — `CarroCardData` ganha `gastoTotalCents: number | null` + `kmPorLitroMedio: number | null`; abaixo do bloco identidade/badges, um KPI strip aditivo `<dl className="flex flex-wrap gap-x-6 gap-y-1">` com dois itens (label `text-xs text-muted-foreground` sobre valor `font-mono text-sm font-semibold tabular-nums`), espelhando a gramática de totais rotulados do `ReceitaGastoChart`, foreground neutro (sem gold, nunca vermelho). **Null discipline (D4):** gasto null → `'—'` (nunca `formatCents(0)`/`R$ 0,00`); km/l via `kmPorLitroKpiLabel` (helper local que anexa ` km/l` ao `kmPerLitroLabel` congelado `'12,4'` só p/ valor real, deixando `'—'` puro — nunca `0 km/l`); o strip nunca é escondido. Identidade (link apelido `/carros/{id}`, modelo·placa·ano, badges combustível/Arquivado, dropdown Editar/Arquivar) intocada. `src/components/carro-card-kpis.test.tsx` (mock `@/actions/carros`): non-null format (`formatCents` + `12,4 km/l`), null → dois `'—'` SEM `R$ 0,00`/`0 km/l`, link de identidade intacto — 3 testes green. **Task 2 (commit `759a757`, feat):** `src/app/(app)/carros/page.tsx` — segunda leitura RLS-scoped aditiva `supabase.from('v_carro_resumo').select('carro_id, gasto_total_cents, km_por_litro_medio')` (`security_invoker`, sem `.eq`), `Map` por `carro_id` anexado por carro; **0-gasto coalescido pela view → null → `'—'`** (nunca `R$ 0,00`), km/l passa null adiante; falha na leitura de KPI degrada p/ KPIs null (cards renderizam identidade + `'—'`) — nunca falha a página; filtro arquivados/ordem/empty/error inalterados. **Desvios:** 3 auto-fix. **[Rule 3 - Blocking]:** teste movido p/ `src/components/*.test.tsx` (o glob `tests/**` do vitest casa só `.ts`, não `.tsx` — mesma correção do 11-01). **[Rule 1 - Bug]:** o plano implicava `kmPerLitroLabel(12.4) === '12,4 km/l'`, mas o helper congelado retorna `'12,4'`; a unidade é anexada no componente via `kmPorLitroKpiLabel` e o teste casa o gasto com regex tolerante a NBSP (`/R\$\s*3\.240,00/`) em vez de literal frágil. **[Rule 3 - Blocking]:** estender o tipo compartilhado `CarroCardData` quebrou a compilação do header de `[id]/page.tsx` (fora dos dois arquivos do plano) — null-filled os dois campos novos lá com comentário apontando p/ o Plan 03 (KPIs do detalhe). **Gates:** `npm test -- carro-card` 3 green; `tsc --noEmit` limpo; `npm run build` exit 0 (`/carros` + `/carros/[id]` compilam); suíte completa **732 passed/85 files** (de 729, +3; sem recorrência do flake `reserva-saida`). **Sem stubs** na superfície /carros (o null-fill do `[id]` é hand-off documentado p/ Plan 03). **Sem threat flags** — única superfície nova é uma 2ª leitura da `v_carro_resumo` existente (`security_invoker`, RLS-scoped pelo `createClient()` server, nunca `admin.ts`/service-role/env), zero view/migração nova (T-11-03 mitigate / T-11-04 accept). **CAR-05 In progress** — metade-lista entregue; o detalhe `/carros/[id]` enriquecido (KPI cards + agregação categoria + wiring chart) fica em 11-03 e o human-verify em 11-04. Sem push remoto. **Próxima ação:** executar 11-03 (página de detalhe enriquecida).
 

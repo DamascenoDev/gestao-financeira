@@ -55,20 +55,20 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KW-01 | TBD | Pending |
-| KW-02 | TBD | Pending |
-| KW-03 | TBD | Pending |
-| KW-04 | TBD | Pending |
-| KW-05 | TBD | Pending |
-| KW-06 | TBD | Pending |
-| CLSAI-09 | TBD | Pending |
-| MKT-01 | TBD | Pending |
+| KW-01 | Phase 19 | Pending |
+| KW-02 | Phase 20 | Pending |
+| KW-03 | Phase 20 | Pending |
+| KW-04 | Phase 20 | Pending |
+| KW-05 | Phase 20 | Pending |
+| KW-06 | Phase 19 | Pending |
+| CLSAI-09 | Phase 18 | Pending |
+| MKT-01 | Phase 18 | Pending |
 
 **Coverage:**
 - v1.5 requirements: 8 total
-- Mapped to phases: 0 (roadmap pending)
-- Unmapped: 8 ⚠️ (filled by roadmap)
+- Mapped to phases: 8 ✓ (Phase 18: MKT-01, CLSAI-09 · Phase 19: KW-01, KW-06 · Phase 20: KW-02, KW-03, KW-04, KW-05)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-19*
-*Last updated: 2026-06-19 after milestone v1.5 definition*
+*Last updated: 2026-06-19 after roadmap creation — 8/8 v1.5 requirements mapped to phases 18–20.*
