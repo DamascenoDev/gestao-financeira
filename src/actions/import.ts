@@ -39,6 +39,15 @@ import { createClient } from '@/lib/supabase/server'
 import type { Json } from '@/types/database.types'
 
 /**
+ * Route-segment maxDuration on the action module itself (CLSAI-06 / Pitfall 6). The
+ * importar PAGE also sets 60, but Vercel segment-vs-action inheritance is an open
+ * question (RESEARCH Open Q1) — bounding the segment that actually RUNS the work
+ * (parse + ONE batched LLM classify inside ingestStatement) guarantees the timeout
+ * regardless of inheritance. The live-PROD confirmation is a manual-only verify.
+ */
+export const maxDuration = 60
+
+/**
  * Import Server Actions (IMP-01/02/03/04, CLS-01) — the upload vertical slice.
  * Mirrors actions/transactions.ts VERBATIM in shape: Zod safeParse at the
  * boundary → { error } (never throws/leaks), getClaims() for the owner, a

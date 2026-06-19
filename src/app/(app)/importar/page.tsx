@@ -10,7 +10,7 @@ import { ImportUploader } from '@/components/import-uploader'
  * letter of the CLAUDE.md-locked guidance without the unjustified Route-Handler churn.
  */
 export const runtime = 'nodejs' // pdf-parse needs Node APIs — never Edge
-export const maxDuration = 30 // generous margin; measured parse is <0.2s
+export const maxDuration = 60 // bounds parse + ONE batched LLM classify (CLSAI-06)
 
 /**
  * Importar fatura (UI-SPEC §1) — the upload screen shell (RSC). h1 + helper + the
