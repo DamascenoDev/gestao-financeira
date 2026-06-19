@@ -30,10 +30,10 @@ current_phase_name: v1-3-debt-cleanup-isolated
 
 ## Current Position
 
-Phase: Milestone v1.4 complete
+Phase: Milestone v1.4 complete (deferred live-smokes now closed)
 Plan: —
 Status: Awaiting next milestone
-Last activity: 2026-06-19 — Milestone v1.4 completed and archived
+Last activity: 2026-06-19 — Completed quick task 260619-d68: closed v1.4 live-smokes (14/15/16 → passed), AI suggestion proven live in PROD
 
 ## Deferred Items
 
@@ -45,15 +45,21 @@ Last activity: 2026-06-19 — Milestone v1.4 completed and archived
 | quick_task | import-grid-gaps (20260618) | ✅ RESOLVED — G-07/G-08 (`2ae93fb`) confirmed in live PROD bundle via deploy-ancestry (Phase 17 SC1). SUMMARY.md added; status complete. |
 | nyquist | 12/13-VALIDATION.md | ✅ RESOLVED — Phase 17 SC4: 12-VALIDATION.md created (nyquist_compliant:false, honest) + 13-VALIDATION.md finalized (nyquist_compliant:true). |
 
-**v1.4-close items acknowledged + deferred on 2026-06-19 (audit status `tech_debt`; full detail in `milestones/v1.4-MILESTONE-AUDIT.md`):**
+**v1.4-close items — ALL RESOLVED 2026-06-19 by quick-task `260619-d68` (PROD live smoke):**
 
-| Category | Item | Status |
-|----------|------|--------|
-| verification | 14-VERIFICATION.md (Phase 14) | human_needed — code-complete + LOCAL-proven; PROD push of migration 0033 deferred (may already be live via 0034 hotfix `9c5d270` — confirm `supabase db push` + gen:types) |
-| verification | 15-VERIFICATION.md (Phase 15) | human_needed — code-complete + LOCAL-proven; real-key classification smoke + PROD maxDuration≥60 inheritance deferred (credential/deploy-gated) |
-| verification | 16-VERIFICATION.md (Phase 16) | human_needed — UI proven by component test; real-key grid render deferred (depends on Phase 15 smoke) |
+| Category | Item | Resolution |
+|----------|------|-----------|
+| verification | 14-VERIFICATION.md (Phase 14) | ✅ RESOLVED — fresh PROD account, BYOK key saved ("Chave configurada ✓") + "Testar conexão → Conexão ok" exercised the Vault RPCs → `0033`/`0034` (ai_settings + RPCs + RLS) confirmed live in PROD. → `passed`. |
+| verification | 15-VERIFICATION.md (Phase 15) | ✅ RESOLVED — real `gemini-2.5-flash-lite` suggestion rendered on a new-merchant OFX upload; classify completed within `maxDuration`. → `passed`. |
+| verification | 16-VERIFICATION.md (Phase 16) | ✅ RESOLVED — gold "IA" badge + "Aplicar sugestão" chip rendered live on the real suggestion data. → `passed`. |
 
-⚠️ The deferred 14/15/16 live-smokes now require a FRESH prod account (`/auth/signup`) + re-entered BYOK key — the prod account was deleted in Phase 17 (DATA-02).
+**Smoke notes:** Gemini default stays `gemini-2.5-flash-lite` (only model with free-tier quota for this key — `2.0-flash` is paid-only, 429 limit:0; `3.5-flash` is a thinking model that stalls the 1-token test). flash-lite occasionally returns transient 503 "high demand" → CLSAI-06 degrades cleanly, a re-upload retries. `getDecryptedAiSettings` now reads the model live from `DEFAULT_MODEL` (model swap needs no key re-save). **3 new findings filed in `.planning/todos/pending/`:** content_hash blocks unconfirmed re-import, PDF worker missing in PROD, and an "aplicar todas as sugestões" feature request.
+
+### Quick Tasks Completed
+
+| # | Description | Date | Commits | Status | Directory |
+|---|-------------|------|---------|--------|-----------|
+| 260619-d68 | Close v1.4 deferred live-smokes (Phases 14/15/16) | 2026-06-19 | `2fc00ba`→`e40ab10` (AI model + live-model read; diagnostics added/removed) | Complete ✓ — 14/15/16 → passed; AI suggestion proven live in PROD | [260619-d68](./quick/260619-d68-close-v1-4-deferred-live-smokes-phases-1/) |
 
 ## Performance Metrics
 

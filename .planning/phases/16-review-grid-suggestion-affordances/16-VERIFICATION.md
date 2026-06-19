@@ -1,7 +1,8 @@
 ---
 phase: 16-review-grid-suggestion-affordances
 verified: 2026-06-18T22:40:00Z
-status: human_needed
+status: passed
+closed_by: quick-task 260619-d68 (PROD live smoke, 2026-06-19)
 score: 4/4 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -101,3 +102,13 @@ O status é `human_needed` (não `passed`) por um único item manual deferido: v
 
 _Verified: 2026-06-18T22:40:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+---
+
+## Live Smoke Closure — 2026-06-19 (quick-task 260619-d68)
+
+**Status flipped `human_needed → passed`.** The single deferred item — AI suggestions rendering live with real data (inherited from the Phase-15 real-key smoke) — is confirmed: a new-merchant OFX upload in PROD produced real `gemini-2.5-flash-lite` suggestions, and the review grid rendered the gold **"IA"** badge + Sparkles and the **"Aplicar sugestão: {Categoria}"** chip on the suggested rows (the UI was already proven by the 7/7 component test; this confirms it end-to-end on live data).
+
+**New feature request captured (not in scope here):** a bulk **"Aplicar todas as sugestões"** action on the grid (filed as a backlog/seed item — see quick-task SUMMARY).
+
+Verified live by the user against `https://gestao-financeira-ebon-mu.vercel.app`.

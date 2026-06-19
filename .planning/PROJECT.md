@@ -14,7 +14,7 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` limpos. Auditoria do milestone: `tech_debt` (17/17 requisitos mapeados + wired, 0 blockers — ver `milestones/v1.4-MILESTONE-AUDIT.md`).
 
-**Dívida carregada (deploy/credencial-gated, não bloqueia o código):** os live-smokes real-key/PROD das Phases 14/15/16 ficaram diferidos — PROD push do `0033` (talvez já no ar via hotfix `0034`), smoke com chave real (merchant novo → sugestão IA), e herança de `maxDuration` PROD. **Agora exigem recriar a conta PROD (`/auth/signup`) + recolar a chave BYOK** — a conta PROD foi apagada na Phase 17 (DATA-02). Detalhe em STATE.md `## Deferred Items`.
+**Dívida v1.4 quitada (2026-06-19, quick-task `260619-d68`):** os live-smokes real-key/PROD das Phases 14/15/16 foram fechados ao vivo — conta PROD recriada, chave BYOK colada, `0033`/`0034` confirmados (save + testar conexão), **sugestão real da IA renderizada** num upload de merchant novo, `maxDuration` ok. Phases 14/15/16 → `passed`. Ajustes feitos no caminho: default Gemini permanece `gemini-2.5-flash-lite` (único com cota free; `2.0-flash` é pago-only → 429 limit:0), e `getDecryptedAiSettings` agora lê o modelo **live** de `DEFAULT_MODEL` (troca de modelo não exige re-salvar a chave). **3 achados novos viraram todos** (`.planning/todos/pending/`): `content_hash` bloqueia re-import não-confirmado, PDF quebrado em PROD (worker pdfjs), e pedido de botão "aplicar todas as sugestões".
 
 <details>
 <summary>Milestones anteriores (v1.0–v1.3)</summary>
@@ -28,9 +28,14 @@ Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` lim
 
 ## Current Milestone: none (v1.4 shipped)
 
-v1.4 está arquivado. Próximo milestone a definir via `/gsd-new-milestone`. **Primeiro item natural do próximo ciclo:** fechar os live-smokes diferidos do v1.4 (recriar conta PROD + chave BYOK → confirmar `0033` no ar + smoke real-key + maxDuration) para flipar 14/15/16 de `human_needed` para `passed`.
+v1.4 está arquivado e seus live-smokes diferidos foram **fechados ao vivo em 2026-06-19** (quick-task `260619-d68`; Phases 14/15/16 → `passed`). Próximo milestone a definir via `/gsd-new-milestone`.
 
-Candidato deferido: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
+**Candidatos do próximo ciclo** (todos em `.planning/todos/pending/`, achados no smoke):
+- **PDF quebrado em PROD** — worker do pdfjs não empacotado na função Vercel (regressão vs v1.3; `Cannot find module pdf.worker.mjs`). Prioridade — PDF é caminho de ingestão suportado.
+- **`content_hash` bloqueia re-importar statement não confirmado** — UX: arquivo revisado mas não confirmado não pode ser re-enviado.
+- **Botão "Aplicar todas as sugestões"** na grid de revisão (pedido do usuário).
+
+Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker acima).
 
 ## Requirements
 
@@ -56,7 +61,10 @@ Candidato deferido: **PDF avançado** (parser por banco / OCR) — só se um ban
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- [ ] **(diferido do v1.4) Fechar os live-smokes real-key/PROD** — recriar conta PROD + chave BYOK → confirmar `0033` no ar + smoke real-key (merchant novo → sugestão IA) + herança de `maxDuration` PROD → flipar Phases 14/15/16 para `passed`.
+- ✓ **(diferido do v1.4) Live-smokes real-key/PROD — FECHADO 2026-06-19** (quick-task `260619-d68`): conta PROD recriada + chave BYOK, `0033`/`0034` confirmados ao vivo (save + testar conexão), **sugestão real da IA renderizada** num upload de merchant novo (`gemini-2.5-flash-lite`), `maxDuration` ok. Phases 14/15/16 → `passed`.
+- [ ] **(novo, achado no smoke) `content_hash` bloqueia re-importar statement NÃO confirmado** — `.planning/todos/pending/20260619-content-hash-blocks-unconfirmed-reimport.md`.
+- [ ] **(novo, achado no smoke) Upload de PDF quebrado em PROD** (worker do pdfjs não empacotado) — `.planning/todos/pending/20260619-pdf-worker-missing-in-prod.md`.
+- [ ] **(novo, pedido do usuário) Botão "Aplicar todas as sugestões" na grid** — `.planning/todos/pending/20260619-apply-all-suggestions-button.md`.
 - _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
 
 ### Out of Scope
@@ -126,4 +134,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-19 — milestone v1.4 "IA de Classificação (BYOK)" SHIPPED + arquivado (`milestones/v1.4-*`). IA wired no seam `suggestCategory()` (memory-first, BYOK Gemini/Claude, sem auto-commit) + dívida v1.3 quitada (Phase 17, incl. delete destrutivo DATA-02 ao vivo). Close `tech_debt`: código completo + 100% wired; live-smokes real-key/PROD diferidos (conta PROD apagada → exigem re-signup + re-colar chave). Próximo milestone via `/gsd-new-milestone`.*
+*Last updated: 2026-06-19 — quick-task `260619-d68`: v1.4 live-smokes real-key/PROD FECHADOS ao vivo (Phases 14/15/16 → `passed`); sugestão real da IA renderizada em PROD (`gemini-2.5-flash-lite`). Default Gemini mantido em flash-lite (único free; 2.0-flash é pago-only), modelo agora lido live de `DEFAULT_MODEL`. 3 achados → todos (`content_hash` re-import, PDF worker PROD, botão aplicar-todas). Anterior: milestone v1.4 SHIPPED + arquivado (`milestones/v1.4-*`); IA wired no seam `suggestCategory()` + dívida v1.3 quitada (Phase 17). Próximo milestone via `/gsd-new-milestone`.*

@@ -1,8 +1,9 @@
 ---
 phase: 14-key-storage-byok-settings
 verified: 2026-06-18T21:30:00Z
-status: human_needed
-score: 5/5 must-haves verified (capability proven on LOCAL)
+status: passed
+closed_by: quick-task 260619-d68 (PROD live smoke, 2026-06-19)
+score: 5/5 must-haves verified (capability proven on LOCAL + PROD live smoke)
 behavior_unverified: 0
 overrides_applied: 0
 human_verification:
@@ -115,3 +116,11 @@ The single outstanding item is the **PROD push of `0033`** — a deferred human 
 
 _Verified: 2026-06-18T21:30:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+---
+
+## Live Smoke Closure — 2026-06-19 (quick-task 260619-d68)
+
+**Status flipped `human_needed → passed`.** The deferred PROD push of `0033` is confirmed live: on a fresh PROD account, saving a BYOK key at `/conta/configuracoes-ia` returned **"Chave configurada ✓"** and **"Testar conexão" → "Conexão ok"** — the `save_ai_api_key` / `get_ai_api_key` Vault RPCs executed against PROD, proving `ai_settings` + the three RPCs + RLS are live (migrations `0033`/`0034` pushed). No app redeploy was needed for the DB; the key round-trips through Vault and never returns to the client.
+
+Verified live in the browser by the user against `https://gestao-financeira-ebon-mu.vercel.app`.

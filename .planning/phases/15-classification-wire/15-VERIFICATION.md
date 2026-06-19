@@ -1,7 +1,8 @@
 ---
 phase: 15-classification-wire
 verified: 2026-06-18T21:15:00Z
-status: human_needed
+status: passed
+closed_by: quick-task 260619-d68 (PROD live smoke, 2026-06-19)
 score: 5/5 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
@@ -111,3 +112,19 @@ Status is `human_needed` (not `passed`) solely because the **headline user-visib
 
 _Verified: 2026-06-18T21:15:00Z_
 _Verifier: Claude (gsd-verifier)_
+
+---
+
+## Live Smoke Closure — 2026-06-19 (quick-task 260619-d68)
+
+**Status flipped `human_needed → passed`.** Both deferred items are confirmed live in PROD:
+
+1. **Real-key AI suggestion (headline behavior):** a new-merchant OFX upload produced a real `gemini-2.5-flash-lite` suggestion attached as `row.suggestion` and rendered in the review grid. Memory-first held (known descriptors fire zero AI calls); the batched single call ran on the unique miss set.
+2. **`maxDuration` inheritance:** the `ingestStatement` server action (bound by `importar/page.tsx` `maxDuration = 60`) completed parse + the batched classify well within the limit — the successful classify returned in ~1–3s; provider errors returned even faster (~100ms–2s).
+
+**Debugging journey (operational, not code defects):** the wire was proven correct throughout; the only blockers were the external provider:
+- `gemini-2.5-flash-lite` (shipped default) intermittently returns transient **503 "high demand"** on free tier → CLSAI-06 degrades to empty Map, upload completes, no crash. A re-upload retries and lands.
+- A mid-debug switch to `gemini-2.0-flash` surfaced that it is **paid-tier-only** for this key (**429 RESOURCE_EXHAUSTED, free_tier limit:0**); reverted to flash-lite. `gemini-3.5-flash` is a thinking model that stalls the 1-token `testConnection` ping.
+- Net: the shipped flash-lite default is correct; `getDecryptedAiSettings` now reads the model **live** from `DEFAULT_MODEL` (no key re-save needed on a model swap).
+
+Verified live by the user against `https://gestao-financeira-ebon-mu.vercel.app`. Side-bugs found during the smoke are filed as todos (see quick-task SUMMARY).
