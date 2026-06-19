@@ -1,10 +1,11 @@
 ---
 phase: 18
 slug: ai-classifica-compras-corretamente
-status: draft
-nyquist_compliant: false
-wave_0_complete: false
+status: validated
+nyquist_compliant: true
+wave_0_complete: true
 created: 2026-06-19
+validated: 2026-06-19
 ---
 
 # Phase 18 — Validation Strategy
@@ -39,14 +40,14 @@ created: 2026-06-19
 
 | Task ID | Plan | Wave | Requirement | Threat Ref | Secure Behavior | Test Type | Automated Command | File Exists | Status |
 |---------|------|------|-------------|------------|-----------------|-----------|-------------------|-------------|--------|
-| 18-01-xx | 01 | 1 | CLSAI-09 | T-prompt-injection | Prompt carries each category `(consumo)`/`(alocação)` tag + hard rule | unit | `npx vitest run src/lib/ai/classify.test.ts -t "kind"` | ✅ extend | ⬜ pending |
-| 18-01-xx | 01 | 1 | CLSAI-09 | T-trust-model | Returned `alocacao` id is nulled by gate; confidence kept | unit | `npx vitest run src/lib/ai/classify.test.ts -t "kind gate"` | ✅ extend | ⬜ pending |
-| 18-01-xx | 01 | 1 | CLSAI-09 | — | `consumo` id passes straight through (no regression) | unit | existing CLSAI-04 happy-path | ✅ existing | ⬜ pending |
-| 18-01-xx | 01 | 1 | CLSAI-09 | SEC-03 | PII egress unchanged — descriptor_norm + `id: nome (kind)` only | unit | `npx vitest run src/lib/ai/classify.test.ts -t "SEC-03"` | ✅ existing | ⬜ pending |
-| 18-01-xx | 01 | 1 | CLSAI-09 (compile) | — | All call sites + 4 fixtures typecheck with widened `{id,name,kind}` | typecheck | `npx tsc --noEmit` | ✅ | ⬜ pending |
-| 18-0x-xx | 0x | — | MKT-01 | — | Migration `0035` in PROD; "Marketplace" visible in account | manual | `supabase migration list` → user `supabase db push` → re-signup | N/A | ⬜ pending |
+| 18-01-01 | 01 | 1 | CLSAI-09 | T-prompt-injection | Prompt carries each category `(consumo)`/`(alocação)` tag + hard rule | unit | `npx vitest run src/lib/ai/classify.test.ts -t "kind"` | ✅ | ✅ green |
+| 18-01-01 | 01 | 1 | CLSAI-09 | T-trust-model | Returned `alocacao` id is nulled by gate; confidence kept | unit | `npx vitest run src/lib/ai/classify.test.ts -t "kind gate"` | ✅ | ✅ green |
+| 18-01-02 | 01 | 1 | CLSAI-09 | — | `consumo` id passes straight through (no regression) | unit | existing CLSAI-04 happy-path | ✅ | ✅ green |
+| 18-01-02 | 01 | 1 | CLSAI-09 | SEC-03 | PII egress unchanged — descriptor_norm + `id: nome (kind)` only | unit | `npx vitest run src/lib/ai/classify.test.ts -t "SEC-03"` | ✅ | ✅ green |
+| 18-01-01 | 01 | 1 | CLSAI-09 (compile) | — | All call sites + 4 fixtures typecheck with widened `{id,name,kind}` | typecheck | `npx tsc --noEmit` | ✅ | ✅ green |
+| 18-02-02 | 02 | 2 | MKT-01 | — | Migration `0035` in PROD; "Marketplace" visible in account | manual | `supabase migration list` → user `supabase db push` → re-signup | N/A | ◷ manual-only |
 
-*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky*
+*Status: ⬜ pending · ✅ green · ❌ red · ⚠️ flaky · ◷ manual-only (human-verify, see 18-UAT.md)*
 
 ---
 
@@ -68,11 +69,23 @@ created: 2026-06-19
 
 ## Validation Sign-Off
 
-- [ ] All tasks have `<automated>` verify or Wave 0 dependencies
-- [ ] Sampling continuity: no 3 consecutive tasks without automated verify
-- [ ] Wave 0 covers all MISSING references (none)
-- [ ] No watch-mode flags
-- [ ] Feedback latency < 30s
-- [ ] `nyquist_compliant: true` set in frontmatter
+- [x] All automatable tasks have `<automated>` verify; MKT-01 is documented manual-only (PROD data + wipe, not automatable)
+- [x] Sampling continuity: no 3 consecutive tasks without automated verify
+- [x] Wave 0 covers all MISSING references (none)
+- [x] No watch-mode flags
+- [x] Feedback latency < 30s
+- [x] `nyquist_compliant: true` set in frontmatter
 
-**Approval:** pending
+**Approval:** approved 2026-06-19
+
+---
+
+## Validation Audit 2026-06-19
+
+| Metric | Count |
+|--------|-------|
+| Gaps found | 0 |
+| Resolved | 0 |
+| Escalated | 0 |
+
+CLSAI-09 fully covered by automated tests (`classify.test.ts` 13 passed incl. +4 new CLSAI-09 cases; `tsc --noEmit` clean). MKT-01 is legitimately manual-only (PROD data; account wiped 2026-06-19) and tracked in `18-UAT.md` — not an automatable gap, so the nyquist-auditor was not spawned (Step 3: no MISSING references). Phase is nyquist-compliant for its automatable scope.
