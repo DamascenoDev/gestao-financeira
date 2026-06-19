@@ -2,14 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Classificação determinística
-status: planning
-last_updated: "2026-06-19T16:00:00.000Z"
+current_phase: 18
+current_phase_name: ai-classifica-compras-corretamente
+status: executing
+stopped_at: Roadmap v1.5 criado (Phases 18–20); planejamento pendente
+last_updated: "2026-06-19T16:33:05.707Z"
 last_activity: 2026-06-19
+last_activity_desc: Phase 18 execution started
 progress:
   total_phases: 3
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 2
+  completed_plans: 1
   percent: 0
 ---
 
@@ -22,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 18 — AI classifica compras corretamente (v1.5; roadmap criado, planejamento pendente)
+- **Current focus:** Phase 18 — ai-classifica-compras-corretamente
 
 ## Current Position
 
-Phase: 18 — AI classifica compras corretamente (not started)
-Plan: —
-Status: Roadmap criado (3 fases: 18, 19, 20) — planejamento pendente
-Last activity: 2026-06-19 — Roadmap v1.5 criado (Phases 18–20, 8/8 requisitos mapeados)
+Phase: 18 (ai-classifica-compras-corretamente) — EXECUTING
+Plan: 2 of 2 (18-01 complete)
+Status: Ready to execute 18-02
+Last activity: 2026-06-19 — Completed 18-01-PLAN.md (CLSAI-09 kind-aware AI + code gate)
 
 ## Deferred Items
 
@@ -115,6 +119,7 @@ Last activity: 2026-06-19 — Roadmap v1.5 criado (Phases 18–20, 8/8 requisito
 | 11 | 01 | ~12 min | 2 | 4 created / 0 modified | 2026-06-17 |
 | 11 | 02 | ~6 min | 2 | 1 created / 3 modified | 2026-06-17 |
 | 11 | 03 | ~9 min | 3 | 1 created / 1 modified | 2026-06-17 |
+| 18 | 01 | ~5 min | 2 | 1 created / 7 modified | 2026-06-19 |
 
 ## Accumulated Context
 
@@ -132,6 +137,7 @@ Last activity: 2026-06-19 — Roadmap v1.5 criado (Phases 18–20, 8/8 requisito
 - **PDF de fatura adiado para v2 (IMP-06)** — OFX/CSV (determinísticos) no v1; PDF requer spike sobre amostras reais.
 - **MEI usa o limite *aplicável*** — proporcional (R$6.750 × meses) no 1º ano, R$81k cheio, banda de 20%; receita *bruta*; split comércio/serviços + flag de funcionário desde o registro; módulo informativo, não consultoria fiscal.
 - **Provedor de IA a confirmar no build** — A/B Gemini 2.5 Flash-Lite vs GPT-5-nano via troca de string no AI Gateway; custo dominado por volume de chamadas (memória primeiro), não por modelo.
+- **Classificação IA kind-aware com gate de código (CLSAI-09, Phase 18-01)** — o prompt envia o `kind` de cada categoria (`id: nome (consumo)`/`(alocação)`) + regra dura "todo descritor é GASTO; NUNCA alocação; retorne categoryId: null". Defesa em profundidade: o gate de código vive SÓ dentro de `classifyDescriptors` (logo após `validateSuggestion`), nula qualquer id de `kind !== 'consumo'` preservando confidence; `suggestCategory` herda via delegação (sem 2º gate em import.ts). Forma única `{ id, name, kind: CategoryKind }` em toda a camada AI/classifier (sem union local). `kind` é contexto de ENTRADA — JSON_SCHEMA/classifyResultSchema intactos. Gate compara enum ASCII (`'consumo'`); acento só no rótulo do prompt.
 - **Etiqueta `carro_id` é lente ADITIVA não-destrutiva (D4)** — tag/untag muda SÓ `transactions.carro_id`; nunca category_id/amount_cents/kind/reserva_ledger nem nenhum agregado de metas (v_adherence_month/ytd/v_category_totals byte-idênticos). Carro é LIVRE de categoria (qualquer gasto pode ser etiquetado). Toda escrita de carro_id re-deriva posse via `assertOwnedCarro` (tri-state WR-04) antes do FK write (FKs não são RLS-aware); bulk valida o carro UMA vez + `.in('id', ids)` RLS-scoped. bulkTagCarro revalida só `/extrato`.
 
 ### Open Decisions (resolve during planning)
@@ -153,7 +159,7 @@ Last activity: 2026-06-19 — Roadmap v1.5 criado (Phases 18–20, 8/8 requisito
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T16:00:00.000Z
+**Last session:** 2026-06-19T16:33:05.697Z
 **Stopped at:** Roadmap v1.5 criado (Phases 18–20); planejamento pendente
 **Resume file:** .planning/ROADMAP.md (seção v1.5)
 

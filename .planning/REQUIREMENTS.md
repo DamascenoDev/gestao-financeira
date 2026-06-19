@@ -18,7 +18,7 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Ajuste do prompt da IA (CLSAI)
 
-- [ ] **CLSAI-09**: O prompt de classificação por IA é *kind-aware* — cada categoria é enviada com seu `kind` (consumo/alocação) e o modelo é instruído a NÃO atribuir categorias de alocação (ex.: Investimentos, Reserva) a compras/gastos. Corrige a classe de erro "AliExpress/Mercado Livre → Investimentos".
+- [x] **CLSAI-09**: O prompt de classificação por IA é *kind-aware* — cada categoria é enviada com seu `kind` (consumo/alocação) e o modelo é instruído a NÃO atribuir categorias de alocação (ex.: Investimentos, Reserva) a compras/gastos. Corrige a classe de erro "AliExpress/Mercado Livre → Investimentos".
 
 ### Categoria Marketplace em produção (MKT)
 
@@ -61,10 +61,11 @@ Which phases cover which requirements. Populated during roadmap creation.
 | KW-04 | Phase 20 | Pending |
 | KW-05 | Phase 20 | Pending |
 | KW-06 | Phase 19 | Pending |
-| CLSAI-09 | Phase 18 | Pending |
+| CLSAI-09 | Phase 18 | Complete |
 | MKT-01 | Phase 18 | Pending |
 
 **Coverage:**
+
 - v1.5 requirements: 8 total
 - Mapped to phases: 8 ✓ (Phase 18: MKT-01, CLSAI-09 · Phase 19: KW-01, KW-06 · Phase 20: KW-02, KW-03, KW-04, KW-05)
 - Unmapped: 0 ✓
