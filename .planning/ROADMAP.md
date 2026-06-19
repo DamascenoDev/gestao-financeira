@@ -68,7 +68,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 - [~] **Phase 14: Key Storage + BYOK Settings** - Migração 0033 (Vault + RLS + decrypt RPC) + Settings UI com chave write-only criptografada + testar conexão — 5/5 plans, code-complete + LOCAL-verified (797/797, RLS smoke + key-never-on-client provados); **PROD push do 0033 deferido (item humano)**
 - [~] **Phase 15: Classification Wire** - Provider factory + classify batched + corpo real de `suggestCategory()` (memory-first, enum vivo, fallback gracioso) — 2/2 plans, code-complete + LOCAL-verified (812/812; memory-first/1-call/enum-gate/no-auto-commit/PII-descriptorNorm provados por teste; bug de fallback do upload pego no review + corrigido); **smoke com chave real + maxDuration PROD = itens humanos**
 - [x] **Phase 16: Review-Grid Suggestion Affordances** - `SuggestionSlot` recebe `row.suggestion` + badge de procedência (memória vs IA) + dica de confiança + ordenação baixa-confiança-primeiro — 1/1 plan, complete (819/819, 7/7 grid edges, no-auto-commit + no-render-throw provados no review; grid renderiza ao vivo em PROD)
-- [ ] **Phase 17: v1.3 Debt Cleanup (ISOLATED)** - Redeploy G-07/G-08 + walkthroughs prod MEI/LGPD (delete destrutivo) + VALIDATION.md Nyquist (Phases 12+13)
+- [x] **Phase 17: v1.3 Debt Cleanup (ISOLATED)** - Redeploy G-07/G-08 + walkthroughs prod MEI/LGPD (delete destrutivo) + VALIDATION.md Nyquist (Phases 12+13) — 4/4 plans, complete (SC1 deploy-ancestry + SC2 MEI CSV + SC4 12/13 VALIDATION + **DATA-02 delete destrutivo EXECUTADO ao vivo 2026-06-19**); conta PROD apagada (só dados de teste)
 
 ## Phase Details
 
