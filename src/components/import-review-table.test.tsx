@@ -204,4 +204,41 @@ describe('ImportReviewTable — suggestion affordances', () => {
     // No write path fired: confirmImport must never be called by apply.
     expect(confirmImportMock).not.toHaveBeenCalled()
   })
+
+  it('apply-all: the bulk button fills every unapplied suggestion (excluding memory hits) and invokes NO confirmImport', () => {
+    renderTable([
+      makeRow({
+        descriptor_raw: 'NETFLIX',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+      makeRow({
+        descriptor_raw: 'UBER',
+        category_id: null,
+        suggestion: { categoryId: 'cat-transporte', confidence: 0.3, source: 'ia' },
+      }),
+      // An already-classified memory hit: the bulk count must EXCLUDE it (gate on
+      // category_id === null), so the button reads "2", not "3".
+      makeRow({
+        descriptor_raw: 'PADARIA',
+        category_id: 'cat-mercado',
+        origin: 'memória',
+        suggestion: { categoryId: 'cat-transporte', confidence: 0.2, source: 'ia' },
+      }),
+    ])
+
+    // Button reflects ONLY the two unapplied suggestions.
+    const bulk = screen.getByRole('button', { name: /Aplicar 2 sugest/i })
+    fireEvent.click(bulk)
+
+    // Every per-row chip is gone and the bulk button disappears (0 unapplied left).
+    expect(screen.queryByText(/Aplicar sugestão/i)).toBeNull()
+    expect(
+      screen.queryByRole('button', { name: /Aplicar \d+ sugest/i }),
+    ).toBeNull()
+    // The UBER row now shows its applied category.
+    expect(screen.getAllByText('Transporte').length).toBeGreaterThan(0)
+    // Client-state only: no write path fired.
+    expect(confirmImportMock).not.toHaveBeenCalled()
+  })
 })

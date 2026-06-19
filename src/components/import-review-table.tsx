@@ -350,6 +350,38 @@ export function ImportReviewTable({
     [],
   )
 
+  /**
+   * Apply EVERY unapplied AI suggestion in one click. For each row still unclassified
+   * (`category_id === null`) carrying a non-null `suggestion.categoryId`, fill the
+   * category in CLIENT state only — identical non-binding fill to the per-row "Aplicar
+   * sugestão" chip (origin → 'manual', reserva_id null), NEVER a DB write. confirmImport
+   * stays the sole transactions/merchant_patterns path (no auto-commit). A memory hit is
+   * never overwritten (the `category_id === null` gate).
+   */
+  const applyAllSuggestions = React.useCallback(() => {
+    setRows((prev) => {
+      let applied = 0
+      const next = prev.map((r) => {
+        if (r.category_id === null && r.suggestion?.categoryId != null) {
+          applied += 1
+          return {
+            ...r,
+            category_id: r.suggestion.categoryId,
+            reserva_id: null,
+            origin: 'manual' as const,
+          }
+        }
+        return r
+      })
+      if (applied > 0) {
+        toast(
+          `${applied} ${applied === 1 ? 'sugestão aplicada' : 'sugestões aplicadas'}`,
+        )
+      }
+      return next
+    })
+  }, [])
+
   /** Tag a row to a carro (or "Nenhum") in client state — sets carro_id ONLY, no
    *  other field (D4 additive). Mirrors classifyRow but orthogonal to category. */
   const tagCarroRow = React.useCallback((id: string, carroId: string | null) => {
@@ -627,6 +659,11 @@ export function ImportReviewTable({
   }
 
   const unclassifiedCount = rows.filter((r) => r.category_id === null).length
+  // Rows still unclassified that carry an unapplied AI suggestion — drives the bulk
+  // "Aplicar todas as sugestões" button (hidden once none remain).
+  const unappliedSuggestionCount = rows.filter(
+    (r) => r.category_id === null && r.suggestion?.categoryId != null,
+  ).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -635,9 +672,22 @@ export function ImportReviewTable({
           summary={summary}
           onFilterUnclassified={() => setOnlyUnclassified((v) => !v)}
         />
-        <Button type="button" onClick={onConfirmClick} disabled={isConfirming}>
-          {isConfirming ? 'Importando…' : 'Confirmar importação'}
-        </Button>
+        <div className="flex items-center gap-2">
+          {unappliedSuggestionCount > 0 ? (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={applyAllSuggestions}
+            >
+              <Sparkles className="size-4" aria-hidden />
+              Aplicar {unappliedSuggestionCount}{' '}
+              {unappliedSuggestionCount === 1 ? 'sugestão' : 'sugestões'}
+            </Button>
+          ) : null}
+          <Button type="button" onClick={onConfirmClick} disabled={isConfirming}>
+            {isConfirming ? 'Importando…' : 'Confirmar importação'}
+          </Button>
+        </div>
       </div>
 
       {onlyUnclassified ? (
