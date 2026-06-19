@@ -1,9 +1,19 @@
-// CLS-02 (PARTIAL) / SEC-03: the deferred-AI seam. v1 returns null for EVERY input
-// — including a prompt-injection descriptor — and makes NO network call. The
-// enum-validation wrapper is pinned NOW so the future-LLM contract (output can only
-// ever be an owned category id) is locked before any model is wired.
+// CLSAI-01 / SEC-03: the 1-item PII-safe delegate. `suggestCategory` now reads the
+// server-only decrypt DAL (`getDecryptedAiSettings`) and, on no-key, returns null
+// WITHOUT a provider fetch — here that no-key state is supplied deterministically by
+// mocking `getDecryptedAiSettings → null` (Phase 15 Open Q3 / Assumption A4), so the
+// null + no-fetch invariants hold without a live Supabase session. The
+// enum-validation wrapper (`validateSuggestion`) is unchanged — it is the load-bearing
+// SEC-03 gate (now also called inside `classifyDescriptors`).
 
 import { describe, it, expect, vi, afterEach } from 'vitest'
+
+// The no-key state: getDecryptedAiSettings → null makes the delegate return null
+// before instantiating any model — deterministic, no Supabase, no provider fetch.
+vi.mock('@/lib/ai/settings.server', () => ({
+  getDecryptedAiSettings: vi.fn(async () => null),
+}))
+
 import { suggestCategory, validateSuggestion } from './suggest'
 
 const MERCADO_ID = '11111111-1111-4111-8111-111111111111'
@@ -12,8 +22,8 @@ const CATEGORIES = [
   { id: '22222222-2222-4222-8222-222222222222', name: 'Transporte' },
 ]
 
-describe('suggestCategory — v1 null seam (CLS-02 deferred)', () => {
-  it('returns null for an ordinary descriptor', async () => {
+describe('suggestCategory — 1-item delegate, no-key → null (CLSAI-01)', () => {
+  it('returns null for an ordinary descriptor when there is no key', async () => {
     expect(await suggestCategory('mercado livre', CATEGORIES)).toBeNull()
   })
 
@@ -27,10 +37,10 @@ describe('suggestCategory — v1 null seam (CLS-02 deferred)', () => {
   })
 })
 
-describe('suggestCategory — no external call (SEC-03 no PII egress)', () => {
+describe('suggestCategory — no provider fetch on the no-key path (SEC-03 no PII egress)', () => {
   afterEach(() => vi.restoreAllMocks())
 
-  it('makes no fetch/network call', async () => {
+  it('makes no fetch/network call when there is no key', async () => {
     const fetchSpy = vi.spyOn(globalThis, 'fetch')
     await suggestCategory('padaria sao joao', CATEGORIES)
     expect(fetchSpy).not.toHaveBeenCalled()
