@@ -151,7 +151,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 | 13. PDF de Fatura | v1.3 | 4/4 | Complete | 2026-06-18 |
 | 14. Key Storage + BYOK Settings | v1.4 | 5/5 | Code-complete (LOCAL-verified; PROD push deferred) | 2026-06-18 |
 | 15. Classification Wire | v1.4 | 2/2 | Code-complete (LOCAL-verified; real-key smoke deferred) | 2026-06-18 |
-| 16. Review-Grid Suggestion Affordances | v1.4 | 0/1 | Not started | - |
+| 16. Review-Grid Suggestion Affordances | v1.4 | 1/1 | Complete (LOCAL-verified + live in PROD) | 2026-06-18 |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/TBD | Not started | - |
 
 ---
