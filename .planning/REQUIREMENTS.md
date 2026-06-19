@@ -67,19 +67,19 @@ Mapa requisito→fase. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| BYOK-01 | Phase 14 | Pending |
-| BYOK-02 | Phase 14 | Pending |
-| BYOK-03 | Phase 14 | Pending |
-| BYOK-04 | Phase 14 | Pending |
-| BYOK-05 | Phase 14 | Pending |
-| CLSAI-01 | Phase 15 | Pending |
-| CLSAI-02 | Phase 15 | Pending |
-| CLSAI-03 | Phase 15 | Pending |
-| CLSAI-04 | Phase 15 | Pending |
-| CLSAI-05 | Phase 15 | Pending |
-| CLSAI-06 | Phase 15 | Pending |
-| CLSAI-07 | Phase 16 | Pending |
-| CLSAI-08 | Phase 16 | Pending |
+| BYOK-01 | Phase 14 | Code-complete · WIRED · PROD-push deferred |
+| BYOK-02 | Phase 14 | Code-complete · WIRED · PROD-push deferred |
+| BYOK-03 | Phase 14 | Code-complete · WIRED · PROD-push deferred |
+| BYOK-04 | Phase 14 | Code-complete · WIRED · PROD-push deferred |
+| BYOK-05 | Phase 14 | Code-complete · WIRED · PROD-push deferred |
+| CLSAI-01 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-02 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-03 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-04 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-05 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-06 | Phase 15 | Code-complete · WIRED · real-key smoke deferred |
+| CLSAI-07 | Phase 16 | Code-complete · WIRED · real-key render deferred |
+| CLSAI-08 | Phase 16 | Code-complete · WIRED · real-key render deferred |
 | DEBT-03 | Phase 17 | Complete |
 | DEBT-04 | Phase 17 | Complete |
 | DEBT-05 | Phase 17 | Complete |
