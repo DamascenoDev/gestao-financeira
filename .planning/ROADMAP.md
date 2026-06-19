@@ -114,7 +114,8 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
   2. Usuário vê a procedência de cada sugestão (badge "memória" vs "IA") e distingue visualmente o que foi sugerido pela IA do que já é padrão confirmado
   3. Usuário vê uma dica de confiança por linha, e as linhas de baixa confiança ordenam PRIMEIRO na review grid (revisar o duvidoso antes)
   4. Aplicar uma sugestão da IA e confirmar ainda passa pelo mesmo gate do pick manual — nenhum `merchant_patterns` é escrito sem confirmação explícita
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 16-01-PLAN.md — bridge SuggestionSlot (`row.suggestion`→chip) + badge procedência memória/IA (CLSAI-07) + tag baixa-confiança + sort baixa-confiança-primeiro (CLSAI-08); pura UI, sem auto-commit
 **UI hint**: yes
 
 ### Phase 17: v1.3 Debt Cleanup (ISOLATED)
@@ -150,7 +151,7 @@ Full detail: `milestones/v1.3-ROADMAP.md`. Audit: `milestones/v1.3-MILESTONE-AUD
 | 13. PDF de Fatura | v1.3 | 4/4 | Complete | 2026-06-18 |
 | 14. Key Storage + BYOK Settings | v1.4 | 5/5 | Code-complete (LOCAL-verified; PROD push deferred) | 2026-06-18 |
 | 15. Classification Wire | v1.4 | 2/2 | Code-complete (LOCAL-verified; real-key smoke deferred) | 2026-06-18 |
-| 16. Review-Grid Suggestion Affordances | v1.4 | 0/TBD | Not started | - |
+| 16. Review-Grid Suggestion Affordances | v1.4 | 0/1 | Not started | - |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 0/TBD | Not started | - |
 
 ---
