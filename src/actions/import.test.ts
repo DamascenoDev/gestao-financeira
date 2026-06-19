@@ -600,6 +600,22 @@ describe('ingestStatement', () => {
     expect(r.rows.every((x) => x.suggestion === undefined)).toBe(true)
     expect(r.summary.iaIndisponivel).toBe(true)
   })
+
+  it('fallback-settings-throw (CLSAI-06): getDecryptedAiSettings throws → upload OK, no 500, iaIndisponivel note', async () => {
+    downloadBytes = ofxBytes('itau-dup-descriptor.ofx')
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+    // The Supabase query / get_ai_api_key RPC blows up (network/decrypt error). The
+    // upload must NEVER fail on the AI path — it degrades to the non-blocking fallback
+    // instead of propagating an opaque 500 out of the 'use server' boundary.
+    getDecryptedAiSettings.mockRejectedValueOnce(new Error('RPC get_ai_api_key failed'))
+
+    const r = await ingestStatement('user-1/dup.ofx', 'dup.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('upload threw instead of degrading')
+    expect(classifyDescriptors).not.toHaveBeenCalled()
+    expect(r.rows.every((x) => x.suggestion === undefined)).toBe(true)
+    expect(r.summary.iaIndisponivel).toBe(true)
+    expect(r.summary.total).toBe(4)
+  })
 })
 
 // --- saveCsvProfile (IMP-02) -----------------------------------------------

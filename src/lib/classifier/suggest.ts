@@ -34,10 +34,17 @@ export async function suggestCategory(
   descriptorNorm: string,
   categories: { id: string; name: string }[],
 ): Promise<string | null> {
-  const aiSettings = await getDecryptedAiSettings()
-  if (!aiSettings) return null // no key → pre-IA fallback, no provider fetch
-  const map = await classifyDescriptors([descriptorNorm], categories, aiSettings)
-  return map.get(descriptorNorm)?.categoryId ?? null
+  // No-throw contract (CLSAI-06): `getDecryptedAiSettings` can throw on a Supabase
+  // query / `get_ai_api_key` RPC error — degrade to null (manual pick) instead of
+  // propagating. `classifyDescriptors` already never throws.
+  try {
+    const aiSettings = await getDecryptedAiSettings()
+    if (!aiSettings) return null // no key → pre-IA fallback, no provider fetch
+    const map = await classifyDescriptors([descriptorNorm], categories, aiSettings)
+    return map.get(descriptorNorm)?.categoryId ?? null
+  } catch {
+    return null
+  }
 }
 
 /**

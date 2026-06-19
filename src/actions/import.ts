@@ -469,12 +469,20 @@ export async function ingestStatement(
   let suggestions = new Map<string, { categoryId: string | null; confidence: number }>()
   let iaIndisponivel = false
   if (missNorms.size > 0) {
-    const aiSettings = await getDecryptedAiSettings()
-    if (!aiSettings) {
-      iaIndisponivel = true // no key — expected pre-IA fallback
-    } else {
-      suggestions = await classifyDescriptors([...missNorms], categoryList, aiSettings)
-      if (suggestions.size === 0) iaIndisponivel = true // provider error degraded to {}
+    try {
+      const aiSettings = await getDecryptedAiSettings()
+      if (!aiSettings) {
+        iaIndisponivel = true // no key — expected pre-IA fallback
+      } else {
+        suggestions = await classifyDescriptors([...missNorms], categoryList, aiSettings)
+        if (suggestions.size === 0) iaIndisponivel = true // provider error degraded to {}
+      }
+    } catch {
+      // `getDecryptedAiSettings` runs a Supabase query + `get_ai_api_key` RPC, which
+      // can throw on a network/decrypt/RPC error. The upload must NEVER fail on the AI
+      // path (CLSAI-06) — degrade to the same non-blocking fallback as a provider error.
+      iaIndisponivel = true
+      suggestions = new Map()
     }
   }
 
