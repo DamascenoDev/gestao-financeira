@@ -305,9 +305,18 @@ export function ImportReviewTable({
   const router = useRouter()
   const [rows, setRows] = React.useState<ReviewRow[]>(initialRows)
   const [rowSelection, setRowSelection] = React.useState<RowSelectionState>({})
-  const [sorting, setSorting] = React.useState<SortingState>([
-    { id: 'occurred_on', desc: true },
-  ])
+  // CLSAI-08: when the upload carries AI suggestions, the INITIAL order is driven by
+  // the data array (lowConfidenceFirst below) — so start with NO column sort imposed,
+  // leaving the low-confidence lead intact; the user can still click a header to sort
+  // (onSortingChange stays wired). With no suggestions, keep the v1.3 default (date desc)
+  // so the grid is byte-identical.
+  const hasAiSuggestions = React.useMemo(
+    () => initialRows.some((r) => r.suggestion?.categoryId != null),
+    [initialRows],
+  )
+  const [sorting, setSorting] = React.useState<SortingState>(
+    hasAiSuggestions ? [] : [{ id: 'occurred_on', desc: true }],
+  )
   const [onlyUnclassified, setOnlyUnclassified] = React.useState(false)
   const [isConfirming, setIsConfirming] = React.useState(false)
   const [guardOpen, setGuardOpen] = React.useState(false)
@@ -373,10 +382,16 @@ export function ImportReviewTable({
     })
   }, [])
 
-  const visibleRows = React.useMemo(
-    () => (onlyUnclassified ? rows.filter((r) => r.category_id === null) : rows),
-    [rows, onlyUnclassified],
-  )
+  const visibleRows = React.useMemo(() => {
+    const filtered = onlyUnclassified
+      ? rows.filter((r) => r.category_id === null)
+      : rows
+    // CLSAI-08: low-confidence AI rows lead on the initial data order (only when AI
+    // suggestions exist). Stable partition — the rest keep their relative order, and a
+    // user column-sort (via getSortedRowModel/onSortingChange) overrides this lead.
+    // With no suggestions the comparator is not applied ⇒ v1.3-identical order.
+    return hasAiSuggestions ? lowConfidenceFirst(filtered) : filtered
+  }, [rows, onlyUnclassified, hasAiSuggestions])
 
   const summary: ImportSummary = React.useMemo(
     () => ({
