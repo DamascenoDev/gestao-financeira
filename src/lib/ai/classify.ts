@@ -116,7 +116,11 @@ export async function classifyDescriptors(
         { role: 'user', content: [{ type: 'text', text: buildUserText(descriptors, categories) }] },
       ],
       responseFormat: { type: 'json', schema: JSON_SCHEMA },
-      maxOutputTokens: 1500,
+      // A statement with many unique descriptors overran 1500 tokens → the JSON
+      // response was truncated mid-string → JSON.parse threw → empty Map (ALL
+      // suggestions lost for the batch). 8192 fits ~150 results — covers any realistic
+      // personal statement; a still-larger batch degrades to the empty-Map fallback.
+      maxOutputTokens: 8192,
       temperature: 0,
     })
 
