@@ -1,10 +1,12 @@
 ---
 phase: 19
 slug: cadastro-de-palavras-chave-por-categoria
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (navy+gold v1.1 re-skin, Tailwind v4 CSS-first @theme)
 created: 2026-06-19
+reviewed_at: 2026-06-19
+dimensions_passed: 6/6
 ---
 
 # Phase 19 — UI Design Contract
