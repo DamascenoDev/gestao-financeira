@@ -1,10 +1,12 @@
 ---
 phase: 20
 slug: auto-classifica-o-por-palavra-chave-no-upload
-status: draft
+status: approved
 shadcn_initialized: true
 preset: base-nova (navy+gold v1.1 re-skin, Tailwind v4 CSS-first @theme)
 created: 2026-06-19
+reviewed_at: 2026-06-19
+dimensions_passed: 6/6
 ---
 
 # Phase 20 — UI Design Contract
