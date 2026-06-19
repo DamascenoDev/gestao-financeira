@@ -9,12 +9,12 @@ Requirements for this milestone. Each maps to exactly one roadmap phase.
 
 ### Regras de palavra-chave (KW)
 
-- [ ] **KW-01**: O usuário adiciona/remove palavras-chave numa categoria, na tela `/categorias` (cadastro manual, editável).
+- [x] **KW-01**: O usuário adiciona/remove palavras-chave numa categoria, na tela `/categorias` (cadastro manual, editável).
 - [ ] **KW-02**: No upload, um descritor que CONTÉM uma palavra-chave cadastrada é auto-classificado para aquela categoria (linha pré-preenchida, `source = "palavra-chave"`), sem clique — espelhando o comportamento de pré-preenchimento da memória.
 - [ ] **KW-03**: A classificação roda na ordem **memória → palavra-chave → IA**: um hit de memória prevalece; a palavra-chave roda antes do pass de IA; a IA só é chamada para os descritores que sobraram (reduz chamadas de IA).
 - [ ] **KW-04**: Quando um descritor casa palavras-chave de MAIS de uma categoria, a **palavra-chave mais longa vence** (match mais específico).
 - [ ] **KW-05**: Uma linha classificada por palavra-chave é sobrescrevível na grid de revisão; nada persiste até o confirm; o confirm aprende o padrão merchant→categoria na memória como hoje (sem auto-commit em `transactions`/`merchant_patterns` antes do confirm).
-- [ ] **KW-06**: As regras de palavra-chave são escopadas por `user_id` + RLS (multi-user-ready, como toda tabela de domínio).
+- [x] **KW-06**: As regras de palavra-chave são escopadas por `user_id` + RLS (multi-user-ready, como toda tabela de domínio).
 
 ### Ajuste do prompt da IA (CLSAI)
 
@@ -55,12 +55,12 @@ Which phases cover which requirements. Populated during roadmap creation.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KW-01 | Phase 19 | Pending |
+| KW-01 | Phase 19 | Complete |
 | KW-02 | Phase 20 | Pending |
 | KW-03 | Phase 20 | Pending |
 | KW-04 | Phase 20 | Pending |
 | KW-05 | Phase 20 | Pending |
-| KW-06 | Phase 19 | Pending |
+| KW-06 | Phase 19 | Complete |
 | CLSAI-09 | Phase 18 | Complete |
 | MKT-01 | Phase 18 | Pending |
 

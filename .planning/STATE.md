@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Classificação determinística
-current_phase: 18
-current_phase_name: ai-classifica-compras-corretamente
+current_phase: 19
+current_phase_name: cadastro-de-palavras-chave-por-categoria
 status: executing
 stopped_at: Roadmap v1.5 criado (Phases 18–20); planejamento pendente
-last_updated: "2026-06-19T16:33:05.707Z"
+last_updated: "2026-06-19T19:18:47.463Z"
 last_activity: 2026-06-19
-last_activity_desc: Phase 18 execution started
+last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 3
-  completed_phases: 0
-  total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_phases: 1
+  total_plans: 4
+  completed_plans: 3
+  percent: 33
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 18 — ai-classifica-compras-corretamente
+- **Current focus:** Phase 19 — cadastro-de-palavras-chave-por-categoria
 
 ## Current Position
 
-Phase: 18 (ai-classifica-compras-corretamente) — EXECUTING
-Plan: 2 of 2 (18-01 complete)
-Status: Ready to execute 18-02
-Last activity: 2026-06-19 — Completed 18-01-PLAN.md (CLSAI-09 kind-aware AI + code gate)
+Phase: 19 (cadastro-de-palavras-chave-por-categoria) — EXECUTING
+Plan: 2 of 2
+Status: Ready to execute
+Last activity: 2026-06-19 — Phase 19 execution started
 
 ## Deferred Items
 
@@ -78,6 +78,7 @@ Last activity: 2026-06-19 — Completed 18-01-PLAN.md (CLSAI-09 kind-aware AI + 
 | Phase 13 P03 | 8min | 3 tasks | 3 files |
 | Phase 17 P01 | 8min | 2 tasks | 2 files |
 | Phase 17 P03 | 1min | 1 tasks | 1 files |
+| Phase 19 P01 | 327 | 3 tasks | 5 files |
 
 ### Plan Execution Log
 
@@ -159,7 +160,7 @@ Last activity: 2026-06-19 — Completed 18-01-PLAN.md (CLSAI-09 kind-aware AI + 
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T16:33:05.697Z
+**Last session:** 2026-06-19T19:18:36.908Z
 **Stopped at:** Roadmap v1.5 criado (Phases 18–20); planejamento pendente
 **Resume file:** .planning/ROADMAP.md (seção v1.5)
 
@@ -236,3 +237,6 @@ Last activity: 2026-06-19 — Completed 18-01-PLAN.md (CLSAI-09 kind-aware AI + 
 - [Phase 13]: 13-03: Confirm schema left without a kind field — client payload does not carry kind; server reads it from r.base (WR-01). No dead schema surface.
 - [Phase 13]: 13-03: Runtime-pinned synchronous server action (runtime=nodejs + maxDuration=30 on /importar), NOT a Route Handler — spike measured PDF parse 24-182 ms (D-08). No route.ts added.
 - [Phase 13]: 13-03: PDF image-only hard block kept DISTINCT from a text-present 0-row parse; decodeStatement latin1 confined to ofx/csv branches (Pitfall 7).
+- [Phase ?]: Phase 19-01: 0036 aplicado no stack LOCAL via 'supabase migration up --local' (db:push é PROD)
+- [Phase ?]: Phase 19-01: keyword guardado NORMALIZADO (normalizeDescriptor) p/ match do Phase 20
+- [Phase ?]: Phase 19-01: duplicata é {duplicate:true} amigável (maybeSingle + backstop 23505)
