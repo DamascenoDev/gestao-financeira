@@ -486,15 +486,6 @@ export async function ingestStatement(
     }
   }
 
-  // TEMP DIAGNOSTIC (quick-task 260619-d68): why no AI suggestions in PROD. Remove
-  // once the live smoke is green. No PII — counts + flags only.
-  console.log('[ingest-ai-debug]', {
-    categories: categoryList.length,
-    misses: missNorms.size,
-    iaIndisponivel,
-    suggestions: suggestions.size,
-  })
-
   // PASS 2 — map the AI results back to the miss rows (CLSAI-01/05). A suggestion is a
   // NON-BINDING hint: it is attached as `row.suggestion` and NEVER written to
   // `row.category_id` (no auto-commit), and a memory hit is never overwritten.
