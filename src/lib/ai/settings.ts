@@ -24,9 +24,10 @@ export const PROVIDER_LABEL: Record<AiProvider, string> = {
 
 /**
  * Cheap hard-coded default model per provider — bare aliases, no date suffix.
- * gemini → the flash-lite classification workhorse; claude → haiku 4.5.
+ * gemini → flash (2.5-flash-lite was chronically 503 "high demand" on the free
+ * tier; moved to a regular flash for capacity); claude → haiku 4.5.
  */
 export const DEFAULT_MODEL: Record<AiProvider, string> = {
-  gemini: 'gemini-2.5-flash-lite',
+  gemini: 'gemini-3.5-flash',
   claude: 'claude-haiku-4-5',
 }
