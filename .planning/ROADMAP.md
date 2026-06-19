@@ -77,7 +77,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 **Milestone goal:** Reduzir a dependência da IA fraca (gemini-2.5-flash-lite) dando à classificação uma camada determinística e controlada pelo usuário — regras de palavra-chave → categoria que ele mesmo cadastra — além de um prompt de IA mais esperto para o que sobrar. Pipeline: **memória → palavra-chave → IA**.
 
 - [ ] **Phase 18: AI classifica compras corretamente** - Marketplace em PROD + prompt da IA kind-aware (para de mandar compra para Investimentos/Reserva)
-- [ ] **Phase 19: Cadastro de palavras-chave por categoria** - O usuário registra/remove keywords numa categoria em `/categorias`, escopado por user_id + RLS
+- [x] **Phase 19: Cadastro de palavras-chave por categoria** - O usuário registra/remove keywords numa categoria em `/categorias`, escopado por user_id + RLS (completed 2026-06-19)
 - [ ] **Phase 20: Auto-classificação por palavra-chave no upload** - Pipeline memória → palavra-chave → IA, auto-classificando o match no upload (maior keyword vence, sobrescrevível, aprende no confirm)
 
 ## Phase Details (v1.5)
@@ -109,10 +109,10 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
   2. O usuário remove uma palavra-chave cadastrada e ela some da lista (cadastro manual, editável — não aprendido).
   3. As palavras-chave de um usuário são invisíveis a outro: a tabela é escopada por `user_id` com RLS, como toda tabela de domínio (multi-user-ready).
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 - [x] 19-01-PLAN.md — Wave 1 (autônomo): migration `0036` + [BLOCKING] gen:types/commit tipos + `keywordSchema` + actions `addKeyword`/`removeKeyword` (normalize, Zod, getClaims owner, WR-06 uuid, duplicata pré-check+23505, revalidatePath) + testes mockados — KW-01 + KW-06
-- [ ] 19-02-PLAN.md — Wave 2 (autônomo, depends_on 19-01): `CategoryKeywordsDialog` (chips removíveis + input + Empty) + item de menu "Palavras-chave (N)" no `CategoryRowActions` + fetch agrupado no RSC `categorias/page.tsx` + teste de componente opcional — KW-01 (superfície de UI)
+- [x] 19-02-PLAN.md — Wave 2 (autônomo, depends_on 19-01): `CategoryKeywordsDialog` (chips removíveis + input + Empty) + item de menu "Palavras-chave (N)" no `CategoryRowActions` + fetch agrupado no RSC `categorias/page.tsx` + teste de componente opcional — KW-01 (superfície de UI)
 
 **UI hint**: yes
 
@@ -155,7 +155,7 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 | 16. Review-Grid Suggestion Affordances | v1.4 | 1/1 | Complete (LOCAL-verified + live in PROD) | 2026-06-18 |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 4/4 | Complete — SC1/SC2/SC4 + DATA-02 delete executed live | 2026-06-19 |
 | 18. AI classifica compras corretamente | v1.5 | 1/2 | In Progress|  |
-| 19. Cadastro de palavras-chave por categoria | v1.5 | 1/2 | In Progress|  |
+| 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete   | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 0/0 | Not started | - |
 
 ---

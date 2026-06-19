@@ -4,17 +4,17 @@ milestone: v1.5
 milestone_name: Classificação determinística
 current_phase: 19
 current_phase_name: cadastro-de-palavras-chave-por-categoria
-status: executing
+status: verifying
 stopped_at: Roadmap v1.5 criado (Phases 18–20); planejamento pendente
-last_updated: "2026-06-19T19:18:47.463Z"
+last_updated: "2026-06-19T19:27:28.485Z"
 last_activity: 2026-06-19
 last_activity_desc: Phase 19 execution started
 progress:
   total_phases: 3
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 4
-  completed_plans: 3
-  percent: 33
+  completed_plans: 4
+  percent: 67
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -32,7 +32,7 @@ progress:
 
 Phase: 19 (cadastro-de-palavras-chave-por-categoria) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-19 — Phase 19 execution started
 
 ## Deferred Items
@@ -79,6 +79,7 @@ Last activity: 2026-06-19 — Phase 19 execution started
 | Phase 17 P01 | 8min | 2 tasks | 2 files |
 | Phase 17 P03 | 1min | 1 tasks | 1 files |
 | Phase 19 P01 | 327 | 3 tasks | 5 files |
+| Phase 19 P02 | 212 | 3 tasks | 4 files |
 
 ### Plan Execution Log
 
@@ -160,7 +161,7 @@ Last activity: 2026-06-19 — Phase 19 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T19:18:36.908Z
+**Last session:** 2026-06-19T19:26:41.713Z
 **Stopped at:** Roadmap v1.5 criado (Phases 18–20); planejamento pendente
 **Resume file:** .planning/ROADMAP.md (seção v1.5)
 
@@ -240,3 +241,5 @@ Last activity: 2026-06-19 — Phase 19 execution started
 - [Phase ?]: Phase 19-01: 0036 aplicado no stack LOCAL via 'supabase migration up --local' (db:push é PROD)
 - [Phase ?]: Phase 19-01: keyword guardado NORMALIZADO (normalizeDescriptor) p/ match do Phase 20
 - [Phase ?]: Phase 19-01: duplicata é {duplicate:true} amigável (maybeSingle + backstop 23505)
+- [Phase ?]: 19-02: Dialog de palavras-chave com persistência imediata por ação (sem save em lote); chip X muted, não destructive
+- [Phase ?]: 19-02: fetch agrupado de category_keywords no RSC (Map por category_id, RLS como gate) threaded ao CategoryRowActions
