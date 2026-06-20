@@ -108,9 +108,14 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
   4. O wildcard é opt-in (regex puro fica fora) e seguro: um padrão sem `*` continua sendo tratado como substring; não há risco de ReDoS.
 
 **Plans**: 4 plans
+**Wave 1**
+
 - [ ] 21-01-PLAN.md — Gate: normalizeKeyword preserva `*` no cadastro + addKeyword rejeita literal-count-0 (KW-09)
 - [ ] 21-02-PLAN.md — matchKeyword glob ancorado ReDoS-safe + especificidade por literal-count (KW-09, puro/TDD)
 - [ ] 21-03-PLAN.md — migration 0037: amplia o CHECK de transactions.classification_source para 'palavra-chave' + db push (KW-10)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 21-04-PLAN.md — wiring import.ts: compileRule no pre-fetch + re-derivação server-side da procedência no commit (KW-09 + KW-10)
 
 ### Phase 22: Sugestão de palavra-chave (inline + batch)
