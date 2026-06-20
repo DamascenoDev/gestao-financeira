@@ -26,15 +26,21 @@ Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECU
 
 </details>
 
-## Next Milestone
+## Current Milestone: v1.6 Classificação fluida & ingestão robusta
 
-**Planejando o próximo milestone via `/gsd-new-milestone`.** v1.5 fechado sem pendências (MKT-01 live human-verify confirmado 2026-06-20).
+**Goal:** Reduzir o atrito da classificação (auto-sugestão de palavras-chave, match wildcard, aplicar sugestões em lote) e endurecer a ingestão (PDF funcionando em PROD, re-import liberado quando não confirmado).
 
-Candidatos deferidos para próximos milestones:
-- **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
-- **KW-F1 — auto-sugestão de palavras-chave** a partir de padrões confirmados (v1.5 é cadastro manual).
-- **KW-F2 — match por regex/wildcard** além de substring.
-- **Persistir `palavra-chave` em `transactions.classification_source`** — hoje o CHECK da migration `0020` não inclui o valor, então linhas confirmadas gravam o coarse `memória` (o badge 'palavra-chave' é review-time only). Widening do enum = migration futura.
+**Target features:**
+
+_Classificação fluida_
+- Auto-sugestão de palavra-chave **inline** ao confirmar merchant→categoria + **painel batch** em `/categorias` analisando padrões confirmados (era KW-F1; v1.5 era só cadastro manual)
+- Match **wildcard glob (`*`)** em palavra-chave, opt-in além de substring, mantendo "maior keyword vence" (era KW-F2; regex puro fica fora por risco de ReDoS)
+- Persistir `palavra-chave` em `transactions.classification_source` (widen do CHECK da migration `0020`, hoje grava o coarse `memória`)
+- Aplicar sugestões **em lote** no review grid **por limiar de confiança** (finding v1.4: "aplicar todas as sugestões")
+
+_Ingestão robusta_
+- PDF worker disponível em **PROD** (finding v1.4: upload de PDF quebra em produção por worker faltando) + robustez genérica do parser — **sem OCR**, per-bank só quando aparecer banco real falhando
+- **Re-import liberado** quando a importação anterior do mesmo arquivo NÃO foi confirmada (finding v1.4: `content_hash` bloqueia re-upload de rows que nunca viraram transactions)
 
 ## Requirements
 
@@ -63,8 +69,7 @@ Candidatos deferidos para próximos milestones:
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- _Sem itens abertos. v1.5 fechado em 8/8 requisitos (MKT-01 live human-verify confirmado 2026-06-20)._
-- _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
+- **v1.6 Classificação fluida & ingestão robusta** — auto-sugestão de palavra-chave (inline + batch), match wildcard glob, persistir `palavra-chave` no source, aplicar sugestões em lote por confiança, PDF worker em PROD + robustez do parser, re-import liberado quando não confirmado. Detalhamento na `REQUIREMENTS.md`.
 
 ### Out of Scope
 
@@ -137,4 +142,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 — MKT-01 live human-verify fechado via `/gsd-verify-work 18` (18-UAT.md 3/3 pass → 18-VERIFICATION.md `passed`); v1.5 agora 8/8 requisitos, auditoria `passed`, zero pendências. Anterior: v1.5 SHIPPED + arquivado (`milestones/v1.5-*`) — camada determinística de palavra-chave (KW-01..06) + pipeline memória→palavra-chave→IA + prompt IA kind-aware (CLSAI-09) + categoria "Marketplace" (`0035`) em PROD. Tag git `v1.5`. Próximo milestone via `/gsd-new-milestone`.*
+*Last updated: 2026-06-20 — Milestone v1.6 "Classificação fluida & ingestão robusta" iniciado via `/gsd-new-milestone`. Escopo: auto-sugestão de palavra-chave (inline + batch), match wildcard glob, persistir `palavra-chave` no `classification_source`, aplicar sugestões em lote por confiança, PDF worker em PROD + robustez do parser (sem OCR), re-import liberado quando não confirmado. Requirements/roadmap a seguir. Anterior: v1.5 SHIPPED + arquivado (`milestones/v1.5-*`), tag git `v1.5`, 8/8 requisitos.*

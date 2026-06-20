@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.5
-milestone_name: Classificação determinística
-current_phase: 5
-status: Awaiting next milestone
-stopped_at: Roadmap v1.5 criado (Phases 18–20); planejamento pendente
-last_updated: "2026-06-20T13:40:57.870Z"
+milestone: v1.6
+milestone_name: Classificação fluida & ingestão robusta
+status: planning
+last_updated: "2026-06-20T17:08:30.966Z"
 last_activity: 2026-06-20
-last_activity_desc: Milestone v1.5 completed and archived
 progress:
-  total_phases: 3
-  completed_phases: 3
-  total_plans: 6
-  completed_plans: 6
-  percent: 100
-current_phase_name: auto-classifica-o-por-palavra-chave-no-upload
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,10 +26,10 @@ current_phase_name: auto-classifica-o-por-palavra-chave-no-upload
 
 ## Current Position
 
-Phase: Milestone v1.5 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-20 — Milestone v1.5 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-20 — Milestone v1.6 started
 
 ## Deferred Items
 
