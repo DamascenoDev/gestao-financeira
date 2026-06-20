@@ -798,6 +798,62 @@ export async function confirmImport(
       .filter((d): d is string => typeof d === 'string'),
   )
 
+  // KW-10 (Plan 21-04): re-derive the persisted classification_source SERVER-SIDE over
+  // the authoritative descriptor_norm (WR-01 — never trust the client's source). Pre-fetch
+  // the two inputs ONCE here (mirroring the batched dupSet / recurring sets), never a
+  // per-row point-read inside the insert loop (WR-02 anti-pattern):
+  //
+  //   (a) the keyword rules — same RLS-scoped fetch + compileRule as the PASS 1 pre-fetch,
+  //       so the glob is compiled once per rule (KW-09);
+  //   (b) the memory hits for the classified descriptors — ONE batched
+  //       .in('descriptor_norm', [...]) over the distinct descriptor_norms of rows that
+  //       carry a categoryId, into a Map descriptor_norm → category_id. RLS scopes the
+  //       read to the caller (no app-layer user_id filter — same as the import path).
+  const { data: kwRows } = await supabase
+    .from('category_keywords')
+    .select('category_id, keyword, categories(sort)')
+  const keywordRules: KeywordRule[] = (kwRows ?? [])
+    .map((k) => compileRule(k.category_id, k.keyword, k.categories?.sort ?? 0))
+    .filter((r): r is KeywordRule => r !== null)
+
+  const classifiedNorms = [
+    ...new Set(
+      authoritativeRows
+        .filter((r) => r.categoryId)
+        .map((r) => r.base.descriptor_norm),
+    ),
+  ]
+  const memoryByNorm = new Map<string, string>()
+  if (classifiedNorms.length > 0) {
+    const { data: memRows } = await supabase
+      .from('merchant_patterns')
+      .select('descriptor_norm, category_id')
+      .in('descriptor_norm', classifiedNorms)
+    for (const m of memRows ?? []) {
+      if (m.descriptor_norm) memoryByNorm.set(m.descriptor_norm, m.category_id)
+    }
+  }
+
+  // Re-derive the honest provenance for one row's persisted category (KW-10). Returns
+  // null for an unclassified row. Applies a CATEGORY-EQUALITY GUARD on both rungs (per
+  // RESEARCH Pattern 4 Design note + Assumption A2 — honors CONTEXT "sem procedência
+  // falsa"): a memory/keyword hit only labels 'memória'/'palavra-chave' when its category
+  // equals the persisted categoryId. A grid override (a different category, or a manual/AI
+  // pick with no match) keeps the coarse 'memória'. Never trusts the client source (WR-01).
+  const deriveSource = (
+    descriptorNorm: string,
+    categoryId: string | null,
+  ): TxnInsert['classification_source'] => {
+    if (!categoryId) return null
+    // memory prevails first (mirrors PASS 1 ordering memória > palavra-chave)
+    if (memoryByNorm.get(descriptorNorm) === categoryId) return 'memória'
+    const kw = matchKeyword(descriptorNorm, keywordRules)
+    if (kw && kw.categoryId === categoryId) return 'palavra-chave'
+    // manual / AI pick, or a category overridden on the grid → coarse 'memória' (no
+    // false provenance for the wrong category)
+    return 'memória'
+  }
+
   // Build the insert payload from the AUTHORITATIVE (server-persisted) content —
   // amount / occurred_on / descriptor_norm / dedupe_key come from base, NEVER the
   // client (WR-01). Amount resolves to positive integer cents; a bad amount rejects
@@ -821,15 +877,14 @@ export async function confirmImport(
       description: r.base.descriptor_raw,
       descriptor_norm: r.base.descriptor_norm,
       dedupe_key: r.base.dedupe_key,
-      // WR-02 (intentional): the PERSISTED transaction provenance is a coarse
-      // approximation — any classified row records 'memória' (the transactions
-      // classification_source CHECK from migration 0020 permits only 'memória'/'manual'/
-      // 'sugerida'/null, NOT 'palavra-chave'). This pre-dates Phase 20 (it already
-      // labels manual picks as 'memória'). The 'palavra-chave' provenance is a
-      // REVIEW-TIME signal (the grid badge); widening the persisted enum would need a
-      // new migration + PROD push and is out of scope for KW-02..05. KW-05's "confirm
-      // learns merchant→category as today" is unaffected — the learn loop is category-gated.
-      classification_source: r.categoryId ? 'memória' : null,
+      // KW-10 (Plan 21-04): the persisted provenance is now RE-DERIVED server-side over
+      // the authoritative descriptor_norm — honest, not the old coarse-only 'memória'.
+      // memória → 'memória', keyword → 'palavra-chave', manual/AI/overridden → coarse
+      // 'memória' (category-equality guard, no false provenance). Relies on the widened
+      // transactions.classification_source CHECK (migration 0037, Plan 21-03) accepting
+      // 'palavra-chave'. The source is derived from r.base (server-trusted), NEVER the
+      // client payload (WR-01). The learn loop below (KW-05) is unaffected — category-gated.
+      classification_source: deriveSource(r.base.descriptor_norm, r.categoryId),
       is_recurring: recurring.has(r.base.descriptor_norm),
       // CAR-02 (D4): additive carro tag — the row persists tagged or untagged. Free
       // of category; does NOT touch the reserva-aporte loop or the metas views.

@@ -223,6 +223,16 @@ function makeBuilder(from: string) {
       const id = filters.find(([c]) => c === 'id')?.[1] as string
       return resolve({ data: ownedStatementIds.has(id) ? [{ id }] : [], error: null })
     }
+    if (from === 'merchant_patterns' && inFilters.length > 0) {
+      // KW-10 (Plan 21-04): confirmImport's BATCHED memory re-derivation — one
+      // .select('descriptor_norm, category_id').in('descriptor_norm', [...]) instead of
+      // N point-reads inside the insert loop (WR-02). Return the hits from memoryHits.
+      const requested = (inFilters.find(([c]) => c === 'descriptor_norm')?.[1] ?? []) as string[]
+      const hits = requested
+        .filter((norm) => memoryHits[norm] !== undefined)
+        .map((norm) => ({ descriptor_norm: norm, category_id: memoryHits[norm]!.category_id }))
+      return resolve({ data: hits, error: null })
+    }
     if (from === 'transactions' && inFilters.length > 0) {
       // WR-02: ingestStatement's batched dedupe pre-check — one
       // .select('dedupe_key').in('dedupe_key', keys) instead of N point-reads.
@@ -1097,5 +1107,105 @@ describe('confirmImport', () => {
     expect(transactionInserts).toHaveLength(1)
     const ins = transactionInserts[0] as { carro_id: string | null }
     expect(ins.carro_id).toBeNull()
+  })
+
+  // --- Phase 21 (KW-10): the persisted classification_source is RE-DERIVED server-side
+  // over the authoritative descriptor_norm (WR-01), not the coarse ternary. ---
+  const KW_CAT = '66666666-6666-4666-8666-666666666666'
+
+  it('KW-10 keyword: a keyword-classified row persists classification_source="palavra-chave"', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([KW_CAT])
+    // The keyword rule binds 'uber trip' → KW_CAT; the client confirmed that same category.
+    keywordRows = [{ category_id: KW_CAT, keyword: 'uber*', categories: { sort: 0 } }]
+    const kwRow = row({ descriptor_norm: 'uber trip', categoryId: KW_CAT })
+    persist(kwRow)
+    insertedDedupeKeys = new Set([kwRow.dedupe_key])
+
+    const r = await confirmImport(STMT, [kwRow])
+    expect('imported' in r && r.imported).toBe(1)
+
+    expect(transactionInserts).toHaveLength(1)
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBe('palavra-chave')
+  })
+
+  it('KW-10 memória: a memory-hit row (same category) persists classification_source="memória"', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([KW_CAT])
+    memoryHits = { 'mercado abc': { category_id: KW_CAT, reserva_id: null } }
+    const memRow = row({ descriptor_norm: 'mercado abc', categoryId: KW_CAT })
+    persist(memRow)
+    insertedDedupeKeys = new Set([memRow.dedupe_key])
+
+    const r = await confirmImport(STMT, [memRow])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBe('memória')
+  })
+
+  it('KW-10 memória prevails over keyword: both match same category → "memória"', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([KW_CAT])
+    // Both memory AND keyword bind 'uber trip' → KW_CAT. Memory is consulted first.
+    memoryHits = { 'uber trip': { category_id: KW_CAT, reserva_id: null } }
+    keywordRows = [{ category_id: KW_CAT, keyword: 'uber*', categories: { sort: 0 } }]
+    const both = row({ descriptor_norm: 'uber trip', categoryId: KW_CAT })
+    persist(both)
+    insertedDedupeKeys = new Set([both.dedupe_key])
+
+    const r = await confirmImport(STMT, [both])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBe('memória')
+  })
+
+  it('KW-10 no regression: a classified row with NO memory/keyword match keeps coarse "memória"', async () => {
+    ownedStatementIds = new Set([STMT])
+    ownedCategoryIds = new Set([CAT])
+    // A manual / AI-accepted pick: categoryId present, but neither memory nor a keyword
+    // matches the descriptor → coarse 'memória' (no false 'palavra-chave').
+    const manual = row({ descriptor_norm: 'pick manual xyz', categoryId: CAT })
+    persist(manual)
+    insertedDedupeKeys = new Set([manual.dedupe_key])
+
+    const r = await confirmImport(STMT, [manual])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBe('memória')
+  })
+
+  it('KW-10 no regression: an unclassified row persists classification_source null', async () => {
+    ownedStatementIds = new Set([STMT])
+    const unclassified = row({ descriptor_norm: 'desconhecido', categoryId: null })
+    persist(unclassified)
+    insertedDedupeKeys = new Set([unclassified.dedupe_key])
+
+    const r = await confirmImport(STMT, [unclassified])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBeNull()
+  })
+
+  it('KW-10 guard: a keyword matches category X but the user overrode to Y → coarse "memória", NOT "palavra-chave"', async () => {
+    ownedStatementIds = new Set([STMT, STMT]) // both
+    ownedCategoryIds = new Set([CAT, KW_CAT])
+    // Keyword 'uber*' binds 'uber trip' → KW_CAT, but the client confirmed category CAT
+    // (an override on the grid). The equality guard must NOT claim 'palavra-chave' for
+    // the wrong category — it falls back to coarse 'memória' (no false provenance).
+    keywordRows = [{ category_id: KW_CAT, keyword: 'uber*', categories: { sort: 0 } }]
+    const overridden = row({ descriptor_norm: 'uber trip', categoryId: CAT })
+    persist(overridden)
+    insertedDedupeKeys = new Set([overridden.dedupe_key])
+
+    const r = await confirmImport(STMT, [overridden])
+    expect('imported' in r && r.imported).toBe(1)
+
+    const ins = transactionInserts[0] as { classification_source: string | null }
+    expect(ins.classification_source).toBe('memória')
   })
 })
