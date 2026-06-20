@@ -1107,6 +1107,8 @@ function KeywordInlineSuggest({
   onCreated: (rowId: string) => void
 }) {
   const [open, setOpen] = React.useState(false)
+  // descriptor_norm is row-stable (immutable for a parsed review row), so this
+  // lazy seed never needs to re-sync from props.
   const [value, setValue] = React.useState(row.descriptor_norm)
   const [error, setError] = React.useState<string | undefined>()
   const [isPending, startTransition] = React.useTransition()
