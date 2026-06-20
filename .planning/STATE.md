@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
 status: planning
-last_updated: "2026-06-20T17:08:30.966Z"
+last_updated: "2026-06-20T19:30:00.000Z"
 last_activity: 2026-06-20
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,14 +22,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** v1.5 shipped + archived — planning next milestone (`/gsd-new-milestone`)
+- **Current focus:** v1.6 roadmap criado (Phases 21–24) — planejamento da Phase 21 pendente (`/gsd-plan-phase 21`)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 21 — Match wildcard + procedência persistida (Not started)
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-20 — Milestone v1.6 started
+Status: Roadmap criado (Phases 21–24); planejamento pendente
+Last activity: 2026-06-20 — Roadmap v1.6 criado (4 fases, 8/8 requisitos mapeados)
 
 ## Deferred Items
 
@@ -168,9 +168,11 @@ Last activity: 2026-06-20 — Milestone v1.6 started
 
 ## Session Continuity
 
-**Last session:** 2026-06-19T20:29:24.897Z
-**Stopped at:** Roadmap v1.5 criado (Phases 18–20); planejamento pendente
-**Resume file:** .planning/ROADMAP.md (seção v1.5)
+**Last session:** 2026-06-20T19:30:00.000Z
+**Stopped at:** Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
+**Resume file:** .planning/ROADMAP.md (seção v1.6)
+
+**Roadmap do milestone v1.6 "Classificação fluida & ingestão robusta" criado.** Derivei 4 fases novas (21–24, modo `mvp`, vertical slices) das 8 requirements (KW-07/08/09/10, CLSAI-10, PDF-06/07, IMP-07). Numeração CONTINUA das fases 1–20 já executadas (v1.5 terminou na 20; nada renumerado). Brownfield: refina o pipeline memória→palavra-chave→IA já em PROD + fecha findings do v1.4. **Mapeamento (8/8, 0 órfãos):** **Phase 21 — Match wildcard + procedência persistida** (KW-09, KW-10): estende o `matchKeyword` (substring) com wildcard glob (`*`) opt-in preservando "maior keyword vence", e amplia o CHECK da migration `0020` (próxima migration ~`0037`) para gravar `classification_source = 'palavra-chave'` em `transactions` (hoje grava o coarse `memória`). Substrato do matcher — base das fases 22 e 23. **Phase 22 — Sugestão de palavra-chave (inline + batch)** (KW-07, KW-08): opção inline (opt-in) ao confirmar merchant→categoria no review grid + painel batch em `/categorias` que varre `merchant_patterns` confirmados e sugere keywords candidatas para aprovar/descartar em lote. Depende de 21. **Phase 23 — Aplicar sugestões em lote por confiança** (CLSAI-10): ação explícita no review grid que aplica de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual — sem auto-commit (persiste/aprende só no confirm). Depende de 21 (procedência persistida → confiança consistente). **Phase 24 — Ingestão robusta (PDF em PROD + re-import)** (PDF-06, PDF-07, IMP-07): worker do `pdfjs` no bundle serverless da Vercel (corrige o bug PROD do v1.4) + parser que degrada com clareza em PDF ruim/image-only (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada (`content_hash` só bloqueia o já-confirmado). Independente — pode rodar em paralelo. **Ordem de execução:** 21 → (22 ∥ 23) ; 24 a qualquer momento. **Escritos:** ROADMAP.md (anexada `### 🟢 v1.6 ...` ACTIVE + Phase Details v1.6 + 4 linhas de Progress; v1.5 colapsado em `<details>`; milestones v1.0–v1.5 preservados), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 21/22/23/24; coverage 8/8, 0 órfãos), STATE.md. **Invariantes honrados:** sem auto-commit (nem keyword, nem IA, nem aplicar-em-lote commitam no upload — só no confirm humano), RLS por `user_id`, "maior keyword vence" preservado, sem regex/ReDoS (só wildcard glob), sem OCR. **Próxima ação:** `/gsd-plan-phase 21` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 
 **Roadmap do milestone v1.5 "Classificação determinística" criado.** Derivei 3 fases novas (18-20, modo `mvp`, vertical slices) das 8 requirements (KW-01..06, CLSAI-09, MKT-01). Numeração CONTINUA das fases 1-17 já executadas (v1.4 terminou na 17; nada renumerado). **Mapeamento (8/8, 0 órfãos):** **Phase 18 — AI classifica compras corretamente** (MKT-01, CLSAI-09): aplicar a migration `0035_categories_marketplace.sql` em PROD via `supabase db push` (bucket "Marketplace" presente na conta) + tornar o prompt de `src/lib/ai/classify.ts` *kind-aware* (enviar o `kind` consumo/alocação de cada categoria + linha-guia instruindo o modelo a NUNCA atribuir alocação a compras) — corrige a classe "AliExpress/Mercado Livre → Investimentos". Independente; sensato primeiro (Marketplace é alvo da IA e das regras). **Phase 19 — Cadastro de palavras-chave por categoria** (KW-01, KW-06): tabela de keywords escopada por `user_id` + RLS (multi-user-ready) + UI no `/categorias` (`src/components/categoria-form.tsx`) para adicionar/remover keywords manualmente (não aprendido). **Phase 20 — Auto-classificação por palavra-chave no upload** (KW-02/03/04/05): wire da camada determinística no pipeline de ingest (`src/actions/import.ts`) ENTRE o PASS-1 de memória (`lookupMemory`) e o PASS-2 de IA (`classifyDescriptors`) — match por substring no `descriptor_norm` já normalizado, auto-classifica o hit (`source = "palavra-chave"`, sem clique, espelhando o pré-preenchimento da memória), **maior keyword vence** no conflito, ordem **memória → palavra-chave → IA** (memória prevalece; keyword roda antes da IA; IA só nos misses restantes → menos chamadas), sobrescrevível na grid, sem auto-commit (persiste + aprende merchant→categoria SÓ no confirm, como hoje). Depende de 19 (keywords cadastradas) + 18 (Marketplace como alvo). **Escritos:** ROADMAP.md (anexada `### 🟢 v1.5 Classificação determinística` + Phase Details v1.5 + 3 linhas de Progress; milestones v1.0–v1.4 preservados verbatim), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 18/19/20; coverage 8/8, 0 órfãos), STATE.md. **Invariantes honrados:** classificação memória-primeiro + IA-no-cache-miss + aprende-só-no-confirm (sem auto-commit), RLS por `user_id` em toda tabela de domínio, `descriptor_norm` como chave (point-in-time), só `descriptor_norm` egressa para a IA (PII-safe SEC-03). **Próxima ação:** `/gsd-plan-phase 18` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 

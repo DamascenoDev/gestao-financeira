@@ -58,20 +58,20 @@ Mapeamento fase↔requisito. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KW-07 | TBD | Pending |
-| KW-08 | TBD | Pending |
-| KW-09 | TBD | Pending |
-| KW-10 | TBD | Pending |
-| CLSAI-10 | TBD | Pending |
-| PDF-06 | TBD | Pending |
-| PDF-07 | TBD | Pending |
-| IMP-07 | TBD | Pending |
+| KW-09 | Phase 21 | Pending |
+| KW-10 | Phase 21 | Pending |
+| KW-07 | Phase 22 | Pending |
+| KW-08 | Phase 22 | Pending |
+| CLSAI-10 | Phase 23 | Pending |
+| PDF-06 | Phase 24 | Pending |
+| PDF-07 | Phase 24 | Pending |
+| IMP-07 | Phase 24 | Pending |
 
 **Coverage:**
 - v1.6 requirements: 8 total
-- Mapped to phases: 0 (roadmap pendente)
-- Unmapped: 8 ⚠️ (será resolvido pelo roadmapper)
+- Mapped to phases: 8 ✓ (KW-09/KW-10 → P21 · KW-07/KW-08 → P22 · CLSAI-10 → P23 · PDF-06/PDF-07/IMP-07 → P24)
+- Unmapped: 0 ✓
 
 ---
 *Requirements defined: 2026-06-20*
-*Last updated: 2026-06-20 after milestone v1.6 definition*
+*Last updated: 2026-06-20 — roadmap criado: traceability 8/8 mapeada (Phases 21–24), coverage 0 órfãos.*
