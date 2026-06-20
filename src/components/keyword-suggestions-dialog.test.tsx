@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import { KeywordSuggestionsDialog } from '@/components/keyword-suggestions-dialog'
 
@@ -14,28 +14,8 @@ import { KeywordSuggestionsDialog } from '@/components/keyword-suggestions-dialo
  */
 
 vi.mock('@/actions/category-keywords', () => ({
-  getKeywordSuggestions: vi.fn(async () => ({
-    ok: true,
-    suggestions: [
-      {
-        descriptorNorm: 'uber trip',
-        categoryId: 'cat-1',
-        categoryName: 'Transporte',
-        hitCount: 3,
-      },
-      {
-        descriptorNorm: 'ifood centro',
-        categoryId: 'cat-1',
-        categoryName: 'Transporte',
-        hitCount: 1,
-      },
-    ],
-  })),
-  approveKeywordSuggestions: vi.fn(async () => ({
-    ok: true,
-    created: 1,
-    skipped: 0,
-  })),
+  getKeywordSuggestions: vi.fn(),
+  approveKeywordSuggestions: vi.fn(),
 }))
 vi.mock('sonner', () => ({
   toast: { success: vi.fn(), info: vi.fn(), error: vi.fn() },
@@ -43,12 +23,44 @@ vi.mock('sonner', () => ({
 
 const CATEGORIES = [{ id: 'cat-1', name: 'Transporte', color: 'blue' }]
 
-beforeEach(() => {
-  vi.clearAllMocks()
-})
+const SUGGESTIONS = [
+  {
+    descriptorNorm: 'uber trip',
+    categoryId: 'cat-1',
+    categoryName: 'Transporte',
+    hitCount: 3,
+  },
+  {
+    descriptorNorm: 'ifood centro',
+    categoryId: 'cat-1',
+    categoryName: 'Transporte',
+    hitCount: 1,
+  },
+]
 
-afterEach(() => {
-  vi.restoreAllMocks()
+// Generous findBy timeout: the dialog loads via useEffect + startTransition, so
+// candidate rows appear a microtask after mount. Under full-suite CPU contention
+// the default 1000ms window can be too tight — these assertions are not testing
+// latency, so widen the budget to keep them deterministic.
+const FIND = { timeout: 5000 } as const
+
+beforeEach(async () => {
+  const actions = await import('@/actions/category-keywords')
+  vi.clearAllMocks()
+  // Re-establish the default implementations every test. Declaring them inline in
+  // the vi.mock factory is fragile across a multi-file run (a sibling test file
+  // that also mocks @/actions/category-keywords can leave these vi.fn()s without
+  // an implementation → getKeywordSuggestions resolves undefined → no rows). Set
+  // them here so each test starts from a known-good feed regardless of order.
+  vi.mocked(actions.getKeywordSuggestions).mockResolvedValue({
+    ok: true,
+    suggestions: SUGGESTIONS,
+  })
+  vi.mocked(actions.approveKeywordSuggestions).mockResolvedValue({
+    ok: true,
+    created: 1,
+    skipped: 0,
+  })
 })
 
 describe('KeywordSuggestionsDialog', () => {
@@ -66,8 +78,12 @@ describe('KeywordSuggestionsDialog', () => {
 
     expect(getKeywordSuggestions).toHaveBeenCalled()
 
-    const first = await screen.findByLabelText('Termo da sugestão uber trip')
-    const second = await screen.findByLabelText('Termo da sugestão ifood centro')
+    const first = await screen.findByLabelText('Termo da sugestão uber trip', undefined, FIND)
+    const second = await screen.findByLabelText(
+      'Termo da sugestão ifood centro',
+      undefined,
+      FIND,
+    )
     expect((first as HTMLInputElement).value).toBe('uber trip')
     expect((second as HTMLInputElement).value).toBe('ifood centro')
   })
@@ -86,23 +102,28 @@ describe('KeywordSuggestionsDialog', () => {
     )
 
     // wait for the load to settle, then select the first candidate
-    const checkbox = await screen.findByRole('checkbox', {
-      name: 'Selecionar uber trip',
-    })
+    const checkbox = await screen.findByRole(
+      'checkbox',
+      { name: 'Selecionar uber trip' },
+      FIND,
+    )
     fireEvent.click(checkbox)
 
-    const approveBtn = await screen.findByRole('button', {
-      name: 'Aprovar selecionadas (1)',
-    })
+    const approveBtn = await screen.findByRole(
+      'button',
+      { name: 'Aprovar selecionadas (1)' },
+      FIND,
+    )
     fireEvent.click(approveBtn)
 
-    await waitFor(() =>
-      expect(approveKeywordSuggestions).toHaveBeenCalled(),
+    await waitFor(
+      () => expect(approveKeywordSuggestions).toHaveBeenCalled(),
+      FIND,
     )
     expect(approveKeywordSuggestions).toHaveBeenCalledWith([
       { categoryId: 'cat-1', keyword: 'uber trip' },
     ])
-    await waitFor(() => expect(toast.success).toHaveBeenCalled())
+    await waitFor(() => expect(toast.success).toHaveBeenCalled(), FIND)
   })
 
   it('discard makes NO server call and removes the row', async () => {
@@ -117,16 +138,20 @@ describe('KeywordSuggestionsDialog', () => {
       />,
     )
 
-    const discard = await screen.findByRole('button', {
-      name: 'Descartar sugestão uber trip',
-    })
+    const discard = await screen.findByRole(
+      'button',
+      { name: 'Descartar sugestão uber trip' },
+      FIND,
+    )
     fireEvent.click(discard)
 
     // The discarded row is gone...
-    await waitFor(() =>
-      expect(
-        screen.queryByLabelText('Termo da sugestão uber trip'),
-      ).not.toBeInTheDocument(),
+    await waitFor(
+      () =>
+        expect(
+          screen.queryByLabelText('Termo da sugestão uber trip'),
+        ).not.toBeInTheDocument(),
+      FIND,
     )
     // ...and the sibling candidate is still there.
     expect(
@@ -153,7 +178,7 @@ describe('KeywordSuggestionsDialog', () => {
     )
 
     expect(
-      await screen.findByText('Nenhuma sugestão por enquanto'),
+      await screen.findByText('Nenhuma sugestão por enquanto', undefined, FIND),
     ).toBeInTheDocument()
     expect(
       screen.queryByLabelText('Termo da sugestão uber trip'),
@@ -170,9 +195,11 @@ describe('KeywordSuggestionsDialog', () => {
     )
 
     // After load, approve is disabled (nothing selected).
-    const approveBtn = await screen.findByRole('button', {
-      name: 'Aprovar selecionadas',
-    })
+    const approveBtn = await screen.findByRole(
+      'button',
+      { name: 'Aprovar selecionadas' },
+      FIND,
+    )
     expect(approveBtn).toBeDisabled()
 
     // Select one → approve enables and shows the count.
@@ -180,7 +207,11 @@ describe('KeywordSuggestionsDialog', () => {
       screen.getByRole('checkbox', { name: 'Selecionar uber trip' }),
     )
     expect(
-      await screen.findByRole('button', { name: 'Aprovar selecionadas (1)' }),
+      await screen.findByRole(
+        'button',
+        { name: 'Aprovar selecionadas (1)' },
+        FIND,
+      ),
     ).toBeEnabled()
   })
 })

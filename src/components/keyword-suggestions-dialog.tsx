@@ -85,21 +85,25 @@ export function KeywordSuggestionsDialog({
   const [isPending, startTransition] = useTransition()
   const [candidates, setCandidates] = React.useState<Candidate[]>([])
   const [loaded, setLoaded] = React.useState(false)
-  const [loading, setLoading] = React.useState(false)
+  // Derived, not stateful: while the dialog is open and the feed has not resolved
+  // yet, we are loading. Avoids a synchronous setState(true) in the effect body.
+  const loading = open && !loaded
 
-  // Load-on-open: when `open` flips to true, fetch the candidate feed once.
-  // Reset on close so the next open re-loads fresh (and any session discards are
-  // forgotten — the server feed is the source of truth).
+  // Load-on-open: when `open` flips to true, fetch the candidate feed once. The
+  // effect only runs its body while open; on close (or unmount) the cleanup
+  // resets all derived state, so the next open re-loads fresh and any session
+  // discards are forgotten (the server feed is the source of truth). Resetting in
+  // cleanup — rather than a synchronous setState in the effect body — keeps this a
+  // pure "synchronize with an async external system" effect.
   React.useEffect(() => {
-    if (!open) {
-      setLoaded(false)
-      setLoading(false)
-      setCandidates([])
-      return
-    }
+    if (!open) return
     let cancelled = false
-    setLoading(true)
-    startTransition(async () => {
+    // Plain async load (NOT wrapped in startTransition): the candidate list is the
+    // dialog's primary content, so seeding it should be a normal, high-priority
+    // state update — a transition would let React defer it under load, which both
+    // delays the first paint and makes the rows race in tests. The disabled
+    // controls + "Carregando…" affordance already cover the in-flight state.
+    void (async () => {
       const r = await getKeywordSuggestions()
       if (cancelled) return
       if ('error' in r) {
@@ -111,12 +115,12 @@ export function KeywordSuggestionsDialog({
         setCandidates(r.suggestions.map(toCandidate))
       }
       setLoaded(true)
-      setLoading(false)
-    })
+    })()
     return () => {
       cancelled = true
+      setLoaded(false)
+      setCandidates([])
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [open])
 
   const selected = candidates.filter((c) => c.selected)
