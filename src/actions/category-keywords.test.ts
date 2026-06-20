@@ -13,6 +13,13 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // Delta vs the categories.test.ts harness: the builder gains a settable
 // `maybeSingle` (the dup pre-check) and `insertResult` carries a 23505 error
 // variant so BOTH duplicate paths (pre-check + race backstop) are covered.
+//
+// Delta for KW-08 (this plan): getKeywordSuggestions issues THREE select reads
+// (merchant_patterns, category_keywords, categories). A settable per-table
+// `readResults` map lets a test supply each read's data; a select-only builder
+// resolves its terminal to `readResults[from]` when present, else falls back to
+// the prior shared `resolveResult` (so the existing addKeyword/removeKeyword
+// suites are unaffected). insert/delete ops still win via their own results.
 
 const revalidatePath = vi.fn()
 vi.mock('next/cache', () => ({
@@ -33,10 +40,23 @@ let deleteResult: QueryResult = { data: null, error: null }
 // The maybeSingle() dup pre-check result. Default = no existing row (happy add).
 let dupPreCheckResult: QueryResult = { data: null, error: null }
 let claimsSub: string | null = 'user-1'
+// KW-08: per-table read data for the three getKeywordSuggestions selects. A table
+// with no entry falls back to the shared resolveResult (prior behavior).
+let readResults: Record<string, QueryResult> = {}
+// KW-08: a per-call dup pre-check override (FIFO). Lets approveKeywordSuggestions
+// tests make ONLY the first item a duplicate while a later item is novel. Each
+// maybeSingle() shifts one entry; when empty it falls back to dupPreCheckResult.
+let dupPreCheckQueue: QueryResult[] = []
+// KW-08: a per-insert result override (FIFO), same idea for the insert terminal —
+// lets one item's insert race (23505) while another succeeds. Falls back to
+// insertResult when empty.
+let insertResultQueue: QueryResult[] = []
 
 function makeBuilder(from: string) {
   const record: (typeof calls)[number] = { from, op: '', filters: [] }
   let resolveResult: QueryResult = { data: null, error: null }
+  // True once insert/delete ran — those terminal results win over any read map.
+  let isWrite = false
 
   const builder: Record<string, unknown> = {}
 
@@ -51,19 +71,32 @@ function makeBuilder(from: string) {
   builder.insert = vi.fn((payload: unknown) => {
     record.op = 'insert'
     record.payload = payload
-    resolveResult = insertResult
+    isWrite = true
+    // Per-insert override (FIFO) for batch tests, else the shared insertResult.
+    resolveResult = insertResultQueue.length > 0 ? insertResultQueue.shift()! : insertResult
     return builder
   })
   builder.delete = vi.fn(() => {
     record.op = 'delete'
+    isWrite = true
     resolveResult = deleteResult
     return builder
   })
   // The dup pre-check terminal: select(...).eq(...).eq(...).maybeSingle().
-  builder.maybeSingle = vi.fn(() => Promise.resolve(dupPreCheckResult))
+  // Per-call override (FIFO) for batch tests, else the shared dupPreCheckResult.
+  builder.maybeSingle = vi.fn(() =>
+    Promise.resolve(
+      dupPreCheckQueue.length > 0 ? dupPreCheckQueue.shift()! : dupPreCheckResult,
+    ),
+  )
   builder.single = vi.fn(() => Promise.resolve(resolveResult))
-  builder.then = (onF: (v: QueryResult) => unknown) =>
-    Promise.resolve(resolveResult).then(onF)
+  // A select read resolves to its per-table entry (KW-08) unless this builder did
+  // an insert/delete (those win); writes and unmapped tables keep prior behavior.
+  builder.then = (onF: (v: QueryResult) => unknown) => {
+    const mapped = !isWrite ? readResults[from] : undefined
+    const result = mapped ?? resolveResult
+    return Promise.resolve(result).then(onF)
+  }
 
   calls.push(record)
   return builder
@@ -82,7 +115,12 @@ vi.mock('@/lib/supabase/server', () => ({
   createClient: vi.fn(async () => supabaseMock),
 }))
 
-import { addKeyword, removeKeyword } from './category-keywords'
+import {
+  addKeyword,
+  removeKeyword,
+  getKeywordSuggestions,
+  approveKeywordSuggestions,
+} from './category-keywords'
 // REAL normalize fns — deterministic + already unit-tested. normalizeKeyword is
 // what addKeyword now uses (KW-09): it keeps the glob `*` while staying in the
 // same key space as descriptor_norm (Phase 20 match) for non-wildcard input.
@@ -100,6 +138,9 @@ beforeEach(() => {
   deleteResult = { data: null, error: null }
   dupPreCheckResult = { data: null, error: null }
   claimsSub = 'user-1'
+  readResults = {}
+  dupPreCheckQueue = []
+  insertResultQueue = []
 })
 
 // --- addKeyword -------------------------------------------------------------
@@ -276,5 +317,167 @@ describe('removeKeyword', () => {
     const r = await removeKeyword(KW_ID)
     expect(r).toEqual({ error: 'Sessão expirada.' })
     expect(calls.find((c) => c.op === 'delete')).toBeUndefined()
+  })
+})
+
+// --- getKeywordSuggestions --------------------------------------------------
+
+const CAT_ID_2 = '22222222-2222-4222-8222-222222222222'
+
+describe('getKeywordSuggestions', () => {
+  it('excludes descriptors already covered by an existing keyword (matchKeyword) and returns the candidate shape', async () => {
+    readResults = {
+      merchant_patterns: {
+        data: [
+          { descriptor_norm: 'uber trip sp', category_id: CAT_ID, hit_count: 3 },
+          { descriptor_norm: 'padaria centro', category_id: CAT_ID, hit_count: 1 },
+        ],
+        error: null,
+      },
+      // An existing keyword 'uber' covers 'uber trip sp' via the real matchKeyword.
+      category_keywords: {
+        data: [{ category_id: CAT_ID, keyword: 'uber' }],
+        error: null,
+      },
+      categories: {
+        data: [{ id: CAT_ID, name: 'Transporte', sort: 0 }],
+        error: null,
+      },
+    }
+
+    const r = await getKeywordSuggestions()
+    expect('suggestions' in r).toBe(true)
+    const { suggestions } = r as { suggestions: unknown[] }
+    // 'uber trip sp' is covered → excluded; only 'padaria centro' remains.
+    expect(suggestions).toEqual([
+      {
+        descriptorNorm: 'padaria centro',
+        categoryId: CAT_ID,
+        categoryName: 'Transporte',
+        hitCount: 1,
+      },
+    ])
+    // Read-only: no revalidate.
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('sorts remaining candidates by hit_count desc', async () => {
+    readResults = {
+      merchant_patterns: {
+        data: [
+          { descriptor_norm: 'mercado a', category_id: CAT_ID, hit_count: 2 },
+          { descriptor_norm: 'mercado b', category_id: CAT_ID, hit_count: 5 },
+        ],
+        error: null,
+      },
+      category_keywords: { data: [], error: null },
+      categories: {
+        data: [{ id: CAT_ID, name: 'Mercado', sort: 0 }],
+        error: null,
+      },
+    }
+
+    const r = await getKeywordSuggestions()
+    const { suggestions } = r as { suggestions: { hitCount: number }[] }
+    expect(suggestions.map((s) => s.hitCount)).toEqual([5, 2])
+  })
+
+  it('returns the session error when there is no authenticated user', async () => {
+    claimsSub = null
+    const r = await getKeywordSuggestions()
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+})
+
+// --- approveKeywordSuggestions ----------------------------------------------
+
+describe('approveKeywordSuggestions', () => {
+  it('creates the selected candidates with the owner and revalidates ONCE', async () => {
+    const r = await approveKeywordSuggestions([
+      { categoryId: CAT_ID, keyword: 'uber' },
+      { categoryId: CAT_ID_2, keyword: 'ifood' },
+    ])
+    expect(r).toEqual({ ok: true, created: 2, skipped: 0 })
+
+    const inserts = calls.filter(
+      (c) => c.from === 'category_keywords' && c.op === 'insert',
+    )
+    expect(inserts).toHaveLength(2)
+    expect(inserts[0]!.payload).toMatchObject({
+      user_id: 'user-1',
+      category_id: CAT_ID,
+      keyword: 'uber',
+    })
+    expect(inserts[1]!.payload).toMatchObject({
+      user_id: 'user-1',
+      category_id: CAT_ID_2,
+      keyword: 'ifood',
+    })
+    // ONE revalidate for the whole batch.
+    expect(revalidatePath).toHaveBeenCalledTimes(1)
+    expect(revalidatePath).toHaveBeenCalledWith('/categorias')
+  })
+
+  it('a duplicate item is counted as skipped and never aborts the batch', async () => {
+    // First item's dup pre-check finds an existing row → skipped; second is novel.
+    dupPreCheckQueue = [
+      { data: { id: KW_ID }, error: null }, // item 1: existing → skip
+      { data: null, error: null }, // item 2: novel → insert
+    ]
+    const r = await approveKeywordSuggestions([
+      { categoryId: CAT_ID, keyword: 'uber' },
+      { categoryId: CAT_ID, keyword: 'ifood' },
+    ])
+    expect(r).toEqual({ ok: true, created: 1, skipped: 1 })
+
+    const inserts = calls.filter((c) => c.op === 'insert')
+    expect(inserts).toHaveLength(1)
+    expect((inserts[0]!.payload as { keyword: string }).keyword).toBe('ifood')
+    expect(revalidatePath).toHaveBeenCalledTimes(1)
+  })
+
+  it('a 23505 insert race is counted as skipped while a sibling still inserts', async () => {
+    // Both novel at pre-check; the FIRST insert races (23505) → skip, second ok.
+    insertResultQueue = [
+      { data: null, error: { code: '23505', message: 'dup' } },
+      { data: { id: 'new-id' }, error: null },
+    ]
+    const r = await approveKeywordSuggestions([
+      { categoryId: CAT_ID, keyword: 'uber' },
+      { categoryId: CAT_ID, keyword: 'ifood' },
+    ])
+    expect(r).toEqual({ ok: true, created: 1, skipped: 1 })
+  })
+
+  it('an invalid item (bad uuid / literal-count-0 term) is skipped, the rest proceed', async () => {
+    const r = await approveKeywordSuggestions([
+      { categoryId: 'not-a-uuid', keyword: 'x' }, // bad uuid → skip, no DB
+      { categoryId: CAT_ID, keyword: '*' }, // literal-count-0 → skip, no DB
+      { categoryId: CAT_ID, keyword: 'mercado' }, // valid → insert
+    ])
+    expect(r).toEqual({ ok: true, created: 1, skipped: 2 })
+
+    const inserts = calls.filter((c) => c.op === 'insert')
+    expect(inserts).toHaveLength(1)
+    expect((inserts[0]!.payload as { keyword: string }).keyword).toBe('mercado')
+  })
+
+  it('empty items array → { ok: true, created: 0, skipped: 0 } with no DB call and no revalidate', async () => {
+    const r = await approveKeywordSuggestions([])
+    expect(r).toEqual({ ok: true, created: 0, skipped: 0 })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('returns the session error with no authenticated user and writes nothing', async () => {
+    claimsSub = null
+    const r = await approveKeywordSuggestions([
+      { categoryId: CAT_ID, keyword: 'uber' },
+    ])
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
   })
 })
