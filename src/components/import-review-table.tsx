@@ -9,7 +9,7 @@ import {
   type RowSelectionState,
   type SortingState,
 } from '@tanstack/react-table'
-import { Sparkles, Trash2 } from 'lucide-react'
+import { Check, Sparkles, Tags, Trash2 } from 'lucide-react'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { toast } from 'sonner'
@@ -46,6 +46,13 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog'
+import { Field, FieldError, FieldLabel } from '@/components/ui/field'
+import { Input } from '@/components/ui/input'
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from '@/components/ui/popover'
 import {
   Select,
   SelectContent,
@@ -68,7 +75,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { confirmImport } from '@/actions/import'
+import { addKeyword } from '@/actions/category-keywords'
 import { CARRO_NONE } from '@/lib/carro'
+import { normalizeKeyword } from '@/lib/normalize'
 import { cn } from '@/lib/utils'
 
 /** A category option for the inline + bulk classify (is_reserva drives the picker). */
@@ -329,6 +338,20 @@ export function ImportReviewTable({
   const [onlyUnclassified, setOnlyUnclassified] = React.useState(false)
   const [isConfirming, setIsConfirming] = React.useState(false)
   const [guardOpen, setGuardOpen] = React.useState(false)
+  // KW-07: per-row "criada ✓" session state. A row whose id is in this Set has had a
+  // keyword created (or found duplicate) inline this session → its "+ palavra-chave"
+  // affordance flips to a disabled "criada ✓". Intentionally NOT persisted (UI-SPEC:
+  // need not survive reload). Immutable updates so React re-renders.
+  const [createdKeywordRows, setCreatedKeywordRows] = React.useState<Set<string>>(
+    () => new Set(),
+  )
+  const markKeywordCreated = React.useCallback((rowId: string) => {
+    setCreatedKeywordRows((prev) => {
+      const next = new Set(prev)
+      next.add(rowId)
+      return next
+    })
+  }, [])
 
   // The Reserva category is NOT a valid bulk target (the bulk path can't collect a
   // per-row reservaId for the aporte) — drop it from the picker, same rule as Extrato.
@@ -526,6 +549,8 @@ export function ImportReviewTable({
             categories={categories}
             reservas={reservas}
             onClassify={classifyRow}
+            keywordCreated={createdKeywordRows.has(row.original.id)}
+            onKeywordCreated={markKeywordCreated}
           />
         ),
       },
@@ -591,7 +616,16 @@ export function ImportReviewTable({
         ),
       },
     ],
-    [categories, reservas, classifyRow, carros, tagCarroRow, deleteRow],
+    [
+      categories,
+      reservas,
+      classifyRow,
+      carros,
+      tagCarroRow,
+      deleteRow,
+      createdKeywordRows,
+      markKeywordCreated,
+    ],
   )
 
   const table = useReactTable({
@@ -807,6 +841,8 @@ export function ImportReviewTable({
                     categories={categories}
                     reservas={reservas}
                     onClassify={classifyRow}
+                    keywordCreated={createdKeywordRows.has(r.id)}
+                    onKeywordCreated={markKeywordCreated}
                   />
                   <InlineReviewCarroCell
                     row={r}
@@ -893,11 +929,18 @@ function InlineReviewCategoryCell({
   categories,
   reservas,
   onClassify,
+  keywordCreated,
+  onKeywordCreated,
 }: {
   row: ReviewRow
   categories: ReviewCategory[]
   reservas: ReservaOption[]
   onClassify: (id: string, categoryId: string, reservaId: string | null) => void
+  /** KW-07: true once a keyword was created (or found duplicate) for this row this
+   *  session → the inline control shows "criada ✓" instead of the create pill. */
+  keywordCreated: boolean
+  /** KW-07: flips this row to "criada ✓" after a successful create/duplicate. */
+  onKeywordCreated: (rowId: string) => void
 }) {
   const current = categories.find((c) => c.id === row.category_id)
   const [pendingCategoryId, setPendingCategoryId] = React.useState<string | null>(
@@ -983,6 +1026,18 @@ function InlineReviewCategoryCell({
           />
         ) : null}
         <ConfidenceTag row={row} />
+        {/* KW-07: opt-in "+ palavra-chave" inline control — ONLY on a row the user
+            classified by hand (origin === 'manual'). Reuses addKeyword verbatim (no
+            new server action, no confirmImport). The gate is strictly 'manual' (the
+            origin union has NO 'IA' member). */}
+        {row.origin === 'manual' && row.category_id !== null ? (
+          <KeywordInlineSuggest
+            row={row}
+            categoryName={current?.name ?? ''}
+            created={keywordCreated}
+            onCreated={onKeywordCreated}
+          />
+        ) : null}
       </div>
 
       <Dialog
@@ -1023,6 +1078,138 @@ function InlineReviewCategoryCell({
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+/**
+ * KW-07: the opt-in inline "+ palavra-chave" control rendered on a `manual` review
+ * row's chip line. A discreet neutral pill opens a small popover prefilled with the
+ * row's normalized `descriptor_norm` (editable); Salvar reuses the EXISTING
+ * `addKeyword(categoryId, term)` action verbatim — no new server surface, no
+ * `confirmImport`, no `transactions`/`merchant_patterns` write. On success OR duplicate
+ * the control flips to a disabled "criada ✓" for the rest of the session (the keyword
+ * now exists either way); a server error keeps the popover open with a `FieldError`.
+ *
+ * `addKeyword` already validates (idSchema uuid + keywordSchema) and normalizes via
+ * `normalizeKeyword`, so the popover sends the user's edited term verbatim and only
+ * echoes `normalizeKeyword(term)` in the toast (mirrors category-keywords-dialog.tsx)
+ * — it never re-normalizes a render value.
+ */
+function KeywordInlineSuggest({
+  row,
+  categoryName,
+  created,
+  onCreated,
+}: {
+  row: ReviewRow
+  categoryName: string
+  created: boolean
+  onCreated: (rowId: string) => void
+}) {
+  const [open, setOpen] = React.useState(false)
+  const [value, setValue] = React.useState(row.descriptor_norm)
+  const [error, setError] = React.useState<string | undefined>()
+  const [isPending, startTransition] = React.useTransition()
+  const inputId = React.useId()
+
+  // Once created/duplicate, the control is a disabled "criada ✓" — never a button.
+  if (created) {
+    return (
+      <span
+        className="inline-flex min-h-5 w-fit items-center gap-1 rounded-4xl bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground"
+        aria-label="Palavra-chave criada"
+      >
+        <Check className="size-3 shrink-0" aria-hidden />
+        criada ✓
+      </span>
+    )
+  }
+
+  function onSubmit() {
+    const normalized = normalizeKeyword(value.trim())
+    setError(undefined)
+    startTransition(async () => {
+      const r = await addKeyword(row.category_id!, value)
+      if ('error' in r) {
+        // Keep the popover open + show the FieldError; do NOT flip to "criada ✓".
+        setError(r.error)
+        return
+      }
+      if ('duplicate' in r) {
+        toast.info(`"${normalized}" já está cadastrada.`)
+      } else {
+        toast.success(`"${normalized}" adicionada a ${categoryName}.`)
+      }
+      // Both { ok } and { duplicate } flip to "criada ✓" — the keyword now exists.
+      onCreated(row.id)
+      setOpen(false)
+    })
+  }
+
+  return (
+    <Popover
+      open={open}
+      onOpenChange={(o) => {
+        setOpen(o)
+        if (!o) setError(undefined)
+      }}
+    >
+      <PopoverTrigger
+        render={
+          <button
+            type="button"
+            aria-label="Criar palavra-chave para esta categoria"
+            className="inline-flex min-h-5 w-fit items-center gap-1 rounded-4xl bg-muted px-2 py-0.5 text-xs font-medium text-muted-foreground hover:bg-muted/80"
+          >
+            <Tags className="size-3 shrink-0" aria-hidden />+ palavra-chave
+          </button>
+        }
+      />
+      <PopoverContent className="w-72">
+        <form
+          onSubmit={(e) => {
+            e.preventDefault()
+            onSubmit()
+          }}
+        >
+          <Field data-invalid={!!error}>
+            <FieldLabel htmlFor={inputId}>Palavra-chave</FieldLabel>
+            <Input
+              id={inputId}
+              value={value}
+              onChange={(e) => {
+                setValue(e.target.value)
+                setError(undefined)
+              }}
+              aria-invalid={!!error}
+              maxLength={60}
+              autoFocus
+            />
+            {categoryName ? (
+              <p className="text-sm text-muted-foreground">
+                Será usada para classificar futuras faturas em {categoryName}.
+              </p>
+            ) : null}
+            <FieldError errors={error ? [{ message: error }] : undefined} />
+            <div className="mt-2 flex gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  setError(undefined)
+                  setOpen(false)
+                }}
+              >
+                Cancelar
+              </Button>
+              <Button type="submit" disabled={isPending}>
+                {isPending ? 'Salvando…' : 'Salvar'}
+              </Button>
+            </div>
+          </Field>
+        </form>
+      </PopoverContent>
+    </Popover>
   )
 }
 
