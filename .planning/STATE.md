@@ -6,15 +6,15 @@ current_phase: 21
 current_phase_name: Match wildcard + procedência persistida
 status: executing
 stopped_at: Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
-last_updated: "2026-06-20T18:26:11.769Z"
+last_updated: "2026-06-20T18:33:15.887Z"
 last_activity: 2026-06-20
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 4
-  completed_plans: 3
-  percent: 0
+  completed_plans: 4
+  percent: 25
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 21 (Match wildcard + procedência persistida) — EXECUTING
-Plan: 3 of 4
+Plan: 4 of 4
 Status: Ready to execute
 Last activity: 2026-06-20 — Phase 21 execution started
 
@@ -93,6 +93,7 @@ Last activity: 2026-06-20 — Phase 21 execution started
 | Phase 20 P02 | 5 | 2 tasks | 4 files |
 | Phase 21 P01 | 6m | 2 tasks | 4 files |
 | Phase 21 P02 | ~5m | 1 tasks | 2 files |
+| Phase 21 P04 | 25m | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -175,7 +176,7 @@ Last activity: 2026-06-20 — Phase 21 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-20T18:26:11.761Z
+**Last session:** 2026-06-20T18:32:45.083Z
 **Stopped at:** Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
 **Resume file:** .planning/phases/21-match-wildcard-proced-ncia-persistida/21-03-PLAN.md
 
@@ -263,3 +264,4 @@ Last activity: 2026-06-20 — Phase 21 execution started
 - [Phase ?]: normalizeKeyword preserva glob * via runNormalizePipeline compartilhado; addKeyword rejeita literal-count-0
 - [Phase ?]: 21-02: KeywordRule glob/literals optional (lazy-derive in matcher); compileRule pre-fetch wiring deferred to Plan 04.
 - [Phase 21]: CHECK de classification_source mantido text+CHECK (sem enum) → database.types.ts inalterado; sem backfill historico (locked); DROP resiliente via DO-block sobre pg_constraint (T-21-06).
+- [Phase ?]: 21-04: keyword globs compiled once per rule via compileRule at both pre-fetch paths; persisted classification_source re-derived server-side with category-equality guard (no false provenance)

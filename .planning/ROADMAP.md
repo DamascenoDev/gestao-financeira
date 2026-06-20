@@ -88,7 +88,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 
 **Milestone goal:** Reduzir o atrito da classificação (auto-sugestão de palavras-chave inline + em lote, match wildcard glob, aplicar sugestões em lote por confiança) e endurecer a ingestão (PDF funcionando em PROD, parser que degrada com clareza, re-import liberado quando não confirmado). Brownfield: o pipeline **memória → palavra-chave → IA** já roda em PROD; este milestone o refina e fecha findings do v1.4.
 
-- [ ] **Phase 21: Match wildcard + procedência persistida** - Wildcard glob (`*`) na palavra-chave (maior keyword vence preservado) + widening do CHECK de `0020` para gravar `palavra-chave` em `transactions.classification_source`
+- [x] **Phase 21: Match wildcard + procedência persistida** - Wildcard glob (`*`) na palavra-chave (maior keyword vence preservado) + widening do CHECK de `0020` para gravar `palavra-chave` em `transactions.classification_source` (completed 2026-06-20)
 - [ ] **Phase 22: Sugestão de palavra-chave (inline + batch)** - Opt-in inline ao confirmar merchant→categoria + painel batch em `/categorias` que analisa `merchant_patterns` e sugere keywords candidatas
 - [ ] **Phase 23: Aplicar sugestões em lote por confiança** - No review grid, aplicar de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual (sem auto-commit)
 - [ ] **Phase 24: Ingestão robusta (PDF em PROD + re-import)** - Worker do `pdfjs` disponível no bundle serverless da Vercel + parser que degrada com clareza (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada
@@ -107,16 +107,16 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
   3. Uma linha classificada por palavra-chave, ao ser confirmada, persiste `classification_source = 'palavra-chave'` em `transactions` (CHECK da migration `0020` ampliado via nova migration) — deixa de gravar o coarse `memória`.
   4. O wildcard é opt-in (regex puro fica fora) e seguro: um padrão sem `*` continua sendo tratado como substring; não há risco de ReDoS.
 
-**Plans**: 2/4 plans executed
+**Plans**: 4/4 plans complete
 **Wave 1**
 
 - [x] 21-01-PLAN.md — Gate: normalizeKeyword preserva `*` no cadastro + addKeyword rejeita literal-count-0 (KW-09)
 - [x] 21-02-PLAN.md — matchKeyword glob ancorado ReDoS-safe + especificidade por literal-count (KW-09, puro/TDD)
-- [ ] 21-03-PLAN.md — migration 0037: amplia o CHECK de transactions.classification_source para 'palavra-chave' + db push (KW-10)
+- [x] 21-03-PLAN.md — migration 0037: amplia o CHECK de transactions.classification_source para 'palavra-chave' + db push (KW-10)
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 21-04-PLAN.md — wiring import.ts: compileRule no pre-fetch + re-derivação server-side da procedência no commit (KW-09 + KW-10)
+- [x] 21-04-PLAN.md — wiring import.ts: compileRule no pre-fetch + re-derivação server-side da procedência no commit (KW-09 + KW-10)
 
 ### Phase 22: Sugestão de palavra-chave (inline + batch)
 
@@ -186,7 +186,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 | 18. AI classifica compras corretamente | v1.5 | 2/2 | Complete | 2026-06-20 |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
-| 21. Match wildcard + procedência persistida | v1.6 | 2/4 | In Progress|  |
+| 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete   | 2026-06-20 |
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 0/TBD | Not started | - |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 0/TBD | Not started | - |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |
