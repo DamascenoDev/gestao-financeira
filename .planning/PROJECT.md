@@ -12,7 +12,7 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 **v1.5 "Classificação determinística" — SHIPPED 2026-06-20.** A classificação no upload ganhou uma camada determinística, grátis e controlada pelo usuário, rodando antes da IA. Pipeline agora é **memória → palavra-chave → IA**: o usuário cadastra/remove palavras-chave por categoria em `/categorias` (tabela `category_keywords`, migration `0036`, RLS user-scoped; actions `addKeyword`/`removeKeyword` com Zod + owner gate + dedupe), e no upload um descritor que CONTÉM uma keyword cadastrada chega pré-classificado (`source = "palavra-chave"`, badge próprio na grid), **maior keyword vence**, sobrescrevível, sem auto-commit, aprendendo no confirm como hoje — reduzindo as chamadas de IA. A camada de IA ficou **kind-aware** (CLSAI-09): cada categoria vai ao prompt com seu `kind` (consumo/alocação) + regra dura anti-alocação + code gate, corrigindo "AliExpress/Mercado Livre → Investimentos". E a categoria default **"Marketplace"** (migration `0035`) foi aplicada em PROD, dando à IA e às regras um bucket de compras. Tag git: `v1.5`.
 
-Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECURED + nyquist-compliant. Auditoria do milestone: `gaps_found` (7/8 requisitos satisfeitos — **MKT-01 live human-verify diferido**, não é gap de código; código + `0035` já em PROD, resta só re-signup + confirmar "Marketplace"/upload OFX ao vivo → `/gsd-verify-work 18`). Ver `milestones/v1.5-MILESTONE-AUDIT.md` + STATE.md Deferred Items.
+Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECURED + nyquist-compliant. Auditoria do milestone: **`passed` — 8/8 requisitos**. MKT-01 (live human-verify) fechado ao vivo em PROD 2026-06-20 via `/gsd-verify-work 18`: `0035` na coluna Remote, "Marketplace" presente em `/categorias`, e um descritor de marketplace nunca visto recebeu sugestão de consumo (nunca Investimentos/Reserva) — 18-UAT.md 3/3 pass → 18-VERIFICATION.md `passed`. Ver `milestones/v1.5-MILESTONE-AUDIT.md`.
 
 <details>
 <summary>Milestones anteriores (v1.0–v1.4)</summary>
@@ -28,9 +28,7 @@ Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECU
 
 ## Next Milestone
 
-**Planejando o próximo milestone via `/gsd-new-milestone`.**
-
-Pendência herdada do v1.5 a fechar primeiro: **MKT-01 live human-verify** em PROD (re-signup → confirmar "Marketplace" em `/categorias` → upload de OFX de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`). Não é trabalho de código.
+**Planejando o próximo milestone via `/gsd-new-milestone`.** v1.5 fechado sem pendências (MKT-01 live human-verify confirmado 2026-06-20).
 
 Candidatos deferidos para próximos milestones:
 - **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
@@ -59,13 +57,13 @@ Candidatos deferidos para próximos milestones:
 - ✓ **Dívida v1.3 quitada** (DEBT-03..06) — G-07/G-08 live, walkthroughs MEI/LGPD, VALIDATION.md 12/13, delete destrutivo DATA-02 executado ao vivo — **v1.4** (Phase 17)
 - ✓ **Regras de palavra-chave determinísticas** (KW-01..06) — cadastro manual por categoria em `/categorias` (RLS user-scoped); no upload o pipeline roda **memória → palavra-chave → IA**, auto-classificando o match (maior keyword vence, sobrescrevível, aprende no confirm, sem auto-commit) — **v1.5**
 - ✓ **Prompt da IA kind-aware** (CLSAI-09) — cada categoria enviada com seu `kind` + regra dura anti-alocação + code gate; corrige "AliExpress/Mercado Livre → Investimentos/Reserva" — **v1.5**
-- ✓ **Categoria default "Marketplace"** (MKT-01) — migration `0035` aplicada em PROD; bucket de compras para IA + regras — **v1.5** (código + PROD prontos; live human-verify diferido)
+- ✓ **Categoria default "Marketplace"** (MKT-01) — migration `0035` aplicada em PROD; bucket de compras para IA + regras — **v1.5** (live human-verify fechado 2026-06-20: "Marketplace" em /categorias + descritor de marketplace → sugestão de consumo)
 
 ### Active
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- [ ] **(diferido do v1.5) MKT-01 — live human-verify em PROD**: migration `0035` já aplicada em PROD (owner, 2026-06-19) e CLSAI-09 verificado; resta a confirmação ao vivo — re-signup → confirmar "Marketplace" em `/categorias` → upload de OFX de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`. Não é trabalho de código.
+- _Sem itens abertos. v1.5 fechado em 8/8 requisitos (MKT-01 live human-verify confirmado 2026-06-20)._
 - _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
 
 ### Out of Scope
@@ -139,4 +137,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 after v1.5 milestone — SHIPPED + arquivado (`milestones/v1.5-*`). Camada determinística de palavra-chave (KW-01..06) + pipeline memória→palavra-chave→IA + prompt IA kind-aware (CLSAI-09) + categoria "Marketplace" (`0035`) em PROD. 7/8 requisitos satisfeitos; MKT-01 live human-verify diferido (ver STATE.md Deferred Items). Tag git `v1.5`. Próximo milestone via `/gsd-new-milestone`.*
+*Last updated: 2026-06-20 — MKT-01 live human-verify fechado via `/gsd-verify-work 18` (18-UAT.md 3/3 pass → 18-VERIFICATION.md `passed`); v1.5 agora 8/8 requisitos, auditoria `passed`, zero pendências. Anterior: v1.5 SHIPPED + arquivado (`milestones/v1.5-*`) — camada determinística de palavra-chave (KW-01..06) + pipeline memória→palavra-chave→IA + prompt IA kind-aware (CLSAI-09) + categoria "Marketplace" (`0035`) em PROD. Tag git `v1.5`. Próximo milestone via `/gsd-new-milestone`.*

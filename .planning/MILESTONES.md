@@ -4,7 +4,7 @@
 
 **Phases completed:** 3 phases (18–20), 6 plans
 **Git range:** `401cbb4` → `0f0b26a` · 118 files, +7766/−93 · execução em ~6h (2026-06-19)
-**Requirements:** 7/8 satisfeitos (8 mapeados) — MKT-01 diferido (live human-verify)
+**Requirements:** 8/8 satisfeitos — MKT-01 live human-verify fechado 2026-06-20 (18-UAT.md 3/3 pass)
 **Quality:** suíte 857 verde · `tsc --noEmit` + `npm run build` limpos · 3/3 fases SECURED · nyquist 3/3 compliant
 
 **Key accomplishments:**
@@ -12,11 +12,10 @@
 - **Pipeline determinístico memória → palavra-chave → IA** no upload (Phase 20, KW-02/03/04/05): o keyword pass roda entre a memória e o batch de IA, **maior palavra-chave vence**, é sobrescrevível na grid, aprende no confirm e não auto-commita — reduz as chamadas de IA cobrindo merchants cadastrados.
 - **Cadastro de palavras-chave por categoria** em `/categorias` (Phase 19, KW-01/KW-06): tabela `category_keywords` (migration `0036`, RLS user-scoped) + actions `addKeyword`/`removeKeyword` (Zod, owner gate, dedupe pré-check+23505) + `CategoryKeywordsDialog` (chips removíveis + Empty state).
 - **Prompt da IA kind-aware** (Phase 18, CLSAI-09): cada categoria vai ao prompt com seu `kind` (consumo/alocação) + glossário + regra dura anti-alocação + code gate — corrige a classe de erro "AliExpress/Mercado Livre → Investimentos/Reserva".
-- **Categoria default "Marketplace"** (migration `0035`) aplicada em PROD (`db push` do owner, 2026-06-19) — dá à IA e às regras um bucket de compras de marketplace. (MKT-01 — live human-verify pendente)
+- **Categoria default "Marketplace"** (migration `0035`) aplicada em PROD (`db push` do owner, 2026-06-19) — dá à IA e às regras um bucket de compras de marketplace. (MKT-01)
 - Badge de procedência **'palavra-chave'** na grid de revisão, espelhando o badge de memória.
 
-**Known deferred items at close: 1** (see STATE.md Deferred Items)
-- **MKT-01** — live human-verify pendente em PROD (não é gap de código): re-signup → confirmar "Marketplace" em `/categorias` → upload de OFX com descritor de marketplace → confirmar sugestão de consumo. Código (CLSAI-09) verificado + migration `0035` já em PROD; resta só a confirmação ao vivo (`/gsd-verify-work 18`).
+**Deferred items: 0 (all resolved).** MKT-01 fechado 2026-06-20 via `/gsd-verify-work 18` — owner confirmou ao vivo em PROD: `0035` na coluna Remote, "Marketplace" presente em `/categorias`, e um descritor de marketplace nunca visto recebeu sugestão de consumo (nunca Investimentos/Reserva). 18-UAT.md 3/3 pass → 18-VERIFICATION.md `passed`. Milestone fechado em **8/8 requisitos**.
 
 ---
 

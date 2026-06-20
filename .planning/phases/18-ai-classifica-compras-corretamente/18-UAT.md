@@ -1,19 +1,14 @@
 ---
-status: testing
+status: complete
 phase: 18-ai-classifica-compras-corretamente
 source: [18-VERIFICATION.md]
 started: 2026-06-19T15:25:00Z
-updated: 2026-06-19T15:25:00Z
+updated: 2026-06-20T13:50:00Z
 ---
 
 ## Current Test
 
-number: 1
-name: Aplicar migration 0035 (Marketplace) em PROD
-expected: |
-  Após `supabase db push` (rodado pelo dono, se 0035 ainda não estiver em Remote),
-  `supabase migration list` mostra 0035 na coluna Remote.
-awaiting: user response
+[testing complete]
 
 ## Tests
 
@@ -23,14 +18,14 @@ expected: |
   linkado ao PROD, caso 0035 esteja ausente de Remote. Depois, 0035 aparece na coluna
   Remote de `supabase migration list`. (A verificação read-only falhou aqui:
   "Invalid access token format" — sem SUPABASE_ACCESS_TOKEN no ambiente.)
-result: [pending]
+result: pass
 
 ### 2. Re-signup em PROD + confirmar "Marketplace" em /categorias
 expected: |
   PROD foi wiped 2026-06-19 → re-signup + re-entrada da chave BYOK. Em /categorias, a
   categoria default "Marketplace" (consumo) aparece na lista (criada pelo handle_new_user
   re-seeded da 0035, ou pelo backfill idempotente).
-result: [pending]
+result: pass
 
 ### 3. Descritor de marketplace nunca visto → sugestão de consumo (nunca alocação)
 expected: |
@@ -38,15 +33,17 @@ expected: |
   Livre, Shopee). Na grid de revisão, a sugestão da IA cai em "Marketplace" (ou outra
   categoria de consumo) — NUNCA em Investimentos/Reserva. (O kind gate do 18-01 já garante
   que alocação jamais é sugerida para um gasto, mesmo em caso de erro do modelo.)
-result: [pending]
+result: pass
 
 ## Summary
 
 total: 3
-passed: 0
+passed: 3
 issues: 0
-pending: 3
+pending: 0
 skipped: 0
 blocked: 0
 
 ## Gaps
+
+[none — all 3 live-verify scenarios passed; MKT-01 satisfied]

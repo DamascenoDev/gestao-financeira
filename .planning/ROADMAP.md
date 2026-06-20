@@ -13,7 +13,7 @@
 - ✅ **v1.2 Carro** — Phases 8–11 (módulo de veículo) — shipped 2026-06-18 (`milestones/v1.2-*`)
 - ✅ **v1.3 Produção & PDF** — Phases 12–13 (app no ar + core value live memory-only + PDF de fatura) — shipped 2026-06-18 (`milestones/v1.3-*`)
 - ✅ **v1.4 IA de Classificação (BYOK)** — Phases 14–17 (wire IA no seam `suggestCategory()` + BYOK Settings + dívida v1.3) — shipped 2026-06-19 (`milestones/v1.4-*`)
-- ✅ **v1.5 Classificação determinística** — Phases 18–20 (pipeline memória→palavra-chave→IA + prompt da IA kind-aware + Marketplace em PROD) — shipped 2026-06-20 (`milestones/v1.5-*`; close com MKT-01 live human-verify diferido)
+- ✅ **v1.5 Classificação determinística** — Phases 18–20 (pipeline memória→palavra-chave→IA + prompt da IA kind-aware + Marketplace em PROD) — shipped 2026-06-20 (`milestones/v1.5-*`; 8/8 requisitos — MKT-01 live human-verify fechado 2026-06-20)
 
 ## Phases
 
@@ -75,11 +75,11 @@ Full detail: `milestones/v1.4-ROADMAP.md`. Audit: `milestones/v1.4-MILESTONE-AUD
 <details>
 <summary>✅ v1.5 Classificação determinística (Phases 18–20) — SHIPPED 2026-06-20</summary>
 
-- [x] Phase 18: AI classifica compras corretamente — 1/2 plans — completed 2026-06-19 (CLSAI-09 kind-aware prompt + anti-allocation gate; `0035` Marketplace em PROD. **18-02 MKT-01 live human-verify diferido**)
+- [x] Phase 18: AI classifica compras corretamente — 2/2 plans — completed 2026-06-20 (CLSAI-09 kind-aware prompt + anti-allocation gate; `0035` Marketplace em PROD; **MKT-01 live human-verify fechado 2026-06-20** — 18-UAT.md 3/3 pass)
 - [x] Phase 19: Cadastro de palavras-chave por categoria — 2/2 plans — completed 2026-06-19 (KW-01/KW-06; `category_keywords` migration `0036` RLS-scoped + actions + `CategoryKeywordsDialog`)
 - [x] Phase 20: Auto-classificação por palavra-chave no upload — 2/2 plans — completed 2026-06-19 (KW-02/03/04/05; pipeline memória→palavra-chave→IA, maior-keyword-vence, sobrescrevível, aprende no confirm)
 
-Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUDIT.md` (close `gaps_found` — MKT-01 live human-verify diferido, 7/8 requisitos; ver STATE.md Deferred Items).
+Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUDIT.md` (`passed` — 8/8 requisitos; MKT-01 live human-verify fechado 2026-06-20).
 
 </details>
 
@@ -104,7 +104,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 | 15. Classification Wire | v1.4 | 2/2 | Complete | 2026-06-19 |
 | 16. Review-Grid Suggestion Affordances | v1.4 | 1/1 | Complete | 2026-06-18 |
 | 17. v1.3 Debt Cleanup (ISOLATED) | v1.4 | 4/4 | Complete | 2026-06-19 |
-| 18. AI classifica compras corretamente | v1.5 | 1/2 | Complete (MKT-01 live human-verify diferido) | 2026-06-19 |
+| 18. AI classifica compras corretamente | v1.5 | 2/2 | Complete (MKT-01 live human-verify fechado 2026-06-20) | 2026-06-20 |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
 
@@ -112,4 +112,4 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
 *Reorganized 2026-06-18 at v1.3 close — milestone-grouped lean index; full v1.0–v1.3 phase detail in `milestones/v{X.Y}-ROADMAP.md`.*
 *v1.4 shipped + collapsed 2026-06-19 — Phases 14–17, 17/17 v1.4 requirements. Full detail in `milestones/v1.4-ROADMAP.md`.*
-*v1.5 shipped + collapsed 2026-06-20 — Phases 18–20, 7/8 v1.5 requirements satisfeitos (MKT-01 live human-verify diferido). Full detail in `milestones/v1.5-ROADMAP.md`. Próximo milestone via `/gsd-new-milestone`.*
+*v1.5 shipped + collapsed 2026-06-20 — Phases 18–20, 8/8 v1.5 requirements satisfeitos (MKT-01 live human-verify fechado 2026-06-20 via `/gsd-verify-work 18`). Full detail in `milestones/v1.5-ROADMAP.md`. Próximo milestone via `/gsd-new-milestone`.*

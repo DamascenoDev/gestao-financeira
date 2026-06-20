@@ -55,14 +55,14 @@ Last activity: 2026-06-20 — Milestone v1.5 completed and archived
 
 **Smoke notes:** Gemini default stays `gemini-2.5-flash-lite` (only model with free-tier quota for this key — `2.0-flash` is paid-only, 429 limit:0; `3.5-flash` is a thinking model that stalls the 1-token test). flash-lite occasionally returns transient 503 "high demand" → CLSAI-06 degrades cleanly, a re-upload retries. `getDecryptedAiSettings` now reads the model live from `DEFAULT_MODEL` (model swap needs no key re-save). **3 new findings filed in `.planning/todos/pending/`:** content_hash blocks unconfirmed re-import, PDF worker missing in PROD, and an "aplicar todas as sugestões" feature request.
 
-**v1.5-close items acknowledged and deferred at milestone close on 2026-06-20:**
+**v1.5-close items — ALL RESOLVED 2026-06-20 by `/gsd-verify-work 18` (live human-verify):**
 
-| Category | Item | Status |
-|----------|------|--------|
-| verification | 18-VERIFICATION.md (Phase 18) | human_needed — MKT-01 live human-verify pendente em PROD |
-| uat | 18-UAT.md (Phase 18) | testing — 3 cenários pendentes (mesmo live-verify do MKT-01) |
+| Category | Item | Resolution |
+|----------|------|-----------|
+| verification | 18-VERIFICATION.md (Phase 18) | ✅ RESOLVED — MKT-01 live human-verify fechado; status `human_needed` → `passed` (9/9 truths). |
+| uat | 18-UAT.md (Phase 18) | ✅ RESOLVED — 3/3 cenários `pass`; status `complete`. |
 
-**MKT-01 detail:** NÃO é gap de código. CLSAI-09 (prompt kind-aware) verificado `passed`; migration `0035` (categoria "Marketplace") já aplicada em PROD pelo owner (2026-06-19). Resta só a confirmação ao vivo: re-signup em PROD → confirmar "Marketplace" em `/categorias` → upload de OFX com descritor de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`.
+**MKT-01 resolution (2026-06-20):** owner confirmou ao vivo em PROD — `0035` na coluna Remote, categoria "Marketplace" (consumo) presente em `/categorias`, e um descritor de marketplace nunca visto recebeu sugestão de **consumo** (nunca Investimentos/Reserva). v1.5 agora 8/8 requisitos satisfeitos — **zero itens diferidos abertos**.
 
 ### Quick Tasks Completed
 
