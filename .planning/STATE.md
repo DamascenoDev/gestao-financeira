@@ -6,14 +6,14 @@ current_phase: 21
 current_phase_name: Match wildcard + procedência persistida
 status: executing
 stopped_at: Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
-last_updated: "2026-06-20T18:17:06.125Z"
+last_updated: "2026-06-20T18:21:13.296Z"
 last_activity: 2026-06-20
 last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 4
   completed_phases: 0
   total_plans: 4
-  completed_plans: 1
+  completed_plans: 2
   percent: 0
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 21 (Match wildcard + procedência persistida) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-20 — Phase 21 execution started
 
@@ -92,6 +92,7 @@ Last activity: 2026-06-20 — Phase 21 execution started
 | Phase 20 P01 | 3 | 2 tasks | 5 files |
 | Phase 20 P02 | 5 | 2 tasks | 4 files |
 | Phase 21 P01 | 6m | 2 tasks | 4 files |
+| Phase 21 P02 | ~5m | 1 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -173,7 +174,7 @@ Last activity: 2026-06-20 — Phase 21 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-20T18:16:58.387Z
+**Last session:** 2026-06-20T18:21:01.117Z
 **Stopped at:** Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
 **Resume file:** .planning/ROADMAP.md (seção v1.6)
 
@@ -259,3 +260,4 @@ Last activity: 2026-06-20 — Phase 21 execution started
 - [Phase ?]: 19-02: fetch agrupado de category_keywords no RSC (Map por category_id, RLS como gate) threaded ao CategoryRowActions
 - [Phase ?]: Phase 20-01: keyword layer between memory and AI; precedence from control-flow placement; confirmImport untouched
 - [Phase ?]: normalizeKeyword preserva glob * via runNormalizePipeline compartilhado; addKeyword rejeita literal-count-0
+- [Phase ?]: 21-02: KeywordRule glob/literals optional (lazy-derive in matcher); compileRule pre-fetch wiring deferred to Plan 04.
