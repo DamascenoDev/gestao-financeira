@@ -89,7 +89,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 **Milestone goal:** Reduzir o atrito da classificação (auto-sugestão de palavras-chave inline + em lote, match wildcard glob, aplicar sugestões em lote por confiança) e endurecer a ingestão (PDF funcionando em PROD, parser que degrada com clareza, re-import liberado quando não confirmado). Brownfield: o pipeline **memória → palavra-chave → IA** já roda em PROD; este milestone o refina e fecha findings do v1.4.
 
 - [x] **Phase 21: Match wildcard + procedência persistida** - Wildcard glob (`*`) na palavra-chave (maior keyword vence preservado) + widening do CHECK de `0020` para gravar `palavra-chave` em `transactions.classification_source` (completed 2026-06-20)
-- [ ] **Phase 22: Sugestão de palavra-chave (inline + batch)** - Opt-in inline ao confirmar merchant→categoria + painel batch em `/categorias` que analisa `merchant_patterns` e sugere keywords candidatas
+- [x] **Phase 22: Sugestão de palavra-chave (inline + batch)** - Opt-in inline ao confirmar merchant→categoria + painel batch em `/categorias` que analisa `merchant_patterns` e sugere keywords candidatas (completed 2026-06-20)
 - [ ] **Phase 23: Aplicar sugestões em lote por confiança** - No review grid, aplicar de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual (sem auto-commit)
 - [ ] **Phase 24: Ingestão robusta (PDF em PROD + re-import)** - Worker do `pdfjs` disponível no bundle serverless da Vercel + parser que degrada com clareza (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada
 
@@ -130,7 +130,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
   3. No painel, o usuário aprova ou descarta as candidatas em lote; as aprovadas viram keywords cadastradas (escopadas por `user_id` + RLS), as descartadas somem da lista sem efeito colateral.
   4. Nenhuma keyword é criada sem ação explícita do usuário (sem auto-cadastro) — inline e batch são ambos opt-in.
 
-**Plans**: 2/3 plans executed
+**Plans**: 3/3 plans complete
 
 Plans:
 **Wave 1**
@@ -140,7 +140,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1 completion)*
 
-- [ ] 22-03-PLAN.md — KW-08 client: global suggestions dialog + /categorias launcher (RSC preserved) + dialog tests [Wave 2, depends on 22-02]
+- [x] 22-03-PLAN.md — KW-08 client: global suggestions dialog + /categorias launcher (RSC preserved) + dialog tests [Wave 2, depends on 22-02]
 
 **UI hint**: yes
 
@@ -198,7 +198,7 @@ Plans:
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete    | 2026-06-20 |
-| 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 2/3 | In Progress|  |
+| 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 0/TBD | Not started | - |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |
 
