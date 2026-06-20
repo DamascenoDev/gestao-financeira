@@ -135,17 +135,27 @@ export async function getKeywordSuggestions(): Promise<
 
   // Three RLS-scoped reads — RLS (auth.uid() = user_id) enforces ownership, so
   // NO manual .eq('user_id', …) here (repo convention).
-  const [{ data: patterns }, { data: keywords }, { data: categories }] =
-    await Promise.all([
-      supabase
-        .from('merchant_patterns')
-        .select('descriptor_norm, category_id, hit_count'),
-      supabase.from('category_keywords').select('category_id, keyword'),
-      supabase
-        .from('categories')
-        .select('id, name, sort')
-        .eq('is_archived', false),
-    ])
+  const [
+    { data: patterns, error: patternsError },
+    { data: keywords, error: keywordsError },
+    { data: categories, error: categoriesError },
+  ] = await Promise.all([
+    supabase
+      .from('merchant_patterns')
+      .select('descriptor_norm, category_id, hit_count'),
+    supabase.from('category_keywords').select('category_id, keyword'),
+    supabase
+      .from('categories')
+      .select('id, name, sort')
+      .eq('is_archived', false),
+  ])
+
+  // Surface read failures instead of presenting them as a calm empty feed
+  // (mirrors the Phase 21 swallowed-error fix). A transient DB error must
+  // reach the dialog as an error, never an indistinguishable "no suggestions".
+  if (patternsError || keywordsError || categoriesError) {
+    return { error: 'Não foi possível carregar as sugestões.' }
+  }
 
   const sortById = new Map<string, number>()
   const nameById = new Map<string, string>()
@@ -160,6 +170,11 @@ export async function getKeywordSuggestions(): Promise<
     .filter((r): r is KeywordRule => r !== null)
 
   const suggestions: KeywordSuggestion[] = (patterns ?? [])
+    // Drop candidates whose category is archived/inactive BEFORE anything else:
+    // an archived category has no entry in nameById (built from is_archived=false
+    // only), so it would surface a raw UUID label and a category Select with no
+    // matching item, and approving would persist a keyword on a hidden category.
+    .filter((p) => nameById.has(p.category_id))
     // Exclude any descriptor already covered by an existing keyword (the matcher
     // is the single source of truth for "covered"). descriptor_norm is the match
     // key as-is — do NOT re-normalize it.
