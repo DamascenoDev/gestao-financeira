@@ -6,6 +6,7 @@ import { z } from 'zod'
 import { keywordSchema } from '@/lib/schemas/category-keyword'
 import { normalizeKeyword } from '@/lib/normalize'
 import { createClient } from '@/lib/supabase/server'
+import { compileRule, matchKeyword, type KeywordRule } from '@/lib/classifier/keywords'
 
 /**
  * Category-keyword Server Actions (KW-01/KW-06). Mirrors actions/categories.ts:
@@ -92,6 +93,161 @@ export async function addKeyword(
 
   revalidatePath(CATEGORIAS_PATH)
   return { ok: true }
+}
+
+/**
+ * KW-08: one candidate from {@link getKeywordSuggestions} — a confirmed
+ * merchant_pattern descriptor NOT yet covered by any of the caller's keywords.
+ * `descriptorNorm` is the already-normalized match key (never re-normalize it —
+ * re-normalizing would re-strip a `*` that never belongs here anyway, the
+ * documented landmine). It is the editable prefill the batch dialog (Plan 03)
+ * sends back as the keyword.
+ */
+export type KeywordSuggestion = {
+  descriptorNorm: string
+  categoryId: string
+  categoryName: string
+  hitCount: number
+}
+
+/** KW-08 batch-create result: created/skipped counts, or a session error. */
+export type ApproveSuggestionsResult =
+  | { ok: true; created: number; skipped: number }
+  | { error: string }
+
+/**
+ * KW-08: mine the caller's CONFIRMED merchant_patterns and surface the ones not
+ * yet covered by an existing keyword, sorted by hit_count desc — the candidate
+ * feed for the batch-suggestion dialog (Plan 03).
+ *
+ * ALL candidate computation stays server-side (T-22-03): RLS scopes the three
+ * reads to the caller (NO manual user_id filter), and only the computed candidate
+ * shape — never raw merchant rows — crosses to the client. The already-covered
+ * filter reuses the SAME pure matcher (compileRule/matchKeyword) the upload
+ * pipeline uses, so "covered" means exactly what classification means.
+ */
+export async function getKeywordSuggestions(): Promise<
+  { ok: true; suggestions: KeywordSuggestion[] } | { error: string }
+> {
+  const supabase = await createClient()
+  const { data: claims } = await supabase.auth.getClaims()
+  if (!claims?.claims.sub) return { error: 'Sessão expirada.' }
+
+  // Three RLS-scoped reads — RLS (auth.uid() = user_id) enforces ownership, so
+  // NO manual .eq('user_id', …) here (repo convention).
+  const [{ data: patterns }, { data: keywords }, { data: categories }] =
+    await Promise.all([
+      supabase
+        .from('merchant_patterns')
+        .select('descriptor_norm, category_id, hit_count'),
+      supabase.from('category_keywords').select('category_id, keyword'),
+      supabase
+        .from('categories')
+        .select('id, name, sort')
+        .eq('is_archived', false),
+    ])
+
+  const sortById = new Map<string, number>()
+  const nameById = new Map<string, string>()
+  for (const c of categories ?? []) {
+    sortById.set(c.id, c.sort)
+    nameById.set(c.id, c.name)
+  }
+
+  // Build the precompiled rule list ONCE; compileRule drops '' / literal-count-0.
+  const rules: KeywordRule[] = (keywords ?? [])
+    .map((k) => compileRule(k.category_id, k.keyword, sortById.get(k.category_id) ?? 0))
+    .filter((r): r is KeywordRule => r !== null)
+
+  const suggestions: KeywordSuggestion[] = (patterns ?? [])
+    // Exclude any descriptor already covered by an existing keyword (the matcher
+    // is the single source of truth for "covered"). descriptor_norm is the match
+    // key as-is — do NOT re-normalize it.
+    .filter((p) => matchKeyword(p.descriptor_norm, rules) === null)
+    .map((p) => ({
+      descriptorNorm: p.descriptor_norm,
+      categoryId: p.category_id,
+      categoryName: nameById.get(p.category_id) ?? p.category_id,
+      hitCount: p.hit_count,
+    }))
+    .sort((a, b) => b.hitCount - a.hitCount)
+
+  // Read-only: no revalidatePath.
+  return { ok: true, suggestions }
+}
+
+/**
+ * KW-08: bulk-create the chosen candidates as category_keywords behind ONE
+ * owner-gate and ONE revalidatePath. Each item is validated/normalized/deduped
+ * EXACTLY like addKeyword — the client's edited term is never trusted (V5), the
+ * categoryId is uuid-checked (V4) and RLS + FK reject a foreign id (counted as a
+ * skip). A single invalid/duplicate item is counted as `skipped` and the loop
+ * continues — one bad item NEVER aborts the batch.
+ */
+export async function approveKeywordSuggestions(
+  items: { categoryId: string; keyword: string }[],
+): Promise<ApproveSuggestionsResult> {
+  if (items.length === 0) return { ok: true, created: 0, skipped: 0 }
+
+  const supabase = await createClient()
+  const { data: claims } = await supabase.auth.getClaims()
+  const userId = claims?.claims.sub
+  if (!userId) return { error: 'Sessão expirada.' }
+
+  let created = 0
+  let skipped = 0
+
+  for (const item of items) {
+    // Mirror addKeyword's four guards — never throw, `continue` + count skipped.
+    if (!idSchema.safeParse(item.categoryId).success) {
+      skipped++
+      continue
+    }
+    const parsed = keywordSchema.safeParse(item.keyword)
+    if (!parsed.success) {
+      skipped++
+      continue
+    }
+    const normalized = normalizeKeyword(parsed.data)
+    if (normalized === '') {
+      skipped++
+      continue
+    }
+    // Reject a literal-count-0 catch-all (`*` / `**`) — would match everything.
+    if (normalized.replace(/\*/g, '') === '') {
+      skipped++
+      continue
+    }
+
+    // Duplicate pre-check (RLS scopes to the caller).
+    const { data: existing } = await supabase
+      .from('category_keywords')
+      .select('id')
+      .eq('category_id', item.categoryId)
+      .eq('keyword', normalized)
+      .maybeSingle()
+    if (existing) {
+      skipped++
+      continue
+    }
+
+    const { error } = await supabase.from('category_keywords').insert({
+      user_id: userId,
+      category_id: item.categoryId,
+      keyword: normalized,
+    })
+    // Any insert error (incl. 23505 race / foreign categoryId rejected by RLS/FK)
+    // is a skip — never throw, never leak a raw DB error.
+    if (error) {
+      skipped++
+      continue
+    }
+    created++
+  }
+
+  // ONE revalidate after the whole batch, never per item.
+  revalidatePath(CATEGORIAS_PATH)
+  return { ok: true, created, skipped }
 }
 
 /** Remove a keyword by id (KW-01). RLS scopes the delete to the caller. */

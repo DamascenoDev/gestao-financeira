@@ -17,3 +17,16 @@ export const keywordSchema = z
   .max(60, 'Use até 60 caracteres.')
 
 export type KeywordInput = z.infer<typeof keywordSchema>
+
+/**
+ * One batch-approve item for `approveKeywordSuggestions` (KW-08): a category id
+ * (uuid) plus the (possibly client-edited) keyword term. The action re-validates
+ * AND normalizes every item server-side via this schema + `normalizeKeyword` —
+ * the edited term is client-supplied and never trusted (V5). pt-BR messages.
+ */
+export const keywordSuggestionItemSchema = z.object({
+  categoryId: z.string().uuid('Identificador inválido'),
+  keyword: keywordSchema,
+})
+
+export type KeywordSuggestionItem = z.infer<typeof keywordSuggestionItemSchema>
