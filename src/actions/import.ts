@@ -5,7 +5,7 @@ import { z } from 'zod'
 
 import { classifyDescriptors } from '@/lib/ai/classify'
 import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
-import { matchKeyword, type KeywordRule } from '@/lib/classifier/keywords'
+import { compileRule, matchKeyword, type KeywordRule } from '@/lib/classifier/keywords'
 import { lookupMemory } from '@/lib/classifier/memory'
 import { csvHeaderSignature } from '@/lib/csv-profile'
 import { lookupCsvProfile } from '@/lib/csv-profile.server'
@@ -447,12 +447,15 @@ export async function ingestStatement(
   // WR-01: no .order() needed here — matchKeyword's final tie-break on categoryId
   // makes the winner deterministic regardless of fetch/row order (proven order-
   // independent in keywords.test.ts). The matcher is the single source of determinism.
-  const keywordRules: KeywordRule[] = (kwRows ?? []).map((k) => ({
-    categoryId: k.category_id,
-    keyword: k.keyword,
-    // FK guarantees a categories row; ?? 0 satisfies strict-null (sort default is 0).
-    sort: k.categories?.sort ?? 0,
-  }))
+  //
+  // KW-09 (Plan 21-04): build each rule via compileRule so its glob (RegExp) is compiled
+  // ONCE here per rule — never N×M `new RegExp` inside the per-row matchKeyword scan
+  // (RESEARCH §Perf note, §Anti-Patterns "Compiling the glob regex per match"). A keyword
+  // MAY now contain `*` (Plan 21-01) → compileRule derives the anchored glob + literal
+  // count; a degenerate rule (empty / all-`*`) returns null and is filtered out.
+  const keywordRules: KeywordRule[] = (kwRows ?? [])
+    .map((k) => compileRule(k.category_id, k.keyword, k.categories?.sort ?? 0))
+    .filter((r): r is KeywordRule => r !== null)
 
   // Pre-mark cross-statement duplicates: a row whose dedupe_key already exists in
   // the user's transactions is `duplicada` (Plan 03's confirm collapses them via

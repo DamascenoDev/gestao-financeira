@@ -682,6 +682,37 @@ describe('ingestStatement', () => {
     expect(sent).not.toContain('netflix com')
   })
 
+  // --- Phase 21 (KW-09): the glob is compiled once per rule at pre-fetch (compileRule)
+  // and matches end-to-end in the upload pipeline ---
+
+  it('KW-09 glob prefix: a `uber*` glob keyword pre-classifies `uber trip` (palavra-chave)', async () => {
+    // The keyword side preserves `*` (Plan 21-01 normalizeKeyword); the pre-fetch
+    // compiles it ONCE via compileRule (Plan 21-02). `uber trip` (itau fixture) matches
+    // the anchored glob /^uber.*$/ and binds cat-transp.
+    keywordRows = [{ category_id: 'cat-transp', keyword: 'uber*', categories: { sort: 0 } }]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    const uber = r.rows.find((x) => x.descriptor_norm === 'uber trip')!
+    expect(uber.category_id).toBe('cat-transp')
+    expect(uber.classification_source).toBe('palavra-chave')
+  })
+
+  it('KW-09 glob contains: a `*flix*` glob keyword pre-classifies `netflix com` (palavra-chave)', async () => {
+    // `*flix*` → /^.*flix.*$/ matches `netflix com` (interior substring via glob).
+    keywordRows = [{ category_id: 'cat-stream', keyword: '*flix*', categories: { sort: 0 } }]
+    aiSettings = { provider: 'gemini', model: 'm', apiKey: 'k' }
+
+    const r = await ingestStatement('user-1/itau.ofx', 'itau.ofx')
+    if (!('rows' in r) || !r.rows) throw new Error('no rows')
+
+    const netflix = r.rows.find((x) => x.descriptor_norm === 'netflix com')!
+    expect(netflix.category_id).toBe('cat-stream')
+    expect(netflix.classification_source).toBe('palavra-chave')
+  })
+
   it('longest-wins end-to-end (KW-04): the longer keyword binds the row over a shorter one', async () => {
     // padaria sao joao matches both 'padaria' (sort 0) and the longer 'padaria sao'
     // (sort 1) → the LONGER keyword wins, so cat-mkt binds, not cat-alim.
