@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.5
 milestone_name: Classificação determinística
-current_phase: 20
-current_phase_name: auto-classifica-o-por-palavra-chave-no-upload
-status: verifying
+current_phase: 5
+status: Awaiting next milestone
 stopped_at: Roadmap v1.5 criado (Phases 18–20); planejamento pendente
-last_updated: "2026-06-19T20:29:31.700Z"
-last_activity: 2026-06-19
-last_activity_desc: Phase 20 execution started
+last_updated: "2026-06-20T13:40:57.870Z"
+last_activity: 2026-06-20
+last_activity_desc: Milestone v1.5 completed and archived
 progress:
   total_phases: 3
   completed_phases: 3
   total_plans: 6
   completed_plans: 6
   percent: 100
+current_phase_name: auto-classifica-o-por-palavra-chave-no-upload
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 20 — auto-classifica-o-por-palavra-chave-no-upload
+- **Current focus:** v1.5 shipped + archived — planning next milestone (`/gsd-new-milestone`)
 
 ## Current Position
 
-Phase: 20 (auto-classifica-o-por-palavra-chave-no-upload) — EXECUTING
-Plan: 2 of 2
-Status: Phase complete — ready for verification
-Last activity: 2026-06-19 — Phase 20 execution started
+Phase: Milestone v1.5 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-20 — Milestone v1.5 completed and archived
 
 ## Deferred Items
 
@@ -54,6 +54,15 @@ Last activity: 2026-06-19 — Phase 20 execution started
 | verification | 16-VERIFICATION.md (Phase 16) | ✅ RESOLVED — gold "IA" badge + "Aplicar sugestão" chip rendered live on the real suggestion data. → `passed`. |
 
 **Smoke notes:** Gemini default stays `gemini-2.5-flash-lite` (only model with free-tier quota for this key — `2.0-flash` is paid-only, 429 limit:0; `3.5-flash` is a thinking model that stalls the 1-token test). flash-lite occasionally returns transient 503 "high demand" → CLSAI-06 degrades cleanly, a re-upload retries. `getDecryptedAiSettings` now reads the model live from `DEFAULT_MODEL` (model swap needs no key re-save). **3 new findings filed in `.planning/todos/pending/`:** content_hash blocks unconfirmed re-import, PDF worker missing in PROD, and an "aplicar todas as sugestões" feature request.
+
+**v1.5-close items acknowledged and deferred at milestone close on 2026-06-20:**
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | 18-VERIFICATION.md (Phase 18) | human_needed — MKT-01 live human-verify pendente em PROD |
+| uat | 18-UAT.md (Phase 18) | testing — 3 cenários pendentes (mesmo live-verify do MKT-01) |
+
+**MKT-01 detail:** NÃO é gap de código. CLSAI-09 (prompt kind-aware) verificado `passed`; migration `0035` (categoria "Marketplace") já aplicada em PROD pelo owner (2026-06-19). Resta só a confirmação ao vivo: re-signup em PROD → confirmar "Marketplace" em `/categorias` → upload de OFX com descritor de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`.
 
 ### Quick Tasks Completed
 

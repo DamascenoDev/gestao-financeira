@@ -10,14 +10,14 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 ## Current State
 
-**v1.4 "IA de Classificação (BYOK)" — SHIPPED 2026-06-19.** A classificação assistida por IA está **wired** no seam `suggestCategory()` com BYOK multi-provedor (Gemini/Claude): migração `0033` (Vault `ai_settings` + RLS + RPCs get/save/remove, decrypt server-only), Settings UI write-only em `/conta/configuracoes-ia`, e o pipeline memory-first → uma chamada `classifyDescriptors` batched/enum-gated por upload → `row.suggestion` não-vinculante → grid renderiza procedência (memória vs IA) + confiança + ordenação baixa-confiança-primeiro → aprende SÓ no confirm (nunca auto-commit). **Integration-checker: a cadeia 14→15→16 está 100% wired, 0 defeitos.** Dívida v1.3 quitada na Phase 17 (G-07/G-08 live, walkthroughs MEI/LGPD, VALIDATION.md 12/13, **delete destrutivo DATA-02 executado ao vivo**). Tag git: `v1.4`.
+**v1.5 "Classificação determinística" — SHIPPED 2026-06-20.** A classificação no upload ganhou uma camada determinística, grátis e controlada pelo usuário, rodando antes da IA. Pipeline agora é **memória → palavra-chave → IA**: o usuário cadastra/remove palavras-chave por categoria em `/categorias` (tabela `category_keywords`, migration `0036`, RLS user-scoped; actions `addKeyword`/`removeKeyword` com Zod + owner gate + dedupe), e no upload um descritor que CONTÉM uma keyword cadastrada chega pré-classificado (`source = "palavra-chave"`, badge próprio na grid), **maior keyword vence**, sobrescrevível, sem auto-commit, aprendendo no confirm como hoje — reduzindo as chamadas de IA. A camada de IA ficou **kind-aware** (CLSAI-09): cada categoria vai ao prompt com seu `kind` (consumo/alocação) + regra dura anti-alocação + code gate, corrigindo "AliExpress/Mercado Livre → Investimentos". E a categoria default **"Marketplace"** (migration `0035`) foi aplicada em PROD, dando à IA e às regras um bucket de compras. Tag git: `v1.5`.
 
-Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` limpos. Auditoria do milestone: `tech_debt` (17/17 requisitos mapeados + wired, 0 blockers — ver `milestones/v1.4-MILESTONE-AUDIT.md`).
-
-**Dívida v1.4 quitada (2026-06-19, quick-task `260619-d68`):** os live-smokes real-key/PROD das Phases 14/15/16 foram fechados ao vivo — conta PROD recriada, chave BYOK colada, `0033`/`0034` confirmados (save + testar conexão), **sugestão real da IA renderizada** num upload de merchant novo, `maxDuration` ok. Phases 14/15/16 → `passed`. Ajustes feitos no caminho: default Gemini permanece `gemini-2.5-flash-lite` (único com cota free; `2.0-flash` é pago-only → 429 limit:0), e `getDecryptedAiSettings` agora lê o modelo **live** de `DEFAULT_MODEL` (troca de modelo não exige re-salvar a chave). **3 achados novos viraram todos** (`.planning/todos/pending/`): `content_hash` bloqueia re-import não-confirmado, PDF quebrado em PROD (worker pdfjs), e pedido de botão "aplicar todas as sugestões".
+Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECURED + nyquist-compliant. Auditoria do milestone: `gaps_found` (7/8 requisitos satisfeitos — **MKT-01 live human-verify diferido**, não é gap de código; código + `0035` já em PROD, resta só re-signup + confirmar "Marketplace"/upload OFX ao vivo → `/gsd-verify-work 18`). Ver `milestones/v1.5-MILESTONE-AUDIT.md` + STATE.md Deferred Items.
 
 <details>
-<summary>Milestones anteriores (v1.0–v1.3)</summary>
+<summary>Milestones anteriores (v1.0–v1.4)</summary>
+
+- **v1.4 IA de Classificação (BYOK)** (Phases 14-17) — IA wired no seam `suggestCategory()` com BYOK multi-provedor (Gemini/Claude): Vault `ai_settings` + RLS + RPCs (`0033`), Settings write-only, pipeline memory-first → 1 chamada batched/enum-gated → sugestão não-vinculante na grid (procedência + confiança) → aprende só no confirm. Live-smokes real-key/PROD fechados ao vivo (quick-task `260619-d68`). Dívida v1.3 quitada na Phase 17 (delete destrutivo DATA-02 ao vivo). SHIPPED 2026-06-19 (`milestones/v1.4-*`).
 
 - **v1.0 MVP** (Phases 1-6) — core ledger + upload OFX/CSV/IA-seam + metas/reservas + MEI/DASN + endurecimento. Code-complete no stack local; deploy/live-verify executado na Phase 12 (v1.3).
 - **v1.1 Identidade visual** (Phase 7) — re-skin navy+gold, dark mode, charts, mobile nav. SHIPPED 2026-06-17.
@@ -26,18 +26,17 @@ Suítes 797/812/819 testes verdes por fase, `tsc --noEmit` + `npm run build` lim
 
 </details>
 
-## Current Milestone: v1.5 Classificação determinística
+## Next Milestone
 
-**Goal:** Reduzir a dependência da IA fraca (flash-lite) dando à classificação uma camada determinística e controlada pelo usuário — regras de palavra-chave → categoria que ele mesmo cadastra — além de um prompt de IA mais esperto para o que sobrar.
+**Planejando o próximo milestone via `/gsd-new-milestone`.**
 
-**Target features:**
-- **Regras de palavra-chave por categoria** — o usuário cadastra keywords no `/categorias` (Transporte: "Uber","Posto"; Marketplace: "Shopee","Shein"…); o ingest roda **memória → palavra-chave → IA**, **auto-classificando** o match no upload (source "palavra-chave", sobrescrevível), com **maior keyword vence** no conflito. Match por substring no `descriptor_norm` (já minúsculo/sem acento). Cadastro manual (não aprendido).
-- **Ajuste do prompt da IA** — kind-aware: a IA para de escolher categorias de alocação (Investimentos/Reserva) para compras (envia o `kind` da categoria + uma linha-guia no prompt).
-- **Push do seed Marketplace (`0035`) p/ PROD** — passo rastreado do milestone (`supabase db push`).
+Pendência herdada do v1.5 a fechar primeiro: **MKT-01 live human-verify** em PROD (re-signup → confirmar "Marketplace" em `/categorias` → upload de OFX de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`). Não é trabalho de código.
 
-**Contexto:** app single-user pt-BR; convive com a memória aprendida no confirm + a IA não-auto-commit existentes; a camada de palavra-chave é determinística/grátis/instantânea. Fases continuam de 17 → **18+**.
-
-Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText` (distinto do bug de worker já corrigido em v1.4-followup).
+Candidatos deferidos para próximos milestones:
+- **PDF avançado** (parser por banco / OCR) — só se um banco real falhar no `getText`.
+- **KW-F1 — auto-sugestão de palavras-chave** a partir de padrões confirmados (v1.5 é cadastro manual).
+- **KW-F2 — match por regex/wildcard** além de substring.
+- **Persistir `palavra-chave` em `transactions.classification_source`** — hoje o CHECK da migration `0020` não inclui o valor, então linhas confirmadas gravam o coarse `memória` (o badge 'palavra-chave' é review-time only). Widening do enum = migration futura.
 
 ## Requirements
 
@@ -58,18 +57,15 @@ Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só 
 - ✓ **Classificação assistida por IA** (CLSAI-01..08) — memory-first + uma chamada IA batched/enum-gated no cache-miss + `row.suggestion` na grid (procedência + confiança + ordenação) + aprende só no confirm (sem auto-commit) — **v1.4** (código completo + 100% wired; smoke real-key ao vivo diferido)
 - ✓ **BYOK multi-provedor** (BYOK-01..05) — Settings UI write-only, chave criptografada at-rest (Supabase Vault) escopada `user_id` + RLS, decrypt server-only, testar/remover — **v1.4** (LOCAL-provado; PROD push do `0033` diferido)
 - ✓ **Dívida v1.3 quitada** (DEBT-03..06) — G-07/G-08 live, walkthroughs MEI/LGPD, VALIDATION.md 12/13, delete destrutivo DATA-02 executado ao vivo — **v1.4** (Phase 17)
+- ✓ **Regras de palavra-chave determinísticas** (KW-01..06) — cadastro manual por categoria em `/categorias` (RLS user-scoped); no upload o pipeline roda **memória → palavra-chave → IA**, auto-classificando o match (maior keyword vence, sobrescrevível, aprende no confirm, sem auto-commit) — **v1.5**
+- ✓ **Prompt da IA kind-aware** (CLSAI-09) — cada categoria enviada com seu `kind` + regra dura anti-alocação + code gate; corrige "AliExpress/Mercado Livre → Investimentos/Reserva" — **v1.5**
+- ✓ **Categoria default "Marketplace"** (MKT-01) — migration `0035` aplicada em PROD; bucket de compras para IA + regras — **v1.5** (código + PROD prontos; live human-verify diferido)
 
 ### Active
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- ✓ **(diferido do v1.4) Live-smokes real-key/PROD — FECHADO 2026-06-19** (quick-task `260619-d68`): conta PROD recriada + chave BYOK, `0033`/`0034` confirmados ao vivo (save + testar conexão), **sugestão real da IA renderizada** num upload de merchant novo (`gemini-2.5-flash-lite`), `maxDuration` ok. Phases 14/15/16 → `passed`.
-- ✓ **(achados no smoke — corrigidos + verificados ao vivo 2026-06-19):**
-  - **PDF quebrado em PROD** → `outputFileTracingIncludes` força o worker pdfjs no bundle da função (`fb91b58`); PDF volta a parsear ao vivo.
-  - **`content_hash` bloqueava re-import de statement NÃO confirmado** → "0 novas" só dispara quando status='imported' (`f0b9fb6`).
-  - **Botão "Aplicar todas as sugestões"** na grid de revisão (`7e741bf`).
-  - **`classifyDescriptors` truncava o JSON em statements grandes** → `maxOutputTokens` 1500→8192 (`fa8b218`); IA classifica faturas grandes (PDF) sem perder sugestões.
-- [ ] **(pendente `supabase db push`) Categoria default "Marketplace"** (Shopee/Ali/Shein/ML) — migration `0035` (`f33e38b`); dá à IA um bucket de compras (estava classificando marketplace como Investimentos). Aplicar com `db push`, ou add via `/categorias` para efeito imediato.
+- [ ] **(diferido do v1.5) MKT-01 — live human-verify em PROD**: migration `0035` já aplicada em PROD (owner, 2026-06-19) e CLSAI-09 verificado; resta a confirmação ao vivo — re-signup → confirmar "Marketplace" em `/categorias` → upload de OFX de marketplace → confirmar sugestão de consumo → `/gsd-verify-work 18`. Não é trabalho de código.
 - _Demais requisitos do próximo milestone a definir via `/gsd-new-milestone`._
 
 ### Out of Scope
@@ -120,6 +116,10 @@ Candidato deferido anterior: **PDF avançado** (parser por banco / OCR) — só 
 | (v1.2) Etiqueta `carro_id` em transactions é lente não-destrutiva | Gasto etiquetado continua contando na categoria/metas; aba Carro só agrega, não muda contabilidade | ✓ Good — D4 provado byte-idêntico (Wave-0 integration test) |
 | (v1.2) Abastecimento híbrido (vincula à fatura OU custo manual, XOR) | Combustível pago no cartão reaproveita o custo do lançamento (sem digitar/contar 2x); dinheiro/pix entra manual. Espelha reserva_ledger.transaction_id | ✓ Good — CHECK XOR no banco + validação no server; sem double-count (auditado) |
 | (v1.2) Consumo pelo método tanque-cheio | Mais preciso que km/l por abastecimento isolado; requer flag tanque_cheio + odômetro | ✓ Good — edge same-odometer (WR-02) fechado no v1.3 via migration 0029 (DEBT-01) |
+| (v1.5) Classificação ganha camada determinística de palavra-chave antes da IA | IA fraca (flash-lite) erra; regra cadastrada pelo usuário é grátis, instantânea, previsível e reduz chamadas de IA | ✓ Good — pipeline memória→palavra-chave→IA wired no upload; suíte 857 verde |
+| (v1.5) Match por substring no `descriptor_norm`, maior keyword vence | Substring cobre o caso de uso sem regex; "maior keyword" desambígua conflito de categorias pelo match mais específico | ✓ Good — KW-04 provado por testes |
+| (v1.5) `palavra-chave` é procedência review-time only (não persistida em `transactions`) | CHECK da migration `0020` não inclui o valor; widening = migration futura, fora do escopo determinístico do v1.5 | ⚠️ Revisit — tech-debt documentada; persistir o enum em milestone futuro |
+| (v1.5) Prompt da IA kind-aware (envia `kind` + regra anti-alocação) | Sem o kind, o modelo mandava compra de marketplace para Investimentos/Reserva | ✓ Good — CLSAI-09 verificado (code gate + fixtures) |
 
 ## Evolution
 
@@ -139,4 +139,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-19 — quick-task `260619-d68`: v1.4 live-smokes real-key/PROD FECHADOS ao vivo (Phases 14/15/16 → `passed`); sugestão real da IA renderizada em PROD (`gemini-2.5-flash-lite`). Default Gemini mantido em flash-lite (único free; 2.0-flash é pago-only), modelo agora lido live de `DEFAULT_MODEL`. 3 achados → todos (`content_hash` re-import, PDF worker PROD, botão aplicar-todas). Anterior: milestone v1.4 SHIPPED + arquivado (`milestones/v1.4-*`); IA wired no seam `suggestCategory()` + dívida v1.3 quitada (Phase 17). Próximo milestone via `/gsd-new-milestone`.*
+*Last updated: 2026-06-20 after v1.5 milestone — SHIPPED + arquivado (`milestones/v1.5-*`). Camada determinística de palavra-chave (KW-01..06) + pipeline memória→palavra-chave→IA + prompt IA kind-aware (CLSAI-09) + categoria "Marketplace" (`0035`) em PROD. 7/8 requisitos satisfeitos; MKT-01 live human-verify diferido (ver STATE.md Deferred Items). Tag git `v1.5`. Próximo milestone via `/gsd-new-milestone`.*
