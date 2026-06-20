@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { keywordSchema } from '@/lib/schemas/category-keyword'
-import { normalizeDescriptor } from '@/lib/normalize'
+import { normalizeKeyword } from '@/lib/normalize'
 import { createClient } from '@/lib/supabase/server'
 
 /**
@@ -14,10 +14,12 @@ import { createClient } from '@/lib/supabase/server'
  * revalidatePath('/categorias') on success.
  *
  * The load-bearing pieces:
- *  - keyword is stored NORMALIZED via normalizeDescriptor (the SINGLE key
- *    derivation, never re-derived) so Phase 20's substring match against
- *    descriptor_norm is apples-to-apples. An input that normalizes to '' is the
- *    empty-validation error.
+ *  - keyword is stored NORMALIZED via normalizeKeyword (KW-09: the keyword-aware
+ *    variant that PRESERVES the glob `*` but is otherwise bit-identical to
+ *    normalizeDescriptor) so Phase 20's substring match against descriptor_norm
+ *    stays apples-to-apples for non-wildcard keys. An input that normalizes to ''
+ *    is the empty-validation error; a normalized value with zero literals (only
+ *    `*`, e.g. `*`/`**`) is rejected — it would match everything in the matcher.
  *  - duplicate is a friendly NO-OP, not an error: a maybeSingle pre-check yields
  *    { duplicate: true }, and the unique(user_id,category_id,keyword) constraint
  *    (23505) is the race backstop (mirrors the 23503 backstop in deleteCategory).
@@ -46,14 +48,21 @@ export async function addKeyword(
     return { error: 'Identificador inválido.' }
   }
 
-  // Validate raw length first (trim/min1/max60), then normalize ONCE. An input
-  // that normalizes to '' (e.g. only punctuation) is the empty-validation error.
+  // Validate raw length first (trim/min1/max60), then normalize ONCE via the
+  // keyword-aware normalizer (KW-09: keeps the glob `*`). An input that normalizes
+  // to '' (e.g. only punctuation) is the empty-validation error.
   const parsed = keywordSchema.safeParse(keyword)
   if (!parsed.success) {
     return { error: parsed.error.issues[0]?.message ?? 'Dados inválidos' }
   }
-  const normalized = normalizeDescriptor(parsed.data)
+  const normalized = normalizeKeyword(parsed.data)
   if (normalized === '') return { error: 'Informe uma palavra-chave.' }
+  // Reject a literal-count-0 keyword (only `*`, e.g. `*` / `**`): a rule with no
+  // literal would match EVERY descriptor in the matcher (T-21-01) — friendlier to
+  // refuse at cadastro than to silently persist a catch-all (RESEARCH §Pitfall 3, Q2).
+  if (normalized.replace(/\*/g, '') === '') {
+    return { error: 'Use ao menos uma letra ou número além de *.' }
+  }
 
   const supabase = await createClient()
   const { data: claims } = await supabase.auth.getClaims()

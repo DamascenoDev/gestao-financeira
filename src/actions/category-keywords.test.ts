@@ -83,9 +83,10 @@ vi.mock('@/lib/supabase/server', () => ({
 }))
 
 import { addKeyword, removeKeyword } from './category-keywords'
-// REAL normalizeDescriptor — deterministic + already unit-tested. Used to assert
-// the action stores the SAME key space as descriptor_norm (Phase 20 match).
-import { normalizeDescriptor } from '@/lib/normalize'
+// REAL normalize fns — deterministic + already unit-tested. normalizeKeyword is
+// what addKeyword now uses (KW-09): it keeps the glob `*` while staying in the
+// same key space as descriptor_norm (Phase 20 match) for non-wildcard input.
+import { normalizeDescriptor, normalizeKeyword } from '@/lib/normalize'
 
 // Real UUIDs — the id-arg actions reject non-UUID ids (WR-06).
 const CAT_ID = '11111111-1111-4111-8111-111111111111'
@@ -119,21 +120,56 @@ describe('addKeyword', () => {
     expect(revalidatePath).toHaveBeenCalledWith('/categorias')
   })
 
-  it('normalizes the input via the real normalizeDescriptor before insert', async () => {
-    const raw = 'Uber *TRIP  SAO PAULO BR'
+  it('normalizes the input via the real normalizeKeyword before insert', async () => {
+    // A non-wildcard input normalizes the SAME as descriptor (same key space).
+    const raw = 'Mercado Livre  SAO PAULO BR'
     const r = await addKeyword(CAT_ID, raw)
     expect(r).toEqual({ ok: true })
     const insert = calls.find(
       (c) => c.from === 'category_keywords' && c.op === 'insert',
     )
     expect(insert).toBeDefined()
-    // The persisted keyword is exactly what normalizeDescriptor produces — same
-    // key space as descriptor_norm for Phase 20's apples-to-apples match.
-    expect((insert!.payload as { keyword: string }).keyword).toBe(
-      normalizeDescriptor(raw),
-    )
+    const stored = (insert!.payload as { keyword: string }).keyword
+    expect(stored).toBe(normalizeKeyword(raw))
+    // For a non-wildcard keyword the key space matches descriptor_norm exactly.
+    expect(stored).toBe(normalizeDescriptor(raw))
     // Sanity: the raw form is NOT what was stored.
-    expect((insert!.payload as { keyword: string }).keyword).not.toBe(raw)
+    expect(stored).not.toBe(raw)
+  })
+
+  it('KW-09 GATE: a `UBER*` keyword reaches the DB STILL containing `*`', async () => {
+    // The highest-value assertion of Phase 21: without normalizeKeyword the `*`
+    // would be stripped and the wildcard could never be persisted.
+    const r = await addKeyword(CAT_ID, 'UBER*')
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'category_keywords' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    const stored = (insert!.payload as { keyword: string }).keyword
+    expect(stored).toContain('*')
+    expect(stored).toBe('uber*')
+  })
+
+  it('regression: a plain `mercado` keyword is stored unchanged (substring v1.5 intact)', async () => {
+    const r = await addKeyword(CAT_ID, 'mercado')
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find((c) => c.op === 'insert')
+    expect((insert!.payload as { keyword: string }).keyword).toBe('mercado')
+  })
+
+  it('rejects a lone `*` (literal-count-0) with a pt-BR message and NO insert', async () => {
+    const r = await addKeyword(CAT_ID, '*')
+    expect(r).toHaveProperty('error')
+    // Not the empty-validation message — this is the dedicated literal-count-0 guard.
+    expect((r as { error: string }).error).not.toBe('Informe uma palavra-chave.')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+  })
+
+  it('rejects `**` (only-wildcard, zero literals) with NO insert', async () => {
+    const r = await addKeyword(CAT_ID, '**')
+    expect(r).toHaveProperty('error')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
   })
 
   it('rejects an empty keyword via Zod before touching the DB', async () => {
@@ -148,10 +184,18 @@ describe('addKeyword', () => {
     expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
   })
 
-  it('rejects input that normalizes to an empty string ("empty" after normalize)', async () => {
-    // Punctuation-only input passes the raw min(1) Zod check but normalizes to ''.
-    const r = await addKeyword(CAT_ID, '***')
+  it('rejects punctuation-only input that normalizes to an empty string', async () => {
+    // "/" passes the raw min(1) Zod check but normalizes to '' (no `*` to keep).
+    const r = await addKeyword(CAT_ID, '/')
     expect(r).toEqual({ error: 'Informe uma palavra-chave.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+  })
+
+  it('rejects `***` (only-wildcard) via the literal-count-0 guard, NOT the empty guard', async () => {
+    // With normalizeKeyword the `*` survives, so this is the literal-count-0 case.
+    const r = await addKeyword(CAT_ID, '***')
+    expect(r).toHaveProperty('error')
+    expect((r as { error: string }).error).not.toBe('Informe uma palavra-chave.')
     expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
   })
 
