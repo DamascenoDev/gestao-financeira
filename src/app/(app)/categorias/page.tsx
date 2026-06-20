@@ -2,6 +2,7 @@ import { CategoriaForm } from '@/components/categoria-form'
 import { CategoryBadge } from '@/components/category-badge'
 import { CategoryKindToggle } from '@/components/category-kind-toggle'
 import { CategoryRowActions } from '@/components/category-row-actions'
+import { KeywordSuggestionsLauncher } from '@/components/keyword-suggestions-launcher'
 import {
   Empty,
   EmptyContent,
@@ -93,7 +94,16 @@ export default async function CategoriasPage() {
     <section className="mx-auto flex w-full max-w-3xl flex-col gap-6">
       <div className="flex items-start justify-between gap-4">
         <h1 className="text-xl font-semibold">Categorias</h1>
-        <CategoriaForm />
+        <div className="flex gap-2">
+          <KeywordSuggestionsLauncher
+            categories={rows.map((c) => ({
+              id: c.id,
+              name: c.name,
+              color: c.color,
+            }))}
+          />
+          <CategoriaForm />
+        </div>
       </div>
 
       {error ? (
