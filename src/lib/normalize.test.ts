@@ -4,7 +4,7 @@
 // that must break a test here first.
 
 import { describe, it, expect } from 'vitest'
-import { normalizeDescriptor } from './normalize'
+import { normalizeDescriptor, normalizeKeyword } from './normalize'
 
 describe('normalizeDescriptor — determinism (CLS-01/04)', () => {
   const samples = [
@@ -85,5 +85,60 @@ describe('normalizeDescriptor — empty / whitespace', () => {
   })
   it('whitespace-only raw → empty key', () => {
     expect(normalizeDescriptor('     ')).toBe('')
+  })
+})
+
+// KW-09 Phase 21 GATE: normalizeKeyword is the keyword-aware variant that PRESERVES
+// the glob `*` but is otherwise bit-identical to normalizeDescriptor (same NFKD,
+// lowercase, accent-strip, payment tokens, dates, digit runs, UF, whitespace). The
+// descriptor-side MUST keep stripping `*` (it is card-network noise there).
+describe('normalizeKeyword — preserves the glob `*` (KW-09)', () => {
+  it('keeps a trailing `*` (UBER* stays a wildcard, not "uber")', () => {
+    const r = normalizeKeyword('UBER*')
+    expect(r).toContain('*')
+    expect(r).toBe('uber*')
+  })
+  it('keeps both leading and trailing `*`', () => {
+    expect(normalizeKeyword('*IFOOD*')).toBe('*ifood*')
+  })
+  it('normalizes accents/case exactly like the descriptor, but keeps `*`', () => {
+    const r = normalizeKeyword('SÃO JOÃO*')
+    expect(r).toBe('sao joao*')
+    expect(r).toContain('*')
+    expect(r).toBe(r.toLowerCase())
+  })
+  it('a lone `*` survives (reject of literal-count-0 is addKeyword’s job)', () => {
+    expect(normalizeKeyword('*')).toBe('*')
+  })
+  it('collapses `**` content (only-wildcard survives as wildcard chars)', () => {
+    const r = normalizeKeyword('**')
+    expect(r.replace(/\*/g, '')).toBe('')
+    expect(r).toContain('*')
+  })
+})
+
+describe('normalizeKeyword — same key space as descriptor when no `*` (substring v1.5 intact)', () => {
+  const noWildcard = [
+    'mercado',
+    'MERCADO',
+    'COMPRA CARTAO MERCADO LIVRE',
+    'PADARIA SÃO JOÃO  SAO PAULO BR',
+    'NETFLIX 31/01/2026',
+    'LOJA 1234567 CENTRO',
+    'RESTAURANTE BOM SP',
+    'BAR XV',
+    '',
+    '   ',
+  ]
+  it('is bit-identical to normalizeDescriptor for any input WITHOUT `*`', () => {
+    for (const s of noWildcard) {
+      expect(normalizeKeyword(s)).toBe(normalizeDescriptor(s))
+    }
+  })
+})
+
+describe('normalizeDescriptor — `*` strip preserved (regression: descriptor side unchanged)', () => {
+  it('still collapses card-network `*` noise to a space', () => {
+    expect(normalizeDescriptor('UBER *TRIP')).toBe('uber trip')
   })
 })
