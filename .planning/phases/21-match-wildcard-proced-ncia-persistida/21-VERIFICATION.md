@@ -1,10 +1,11 @@
 ---
 phase: 21-match-wildcard-proced-ncia-persistida
 verified: 2026-06-20T18:45:00Z
-status: human_needed
-score: 6/7 must-haves verified
+status: passed
+score: 7/7 must-haves verified
 behavior_unverified: 0
 overrides_applied: 0
+human_verified: "2026-06-20 — owner ran `supabase db push` (0037 applied live), gen:types no-op, live INSERT of 'palavra-chave' succeeded (no SQLSTATE 23514), and the UBER* end-to-end round-trip persisted classification_source='palavra-chave'. SC3/KW-10 confirmed live."
 human_verification:
   - test: "Apply migration 0037 to the linked/PROD Supabase then run a live INSERT smoke"
     expected: "`supabase db push` succeeds (0037 in linked history); `npm run gen:types` is a no-op diff; a live INSERT of transactions.classification_source='palavra-chave' SUCCEEDS (no SQLSTATE 23514); the old set ('memória','manual','sugerida',null) still accepted."
@@ -18,7 +19,7 @@ human_verification:
 
 **Phase Goal:** O matcher determinístico de palavra-chave ganha poder e honestidade: além do substring atual, o usuário pode escrever wildcard glob (`UBER*`, `*IFOOD*`) numa keyword, e quando uma linha é classificada por keyword o sistema finalmente grava a procedência real `palavra-chave` na transação (hoje grava o coarse `memória`).
 **Verified:** 2026-06-20T18:45:00Z
-**Status:** human_needed
+**Status:** passed (human-verified live 2026-06-20)
 **Re-verification:** No — initial verification
 
 ## Goal Achievement
@@ -29,13 +30,13 @@ human_verification:
 | --- | ------------------------------------------ | ------ | -------- |
 | 1 | SC1 — wildcard glob (`UBER*`) pre-classifies a matching descriptor; substring match continues to work | ✓ VERIFIED | `globToRegExp`/`compileRule`/`matchKeyword` in `src/lib/classifier/keywords.ts:41-165`; wired in `import.ts:456-458` pre-fetch via `compileRule`. Tests: keywords.test.ts `UBER*`→`uber trip 123`, `*ifood*`→`pedido ifood centro`, substring `mercado`→`compra mercado livre sp` (unchanged); import.test.ts:698,713 glob pre-classifies → `palavra-chave`. |
 | 2 | SC2 — most-specific keyword wins with wildcards; "maior keyword vence" preserved, no v1.5 regression | ✓ VERIFIED | `matchKeyword` tie-break chain literal-count → substring-beats-glob → sort → categoryId (keywords.ts:142-162). Tests: `UBER*`(4) beats `UB*`(2); substring `uber trip`(9) beats glob `uber*`(4); equal-literal contiguous beats glob; order-independence (WR-01) reversed-input same category. |
-| 3 | SC3 / KW-10 — a keyword-classified confirmed row persists `classification_source='palavra-chave'` (LIVE) | ⚠️ HUMAN NEEDED | CODE in place: `deriveSource` server-side re-derivation + category-equality guard (`import.ts:855-867`), persisted at `import.ts:899`; migration 0037 written + committed (cba19b9), validated by replay on a throwaway probe. Mocked integration tests pass (import.test.ts:1116,1133,1148,1165,1181,1194). BUT the live CHECK widening is NOT applied to the linked/PROD Supabase (`supabase db push` is a pending human-action gate — needs interactive auth). Live persistence truth unobservable here. |
+| 3 | SC3 / KW-10 — a keyword-classified confirmed row persists `classification_source='palavra-chave'` (LIVE) | ✓ VERIFIED (human, live 2026-06-20) | CODE in place: `deriveSource` server-side re-derivation + category-equality guard (`import.ts:855-867`), persisted at `import.ts:899`; migration 0037 committed (cba19b9). Owner ran `supabase db push` (0037 applied to linked/PROD), `gen:types` no-op, live INSERT of `classification_source='palavra-chave'` succeeded (no SQLSTATE 23514), and the `UBER*` → `UBER TRIP 123` → confirm round-trip persisted `'palavra-chave'` (not coarse `'memória'`). Mocked integration tests also pass (import.test.ts:1116,1133,1148,1165,1181,1194). |
 | 4 | SC4 — wildcard is opt-in (pure regex stays out) and ReDoS-safe | ✓ VERIFIED | Non-`*` keyword → `glob === null` → `.includes()` substring (v1.5 bit-identical); `*`→`.*` with every other metachar escaped via `REGEX_META` (keywords.ts:24-44); anchored `^…$`, single `.*` per segment (no nested quantifiers). Tests: metachar `a.b(c)*` compiles + matches literally; ReDoS adversarial input stays linear/completes; literal-count-0 (`*`/`**`) skipped. |
 | 5 | KW-09 cadastro — `UBER*` survives normalization and is read back still containing `*` | ✓ VERIFIED | `normalizeKeyword` (normalize.ts:63-65) shares one pipeline with `normalizeDescriptor` but skips the `\*+ → space` strip and keeps `*` in the final allow-list (normalize.ts:85-92). `addKeyword` calls `normalizeKeyword` (category-keywords.ts:58) — not `normalizeDescriptor`. Non-`*` keyword normalizes identically (substring v1.5 intact). |
 | 6 | KW-09 cadastro guard — literal-count-0 keyword (`*`, `**`) rejected with pt-BR message | ✓ VERIFIED | `addKeyword` rejects `normalized.replace(/\*/g,'') === ''` with `'Use ao menos uma letra ou número além de *.'` (category-keywords.ts:63-64); defense-in-depth in `compileRule` (returns null) and `matchKeyword` (skips literals===0). |
 | 7 | KW-10 wiring — glob compiled ONCE per rule at pre-fetch; provenance re-derived server-side with no false provenance on grid override | ✓ VERIFIED | `compileRule` in both pre-fetch (import.ts:456-458) and commit (import.ts:827-829) — no per-row `new RegExp`. `deriveSource` guard: labels `palavra-chave`/`memória` ONLY when re-derived category === persisted categoryId, else coarse `memória` (import.ts:861-866). Test KW-10 guard (import.test.ts:1194): override to category Y → coarse `memória`, NOT `palavra-chave`. |
 
-**Score:** 6/7 truths verified (0 present, behavior-unverified). Truth 3 (SC3/KW-10 live persistence) routes to human verification — code complete, live constraint not yet applied to PROD.
+**Score:** 7/7 truths verified. Truth 3 (SC3/KW-10 live persistence) was human-verified live in PROD on 2026-06-20 (db push applied + INSERT smoke + UBER* round-trip).
 
 ### Required Artifacts
 

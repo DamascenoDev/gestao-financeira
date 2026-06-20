@@ -186,7 +186,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 | 18. AI classifica compras corretamente | v1.5 | 2/2 | Complete | 2026-06-20 |
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
-| 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete   | 2026-06-20 |
+| 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 0/TBD | Not started | - |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 0/TBD | Not started | - |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |

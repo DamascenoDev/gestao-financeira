@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
-current_phase: 21
-current_phase_name: Match wildcard + procedência persistida
+current_phase: 22
+current_phase_name: inline + batch
 status: executing
 stopped_at: Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
-last_updated: "2026-06-20T18:33:15.887Z"
+last_updated: "2026-06-20T19:05:30.416Z"
 last_activity: 2026-06-20
-last_activity_desc: Phase 21 execution started
+last_activity_desc: Phase 21 complete, transitioned to Phase 22
 progress:
   total_phases: 4
   completed_phases: 1
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 21 (Match wildcard + procedência persistida) — EXECUTING
-Plan: 4 of 4
+Phase: 22 — Sugestão de palavra-chave (inline + batch)
+Plan: Not started
 Status: Ready to execute
-Last activity: 2026-06-20 — Phase 21 execution started
+Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
 
 ## Deferred Items
 
