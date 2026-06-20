@@ -26,6 +26,22 @@ vi.mock('@/actions/import', () => ({
   confirmImport: (...args: unknown[]) => confirmImportMock(...args),
 }))
 
+// KW-07: stub addKeyword so the inline control renders without a Supabase server
+// boundary, and sonner so the toasts don't touch the DOM.
+vi.mock('@/actions/category-keywords', () => ({
+  addKeyword: vi.fn(async () => ({ ok: true })),
+}))
+// `toast` is used both as a bare callable (toast('…')) AND via methods
+// (toast.success/info/error), so the mock must be a function with attached spies.
+vi.mock('sonner', () => {
+  const toast = Object.assign(vi.fn(), {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+  })
+  return { toast }
+})
+
 vi.mock('next/navigation', () => ({
   useRouter: () => ({ push: vi.fn(), replace: vi.fn(), refresh: vi.fn() }),
 }))
@@ -281,5 +297,124 @@ describe('ImportReviewTable — suggestion affordances', () => {
     expect(screen.getAllByText('Transporte').length).toBeGreaterThan(0)
     // Client-state only: no write path fired.
     expect(confirmImportMock).not.toHaveBeenCalled()
+  })
+})
+
+describe('KW-07 inline keyword suggestion', () => {
+  // The grid renders BOTH the desktop table (`hidden md:table`) and the mobile card
+  // list (`md:hidden`) — CSS `hidden` keeps both in the jsdom DOM, so the inline pill
+  // appears twice (once per layout). These helpers target the FIRST occurrence, the
+  // same `getAllBy*` discipline the suggestion-affordance suite above uses.
+  const PILL_NAME = 'Criar palavra-chave para esta categoria'
+  const firstPill = () => at(screen.getAllByRole('button', { name: PILL_NAME }), 0)
+
+  beforeEach(() => {
+    rowSeq = 0
+  })
+
+  it("renders the '+ palavra-chave' pill ONLY on a manually-classified row", () => {
+    renderTable([makeRow({ category_id: 'cat-mercado', origin: 'manual' })])
+
+    expect(screen.getAllByRole('button', { name: PILL_NAME }).length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getAllByText('+ palavra-chave').length).toBeGreaterThan(0)
+  })
+
+  it('does NOT render the pill on memória/palavra-chave/não-classificada rows', () => {
+    const { unmount } = renderTable([
+      makeRow({ category_id: 'cat-mercado', origin: 'memória' }),
+    ])
+    expect(screen.queryByText('+ palavra-chave')).toBeNull()
+    expect(screen.queryByRole('button', { name: PILL_NAME })).toBeNull()
+    unmount()
+
+    rowSeq = 0
+    const second = renderTable([
+      makeRow({ category_id: 'cat-mercado', origin: 'palavra-chave' }),
+    ])
+    expect(screen.queryByText('+ palavra-chave')).toBeNull()
+    second.unmount()
+
+    rowSeq = 0
+    renderTable([makeRow({ category_id: null, origin: 'não classificada' })])
+    expect(screen.queryByText('+ palavra-chave')).toBeNull()
+  })
+
+  it('Salvar calls addKeyword(row.category_id, term) and flips to criada ✓', async () => {
+    const { addKeyword } = await import('@/actions/category-keywords')
+    renderTable([
+      makeRow({
+        category_id: 'cat-transporte',
+        origin: 'manual',
+        descriptor_norm: 'uber trip 99',
+      }),
+    ])
+
+    // Open the (first) popover.
+    fireEvent.click(firstPill())
+
+    // The term input is prefilled with the row's normalized descriptor.
+    const input = at(
+      screen.getAllByLabelText('Palavra-chave'),
+      0,
+    ) as HTMLInputElement
+    expect(input.value).toBe('uber trip 99')
+
+    fireEvent.click(at(screen.getAllByRole('button', { name: 'Salvar' }), 0))
+
+    // addKeyword receives the just-picked category + the (un-re-normalized) term.
+    expect(addKeyword).toHaveBeenCalledWith('cat-transporte', 'uber trip 99')
+
+    // The control flips to the disabled "criada ✓" — no second create on offer.
+    // findAllByText retries past the startTransition commit + popover teardown.
+    expect((await screen.findAllByText(/criada/)).length).toBeGreaterThan(0)
+    expect(screen.queryByRole('button', { name: PILL_NAME })).toBeNull()
+  })
+
+  it('duplicate still flips to criada ✓ (toast.info)', async () => {
+    const { addKeyword } = await import('@/actions/category-keywords')
+    const { toast } = await import('sonner')
+    vi.mocked(addKeyword).mockResolvedValueOnce({ duplicate: true })
+
+    renderTable([
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'manual',
+        descriptor_norm: 'padaria pao',
+      }),
+    ])
+
+    fireEvent.click(firstPill())
+    fireEvent.click(at(screen.getAllByRole('button', { name: 'Salvar' }), 0))
+
+    // findAllByText retries past the startTransition commit.
+    expect((await screen.findAllByText(/criada/)).length).toBeGreaterThan(0)
+    expect(toast.info).toHaveBeenCalled()
+  })
+
+  it('error keeps the popover open (no flip)', async () => {
+    const { addKeyword } = await import('@/actions/category-keywords')
+    vi.mocked(addKeyword).mockResolvedValueOnce({
+      error: 'Não foi possível salvar a palavra-chave.',
+    })
+
+    renderTable([
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'manual',
+        descriptor_norm: 'mercado x',
+      }),
+    ])
+
+    fireEvent.click(firstPill())
+    fireEvent.click(at(screen.getAllByRole('button', { name: 'Salvar' }), 0))
+
+    await Promise.resolve()
+    await Promise.resolve()
+
+    // Popover stays open (the term input is still present) and no "criada ✓" flip.
+    expect(screen.getAllByLabelText('Palavra-chave').length).toBeGreaterThan(0)
+    expect(screen.queryByText(/criada/)).toBeNull()
   })
 })
