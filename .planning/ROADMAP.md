@@ -133,8 +133,13 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 **Plans**: 3 plans
 
 Plans:
+**Wave 1**
+
 - [ ] 22-01-PLAN.md — KW-07 inline "+ palavra-chave" control in the import review grid (gated origin === 'manual', reuses addKeyword) [Wave 1]
 - [ ] 22-02-PLAN.md — KW-08 server side: getKeywordSuggestions + approveKeywordSuggestions + batch-item schema + action tests [Wave 1]
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 22-03-PLAN.md — KW-08 client: global suggestions dialog + /categorias launcher (RSC preserved) + dialog tests [Wave 2, depends on 22-02]
 
 **UI hint**: yes

@@ -5,8 +5,8 @@ milestone_name: Classificação fluida & ingestão robusta
 current_phase: 22
 current_phase_name: inline + batch
 status: executing
-stopped_at: Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
-last_updated: "2026-06-20T19:05:30.416Z"
+stopped_at: Phase 22 UI-SPEC approved
+last_updated: "2026-06-20T19:36:04.832Z"
 last_activity: 2026-06-20
 last_activity_desc: Phase 21 complete, transitioned to Phase 22
 progress:
@@ -176,9 +176,9 @@ Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
 
 ## Session Continuity
 
-**Last session:** 2026-06-20T18:32:45.083Z
-**Stopped at:** Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
-**Resume file:** .planning/phases/21-match-wildcard-proced-ncia-persistida/21-03-PLAN.md
+**Last session:** 2026-06-20T19:36:04.823Z
+**Stopped at:** Phase 22 UI-SPEC approved
+**Resume file:** .planning/phases/22-sugest-o-de-palavra-chave-inline-batch/22-UI-SPEC.md
 
 **Roadmap do milestone v1.6 "Classificação fluida & ingestão robusta" criado.** Derivei 4 fases novas (21–24, modo `mvp`, vertical slices) das 8 requirements (KW-07/08/09/10, CLSAI-10, PDF-06/07, IMP-07). Numeração CONTINUA das fases 1–20 já executadas (v1.5 terminou na 20; nada renumerado). Brownfield: refina o pipeline memória→palavra-chave→IA já em PROD + fecha findings do v1.4. **Mapeamento (8/8, 0 órfãos):** **Phase 21 — Match wildcard + procedência persistida** (KW-09, KW-10): estende o `matchKeyword` (substring) com wildcard glob (`*`) opt-in preservando "maior keyword vence", e amplia o CHECK da migration `0020` (próxima migration ~`0037`) para gravar `classification_source = 'palavra-chave'` em `transactions` (hoje grava o coarse `memória`). Substrato do matcher — base das fases 22 e 23. **Phase 22 — Sugestão de palavra-chave (inline + batch)** (KW-07, KW-08): opção inline (opt-in) ao confirmar merchant→categoria no review grid + painel batch em `/categorias` que varre `merchant_patterns` confirmados e sugere keywords candidatas para aprovar/descartar em lote. Depende de 21. **Phase 23 — Aplicar sugestões em lote por confiança** (CLSAI-10): ação explícita no review grid que aplica de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual — sem auto-commit (persiste/aprende só no confirm). Depende de 21 (procedência persistida → confiança consistente). **Phase 24 — Ingestão robusta (PDF em PROD + re-import)** (PDF-06, PDF-07, IMP-07): worker do `pdfjs` no bundle serverless da Vercel (corrige o bug PROD do v1.4) + parser que degrada com clareza em PDF ruim/image-only (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada (`content_hash` só bloqueia o já-confirmado). Independente — pode rodar em paralelo. **Ordem de execução:** 21 → (22 ∥ 23) ; 24 a qualquer momento. **Escritos:** ROADMAP.md (anexada `### 🟢 v1.6 ...` ACTIVE + Phase Details v1.6 + 4 linhas de Progress; v1.5 colapsado em `<details>`; milestones v1.0–v1.5 preservados), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 21/22/23/24; coverage 8/8, 0 órfãos), STATE.md. **Invariantes honrados:** sem auto-commit (nem keyword, nem IA, nem aplicar-em-lote commitam no upload — só no confirm humano), RLS por `user_id`, "maior keyword vence" preservado, sem regex/ReDoS (só wildcard glob), sem OCR. **Próxima ação:** `/gsd-plan-phase 21` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 
