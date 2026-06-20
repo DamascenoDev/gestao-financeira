@@ -570,7 +570,7 @@ export async function ingestStatement(
   // Persist the review payload on the statement so the review RSC (Plan 03) reads
   // it back by statementId without re-downloading/re-parsing (additive jsonb
   // columns, 0024). NOTHING lands in `transactions` until confirm.
-  await supabase
+  const { error: persistError } = await supabase
     .from('statements')
     .update({
       parsed_rows: rows as unknown as Json,
@@ -579,6 +579,18 @@ export async function ingestStatement(
       status: 'parsed', // (re)parsed and awaiting review; confirmImport sets 'imported'
     })
     .eq('id', statementId)
+
+  // WR-02: a silently-swallowed failure here strands the review — confirmImport reads
+  // back empty parsed_rows and then rejects EVERY line as "não pertence a esta
+  // importação", an undiagnosable dead-end. Surface it (mirror the :299/:407 pattern)
+  // instead of returning a misleading success.
+  if (persistError) {
+    console.error(
+      `[ingestStatement] parsed_rows persist failed (statementId=${statementId}):`,
+      persistError,
+    )
+    return { error: 'Não foi possível salvar a revisão do extrato. Tente de novo.' }
+  }
 
   revalidatePath(IMPORTAR_PATH)
   return { statementId, rows, summary, alreadyImported: false }
@@ -977,8 +989,19 @@ export async function confirmImport(
     }
   }
 
-  // Mark the statement consumed so a re-visit shows the done state.
-  await supabase.from('statements').update({ status: 'imported' }).eq('id', statementId)
+  // Mark the statement consumed so a re-visit shows the done state. A failure here is
+  // cosmetic — the transactions already landed — so log it (WR-02) but keep the success
+  // return rather than signalling a misleading import failure.
+  const { error: statusError } = await supabase
+    .from('statements')
+    .update({ status: 'imported' })
+    .eq('id', statementId)
+  if (statusError) {
+    console.error(
+      `[confirmImport] status='imported' update failed (statementId=${statementId}):`,
+      statusError,
+    )
+  }
 
   revalidatePath(EXTRATO_PATH)
   revalidatePath(RESERVAS_PATH)
