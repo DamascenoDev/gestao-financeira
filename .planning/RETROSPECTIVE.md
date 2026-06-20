@@ -113,6 +113,36 @@ BYOK key storage (migration 0033: Vault `ai_settings` + RLS + decrypt-server-onl
 
 ---
 
+## Milestone: v1.5 — Classificação determinística
+
+**Shipped:** 2026-06-20
+**Phases:** 3 (18–20) | **Plans:** 6
+
+### What Was Built
+A deterministic keyword layer slotted into the upload classifier *between* memory and the AI batch: `category_keywords` (migration `0036`, RLS user-scoped) + `addKeyword`/`removeKeyword` actions + `CategoryKeywordsDialog` in `/categorias` (Phase 19); a pure `matchKeyword` (substring on `descriptor_norm`, longest-keyword-wins) wired into import PASS 1 so cadastered merchants pre-classify with `source = "palavra-chave"`, overridable, learn-on-confirm, no auto-commit, excluded from the AI batch (Phase 20); a kind-aware AI prompt + anti-allocation code gate so spending never lands in Investimentos/Reserva, plus the "Marketplace" default category (`0035`) pushed to PROD (Phase 18).
+
+### What Worked
+- **Mirror the proven seam, don't invent:** the keyword pass cloned the memory pass's hit/null contract and the `OriginBadge`/provenance grammar — additive, zero new deps, the pipeline ordering fell out naturally and was asserted in `import.test.ts`.
+- **Pure matcher, isolated test:** `matchKeyword` as a pure function (no I/O) made longest-wins / tie-break (KW-04) trivially unit-testable away from the RLS fetch.
+- **Honest `gaps_found` close:** the audit cleanly separated "code verified + migration in PROD" from "live human confirmation outstanding" — MKT-01 deferred without faking a smoke.
+
+### What Was Inefficient
+- **Persisted-enum gap surfaced late:** `transactions.classification_source` CHECK (`0020`) never included `palavra-chave`, so confirmed rows store coarse `memória` and the new source is review-time only. Caught at audit, not at plan time — schema enums consumed by a new source should be checked when the source is introduced.
+- **MKT-01 split awkwardly:** one phase carried a code requirement (CLSAI-09, autonomous) + a human-verify requirement (MKT-01) — the phase reads "1/2 plans" forever. Pure human-verify requirements may belong in their own trailing plan or a separate verify pass.
+
+### Patterns Established
+- **Deterministic-before-probabilistic pipeline:** memória → palavra-chave → IA — cheap/instant/predictable layers run first and shrink the LLM batch; each layer shares the same hit/null contract.
+- **User-owned classification rules** (manual cadastro, RLS-scoped) as a first-class layer alongside learned memory and AI.
+
+### Key Lessons
+- When a new classification `source` is added, check every enum/CHECK that persists it in the same plan — review-time-only provenance is fine but must be a *documented* decision, not a silent truncation.
+- Keep autonomous code requirements and human-verify requirements in separate plans so phase progress reflects what's actually blocked.
+
+### Cost Observations
+- Model mix: ~100% opus (Opus 4.8 1M). Subagent orchestration (research/plan/check/execute/verify + security + nyquist per phase) kept the main thread lean; single-day execution (~6h).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -121,6 +151,8 @@ BYOK key storage (migration 0033: Vault `ai_settings` + RLS + decrypt-server-onl
 |-----------|----------|--------|------------|
 | v1.2 Carro | ~2 | 4 | First milestone formally audited + archived via the GSD lifecycle; clone-proven-grammar kept it zero-new-dep |
 | v1.3 Produção & PDF | ~1 build + close | 2 | App went LIVE (first git tag); live-verify-via-MCP became the verification spine; new format (PDF) folded into the existing pipeline |
+| v1.4 IA de Classificação (BYOK) | ~build + close | 4 | AI wired into the seam additively (0 defects); credential-gated smokes honestly deferred then closed live; destructive PROD delete safety-gated |
+| v1.5 Classificação determinística | ~1 (single-day) | 3 | Deterministic keyword layer before the AI; user-owned rules as a first-class classification source; honest `gaps_found` close (MKT-01 human-verify deferred) |
 
 ### Cumulative Quality
 
@@ -128,6 +160,8 @@ BYOK key storage (migration 0033: Vault `ai_settings` + RLS + decrypt-server-onl
 |-----------|-------|--------------------|
 | v1.2 Carro | ~735 | Yes (no new npm deps) |
 | v1.3 Produção & PDF | ~761 | No — added `pdf-parse` v2 + `unpdf` (PDF only) |
+| v1.4 IA de Classificação (BYOK) | ~819 | No — AI SDK seam already present |
+| v1.5 Classificação determinística | 857 | Yes (no new npm deps — pure matcher + 1 table) |
 
 ### Top Lessons (Verified Across Milestones)
 
@@ -135,3 +169,4 @@ BYOK key storage (migration 0033: Vault `ai_settings` + RLS + decrypt-server-onl
 2. Clone the proven grammar over inventing new UI — fewer decisions, fewer regressions, no new deps.
 3. Reconcile requirement checkboxes in the same commit that proves them — proven≠checked drift forced an audit reconciliation in BOTH v1.2 and v1.3.
 4. Drive the real deployed app to verify — live-verify caught defects that local tests + static review missed.
+5. Run cheap/deterministic classification layers before the LLM — they shrink the AI batch and are predictable; mirror the existing seam's contract instead of inventing a new one (v1.4 AI wire + v1.5 keyword layer both landed additively, 0 defects).
