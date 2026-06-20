@@ -1,7 +1,8 @@
 ---
 phase: 22-sugest-o-de-palavra-chave-inline-batch
-reviewed: 2026-06-20T00:00:00Z
+reviewed: 2026-06-20T18:00:00Z
 depth: standard
+iteration: 2
 files_reviewed: 9
 files_reviewed_list:
   - src/actions/category-keywords.ts
@@ -15,166 +16,88 @@ files_reviewed_list:
   - src/lib/schemas/category-keyword.ts
 findings:
   critical: 0
-  warning: 4
-  info: 3
-  total: 7
-status: issues_found
+  warning: 0
+  info: 0
+  total: 0
+status: clean
 ---
 
-# Phase 22: Code Review Report
+# Phase 22: Code Review Report (Iteration 2 — fix verification)
 
 **Reviewed:** 2026-06-20
 **Depth:** standard
 **Files Reviewed:** 9
-**Status:** issues_found
+**Status:** clean
 
 ## Summary
 
-Reviewed the KW-07 (inline `+ palavra-chave` on `manual` review rows) and KW-08
-(global batch-suggestion dialog) surfaces over the existing `category_keywords`
-model. The phase invariants all hold on inspection:
+Re-review of Phase 22 (KW-07 inline `+ palavra-chave` + KW-08 batch-suggestion
+dialog) after the iteration-1 fixes for WR-01, WR-02, IN-01, IN-02, IN-03 were
+applied (commits `507288e`, `07f5d0e`, `a3e7405`). WR-03 and WR-04 were
+intentionally accepted in iteration 1 as no-correctness-risk (degraded-but-safe /
+currently-unreachable latent coupling) — both remain as-is and are acceptable.
 
-- **No auto-creation** — both the inline popover and the batch dialog are explicit
-  opt-in; nothing writes a keyword without a user click. `confirmImport` remains the
-  sole transactions/merchant_patterns path.
-- **`approveKeywordSuggestions` owner-gates once** (single `getClaims()` before the
-  loop), validates/normalizes/dedupes each item exactly like `addKeyword`, counts a
-  bad item as `skipped` + `continue` (never aborts the batch), and calls
-  `revalidatePath` exactly once after the loop. `user_id` always comes from
-  `claims.sub`, never the client.
-- **`getKeywordSuggestions` is server-side only** — three RLS-scoped reads, no manual
-  `user_id` filter, returns only the computed candidate shape (never raw merchant
-  rows), and excludes already-covered descriptors via the SAME `compileRule`/
-  `matchKeyword` matcher the upload pipeline uses.
-- **The inline control is gated on `row.origin === 'manual'`** (`&& row.category_id !== null`).
-- **`confirmImport`/`import.ts` is NOT modified** — confirmed via `git diff` over the
-  phase range (the file is absent from the changeset).
+**All four targeted fixes verified correct, no regressions introduced:**
 
-No BLOCKER-class correctness, security, or owner-gate defects were found. The
-findings below are robustness/UX-correctness gaps and minor quality items.
+- **WR-02 (archived-category candidate) — FIXED.** `getKeywordSuggestions` now runs
+  `.filter((p) => nameById.has(p.category_id))` (`category-keywords.ts:177`) BEFORE
+  the covered-exclusion `.filter((p) => matchKeyword(...) === null)`
+  (`:181`). `nameById`/`sortById` are built only from `is_archived = false`
+  categories (`:147-150`, `:162-165`), so a `merchant_patterns` row pointing at an
+  archived category is dropped up front. Consequence: the `categoryName` fallback
+  `?? p.category_id` (`:185`) can no longer surface a raw UUID for any emitted
+  candidate, the dialog `Select` (page passes only active categories,
+  `page.tsx:99-104`) always has a matching `SelectItem`, and approve can no longer
+  persist a keyword on a hidden category. Correct.
 
-## Warnings
+- **IN-03 (swallowed read errors) — FIXED.** The three `Promise.all` reads now
+  destructure `error` (`:139-141`) and short-circuit with
+  `return { error: 'Não foi possível carregar as sugestões.' }` when any read fails
+  (`:156-158`), so a transient DB failure reaches the dialog as the error toast
+  (`keyword-suggestions-dialog.tsx:113-117`) instead of the false-empty "Nenhuma
+  sugestão" state. Mirrors the Phase 21 swallowed-error fix. Correct.
 
-### WR-01: Batch-approve "já cadastradas" toast over-reports — `skipped` is not only duplicates
+- **WR-01 (over-reporting toast) — FIXED.** The success toast is now cause-neutral
+  pt-BR: `` `${r.created} criadas · ${r.skipped} ignoradas.` ``
+  (`keyword-suggestions-dialog.tsx:178`). "ignoradas" no longer asserts a specific
+  cause (duplicate) for the multi-reason `skipped` bucket. Old "já cadastradas"
+  copy fully removed (grep-confirmed). Correct.
 
-**File:** `src/components/keyword-suggestions-dialog.tsx:173-181`
-**Issue:** The success toast branches on `r.skipped > 0` and renders
-`` `${r.created} criadas · ${r.skipped} já cadastradas.` ``. But on the server
-(`approveKeywordSuggestions`, `category-keywords.ts:200-246`) `skipped` is
-incremented for FIVE distinct reasons: bad-uuid categoryId, Zod-invalid keyword,
-normalize-to-empty, literal-count-0 (`*`/`**`), AND duplicate / insert error. Telling
-the user "N já cadastradas" when those N were actually rejected as invalid/foreign is
-misleading — a user who edited a term into something that normalizes empty is told it
-already existed. The server cannot distinguish these (intentional: one bucket), but the
-copy asserts a specific cause.
-**Fix:** Make the toast cause-neutral, e.g.:
-```tsx
-if (r.skipped > 0) {
-  toast.success(`${r.created} criadas · ${r.skipped} ignoradas.`)
-}
-```
-or have the action return separate `duplicate`/`invalid` counts if the distinction
-matters to the UX-SPEC.
+- **IN-02 (frozen composite key) — FIXED.** `toCandidate` now keys on
+  `descriptorNorm` alone (`key: s.descriptorNorm`, `:74`); `merchant_patterns` is
+  unique on `(user_id, descriptor_norm)` so the key is collision-free and stable
+  across an editable-`categoryId` change. Correct.
 
-### WR-02: Edited candidate can target an archived category → keyword created on a hidden category, broken Select label
+**Phase invariants re-confirmed intact:**
 
-**File:** `src/components/keyword-suggestions-dialog.tsx:241-267`, `src/actions/category-keywords.ts:166-172`
-**Issue:** `getKeywordSuggestions` builds candidates from `merchant_patterns`, whose
-`category_id` may point at an **archived** category (patterns are not deleted on
-archive; `merchant_patterns` only FK-cascades on category *delete*). The candidate's
-`categoryName` is resolved from `nameById`, which is built only from
-`is_archived = false` categories (`category-keywords.ts:146-148`), so an archived
-pattern yields `categoryName = p.category_id` — the raw UUID is then rendered as the
-`CategoryBadge` label in the dialog (`keyword-suggestions-dialog.tsx:251-257`), and the
-category `Select` has no matching `SelectItem` (the page passes only active categories,
-`page.tsx:99-104`). The user sees a UUID, cannot re-pick cleanly, and approving sends
-the archived `categoryId` — which RLS+FK accept, persisting a keyword on a category the
-user can no longer see in `/categorias`.
-**Fix:** Either exclude suggestions whose `category_id` is not in the active set in
-`getKeywordSuggestions`:
-```ts
-.filter((p) => nameById.has(p.category_id))
-.filter((p) => matchKeyword(p.descriptor_norm, rules) === null)
-```
-or, if archived-category suggestions are desired, surface them with a clear label and a
-forced category re-pick before approve.
+- **`confirmImport` / `import.ts` unmodified** — absent from the entire Phase 22
+  changeset (git log `f5044dc..a3e7405`); `confirmImport` remains the sole
+  transactions/merchant_patterns write path. Apply/inline/batch never auto-commit.
+- **Both surfaces opt-in** — the inline popover is gated on
+  `row.origin === 'manual' && row.category_id !== null`
+  (`import-review-table.tsx:1033`); the batch dialog only loads on explicit open and
+  only writes on an explicit Approve click. No keyword is ever written without a user
+  action.
+- **`approveKeywordSuggestions`** — ONE owner-gate (`getClaims()` once before the
+  loop, `:208-210`), per-item validate/normalize/dedup identical to `addKeyword`
+  with `user_id` always from `claims.sub` (never the client), each bad/duplicate/race
+  item counted as `skipped` + `continue` (never aborts the batch, `:215-261`), and
+  ONE `revalidatePath` after the whole loop (`:264`). Correct.
+- **`getKeywordSuggestions`** — three RLS-scoped reads (no manual `user_id` filter),
+  emits only the computed candidate shape (never raw merchant rows), and reuses the
+  same `compileRule`/`matchKeyword` matcher as the upload pipeline for "covered."
 
-### WR-03: Inline keyword popover bypasses the literal-count-0 / empty guards client-side — silent no-flip on a confusing path
+**Verification:** All 9 files reviewed in context; the 51 tests across the three
+phase test files pass (`vitest run`), and `tsc --noEmit` is clean for the changed
+files. No BLOCKER, WARNING, or INFO-class correctness, security, or RLS defects
+remain. Only the previously-accepted WR-03/WR-04-class items persist (both
+documented as no-correctness-risk), which the iteration-2 brief explicitly deems
+acceptable.
 
-**File:** `src/components/import-review-table.tsx:1128-1147`
-**Issue:** `onSubmit` computes `normalized = normalizeKeyword(value.trim())` purely for
-the toast echo, then calls `addKeyword(row.category_id!, value)`. If the user clears the
-prefill and types only `*` (or punctuation that normalizes to `''`), `addKeyword`
-correctly returns `{ error: '…' }` and the popover stays open with the FieldError — so
-no data corruption. That part is sound. The gap: the toast-echo `normalized` is computed
-but only consumed in the success/duplicate branches; on the error branch the user sees a
-generic server message with no indication that their `*`-only term was the cause, and the
-input is not visibly marked. This is a degraded-but-safe path, not a data bug.
-**Fix:** Low priority. Consider a client-side pre-check mirroring the action's
-`normalized.replace(/\*/g, '') === ''` guard to give an immediate inline message before
-the round-trip, or rely on the existing FieldError (acceptable). No correctness risk.
-
-### WR-04: `discard` button is `disabled` during pending but `toggleAll`/per-row state can still drift the approved set
-
-**File:** `src/components/keyword-suggestions-dialog.tsx:159-185`
-**Issue:** `onApprove` snapshots `approvedKeys` at call time and, inside the transition,
-removes exactly those keys on success (`183`). This is correct. However, while the
-transition is pending the checkboxes and term/category inputs are `disabled={isPending}`
-but the component does not block a re-entrant `onApprove` beyond the footer button's
-`disabled={isPending || ...}`. The footer button guard is sufficient in practice, but
-note that `setCategory`/`setTerm` edits made to a NON-selected row during pending are
-preserved (good) while the approved snapshot used the pre-edit term — so if a user could
-somehow edit a selected row mid-flight the persisted term would diverge from the visible
-one. Inputs are disabled during pending, so this is currently unreachable; flagged as a
-latent coupling to preserve if the disable is ever relaxed.
-**Fix:** Keep the inputs disabled during pending (current behavior). If that constraint
-is relaxed, snapshot the full `{ categoryId, keyword }` payload (already done at `165`)
-AND guard against editing rows whose keys are in `approvedKeys` until the transition
-resolves. No change required today.
-
-## Info
-
-### IN-01: `KeywordInlineSuggest` `value` state never re-syncs if the row's `descriptor_norm` changes
-
-**File:** `src/components/import-review-table.tsx:1110`
-**Issue:** `const [value, setValue] = React.useState(row.descriptor_norm)` seeds once.
-`descriptor_norm` is effectively immutable for a parsed review row, so this is fine in
-practice, but the lazy-init pattern hides the assumption.
-**Fix:** None needed; optionally add a comment noting `descriptor_norm` is row-stable.
-
-### IN-02: Dialog `key` is frozen at `toCandidate` time while `categoryId` is editable
-
-**File:** `src/components/keyword-suggestions-dialog.tsx:68-78, 135-142`
-**Issue:** `key = ${descriptorNorm}::${categoryId}` is computed once; `setCategory`
-mutates `categoryId` without recomputing `key`. Because `merchant_patterns` is unique on
-`(user_id, descriptor_norm)` each descriptor appears once, so no key collision can arise
-even after a category edit, and the frozen key is still correct for removal-after-approve.
-Works, but the key no longer reflects the candidate's current `(descriptorNorm,
-categoryId)` — a reader could wrongly assume it does.
-**Fix:** None required. If clarity is wanted, key on `descriptorNorm` alone (it is already
-unique) to make the invariant explicit.
-
-### IN-03: `getKeywordSuggestions` swallows read errors silently
-
-**File:** `src/actions/category-keywords.ts:138-176`
-**Issue:** The three `Promise.all` reads destructure only `data`; their `error` fields are
-discarded. A failed read (e.g. transient DB error) yields `?? []`, producing an empty or
-partial suggestion feed that the dialog renders as the calm "Nenhuma sugestão por
-enquanto" Empty state — indistinguishable from a genuinely empty feed. Not a security
-issue (RLS still enforced), but a real failure is presented as success. Mirrors the
-swallow pattern called out and fixed for statement-persist in WR-02 of Phase 21.
-**Fix:** Check the `error` of each read and return `{ error: 'Não foi possível carregar as
-sugestões.' }` on failure so the dialog shows the error toast rather than a false-empty
-state:
-```ts
-const [pRes, kRes, cRes] = await Promise.all([...])
-if (pRes.error || kRes.error || cRes.error) {
-  return { error: 'Não foi possível carregar as sugestões.' }
-}
-```
+All reviewed files meet quality standards. No new issues found.
 
 ---
 
 _Reviewed: 2026-06-20_
 _Reviewer: Claude (gsd-code-reviewer)_
-_Depth: standard_
+_Depth: standard (iteration 2)_
