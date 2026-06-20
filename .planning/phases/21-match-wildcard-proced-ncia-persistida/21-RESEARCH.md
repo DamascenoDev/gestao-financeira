@@ -395,16 +395,21 @@ alter table public.transactions
 | A2 | The category-equality guard (`hit.category_id === r.categoryId`) is the desired re-derivation semantics. | Pattern 4 | If the user wants the simpler "re-run regardless of which category was picked", the guard mislabels overridden rows. Surface to user. CONTEXT's wording ("re-run memory→keyword over the base row") is ambiguous on this. |
 | A3 | A keyword-aware normalize (Option A) that preserves `*` keeps the match apples-to-apples (NFKD/case/accent identical to descriptor side). | §Pitfall 1 | If `normalizeKeyword` diverges from `normalizeDescriptor` in any step other than the `*` strip, keyword and descriptor drift out of the same key space and matches silently fail. Keep the two pipelines identical except the `*` handling, and test cross-consistency. |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **What is the live name of the 0020 CHECK constraint?**
    - What we know: it was created anonymously; Postgres auto-names column CHECKs `<table>_<column>_check` → almost certainly `transactions_classification_source_check`.
    - What's unclear: whether any prior migration or PROD edit renamed it.
    - Recommendation: before writing 0037, run `supabase db` locally and inspect (`\d+ public.transactions` or `select conname from pg_constraint where conrelid = 'public.transactions'::regclass and contype='c'`). Use the exact live name in the `DROP CONSTRAINT IF EXISTS`. This is a planning-time verification task, not a guess.
+   - **RESOLVED:** carried into execution as a verify-live-name-before-DROP step in Plan 21-03 Task 1 (not guessed in the migration).
 
 2. **Should `addKeyword` reject literal-count-0 keywords (`*`, `**`) at cadastro, or only skip them at match time?**
    - What we know: the matcher will skip them (Pitfall 3). Rejecting at cadastro is friendlier (no useless stored rule) and mirrors the existing empty-after-normalize error.
    - Recommendation: reject at cadastro with a pt-BR message AND keep the match-time skip as defense-in-depth.
+   - **RESOLVED:** both — reject at cadastro (Plan 21-01 Task 2) + keep the match-time skip as defense-in-depth (Plan 21-02 `compileRule`).
+
+3. **(A2) Category-equality guard for provenance re-derivation?**
+   - **RESOLVED:** guard ON — label `'palavra-chave'`/`'memória'` only when the re-derived category equals the persisted `r.categoryId`; an overridden pick stays coarse `'memória'` (no false provenance). Wired in Plan 21-04 Task 2; matches CONTEXT Area-3 Q4.
 
 ## Environment Availability
 
