@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
 current_phase: 22
-current_phase_name: inline + batch
+current_phase_name: Sugestão de palavra-chave (inline + batch
 status: executing
 stopped_at: Phase 22 UI-SPEC approved
-last_updated: "2026-06-20T19:36:04.832Z"
+last_updated: "2026-06-20T20:04:44.548Z"
 last_activity: 2026-06-20
-last_activity_desc: Phase 21 complete, transitioned to Phase 22
+last_activity_desc: Phase 22 execution started
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 4
-  completed_plans: 4
+  total_plans: 7
+  completed_plans: 5
   percent: 25
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 21 — Match wildcard + procedência persistida
+- **Current focus:** Phase 22 — Sugestão de palavra-chave (inline + batch)
 
 ## Current Position
 
-Phase: 22 — Sugestão de palavra-chave (inline + batch)
-Plan: Not started
+Phase: 22 (Sugestão de palavra-chave (inline + batch)) — EXECUTING
+Plan: 2 of 3
 Status: Ready to execute
-Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
+Last activity: 2026-06-20 — Phase 22 execution started
 
 ## Deferred Items
 
@@ -94,6 +94,7 @@ Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
 | Phase 21 P01 | 6m | 2 tasks | 4 files |
 | Phase 21 P02 | ~5m | 1 tasks | 2 files |
 | Phase 21 P04 | 25m | 2 tasks | 2 files |
+| Phase 22 P01 | 16m | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -176,7 +177,7 @@ Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
 
 ## Session Continuity
 
-**Last session:** 2026-06-20T19:36:04.823Z
+**Last session:** 2026-06-20T20:04:27.552Z
 **Stopped at:** Phase 22 UI-SPEC approved
 **Resume file:** .planning/phases/22-sugest-o-de-palavra-chave-inline-batch/22-UI-SPEC.md
 
@@ -265,3 +266,4 @@ Last activity: 2026-06-20 — Phase 21 complete, transitioned to Phase 22
 - [Phase ?]: 21-02: KeywordRule glob/literals optional (lazy-derive in matcher); compileRule pre-fetch wiring deferred to Plan 04.
 - [Phase 21]: CHECK de classification_source mantido text+CHECK (sem enum) → database.types.ts inalterado; sem backfill historico (locked); DROP resiliente via DO-block sobre pg_constraint (T-21-06).
 - [Phase ?]: 21-04: keyword globs compiled once per rule via compileRule at both pre-fetch paths; persisted classification_source re-derived server-side with category-equality guard (no false provenance)
+- [Phase ?]: KW-07 inline control inlined in import-review-table.tsx; reuses addKeyword verbatim (no new server action, no confirmImport)

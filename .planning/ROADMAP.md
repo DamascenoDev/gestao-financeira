@@ -130,12 +130,12 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
   3. No painel, o usuário aprova ou descarta as candidatas em lote; as aprovadas viram keywords cadastradas (escopadas por `user_id` + RLS), as descartadas somem da lista sem efeito colateral.
   4. Nenhuma keyword é criada sem ação explícita do usuário (sem auto-cadastro) — inline e batch são ambos opt-in.
 
-**Plans**: 3 plans
+**Plans**: 1/3 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 22-01-PLAN.md — KW-07 inline "+ palavra-chave" control in the import review grid (gated origin === 'manual', reuses addKeyword) [Wave 1]
+- [x] 22-01-PLAN.md — KW-07 inline "+ palavra-chave" control in the import review grid (gated origin === 'manual', reuses addKeyword) [Wave 1]
 - [ ] 22-02-PLAN.md — KW-08 server side: getKeywordSuggestions + approveKeywordSuggestions + batch-item schema + action tests [Wave 1]
 
 **Wave 2** *(blocked on Wave 1 completion)*
@@ -198,7 +198,7 @@ Plans:
 | 19. Cadastro de palavras-chave por categoria | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete    | 2026-06-20 |
-| 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 0/TBD | Not started | - |
+| 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 1/3 | In Progress|  |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 0/TBD | Not started | - |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |
 
