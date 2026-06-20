@@ -2,14 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
-status: planning
-last_updated: "2026-06-20T19:30:00.000Z"
+current_phase: 21
+current_phase_name: Match wildcard + procedência persistida
+status: executing
+stopped_at: Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
+last_updated: "2026-06-20T18:17:06.125Z"
 last_activity: 2026-06-20
+last_activity_desc: Phase 21 execution started
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
-  completed_plans: 0
+  total_plans: 4
+  completed_plans: 1
   percent: 0
 ---
 
@@ -22,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** v1.6 roadmap criado (Phases 21–24) — planejamento da Phase 21 pendente (`/gsd-plan-phase 21`)
+- **Current focus:** Phase 21 — Match wildcard + procedência persistida
 
 ## Current Position
 
-Phase: 21 — Match wildcard + procedência persistida (Not started)
-Plan: —
-Status: Roadmap criado (Phases 21–24); planejamento pendente
-Last activity: 2026-06-20 — Roadmap v1.6 criado (4 fases, 8/8 requisitos mapeados)
+Phase: 21 (Match wildcard + procedência persistida) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-20 — Phase 21 execution started
 
 ## Deferred Items
 
@@ -87,6 +91,7 @@ Last activity: 2026-06-20 — Roadmap v1.6 criado (4 fases, 8/8 requisitos mapea
 | Phase 19 P02 | 212 | 3 tasks | 4 files |
 | Phase 20 P01 | 3 | 2 tasks | 5 files |
 | Phase 20 P02 | 5 | 2 tasks | 4 files |
+| Phase 21 P01 | 6m | 2 tasks | 4 files |
 
 ### Plan Execution Log
 
@@ -168,7 +173,7 @@ Last activity: 2026-06-20 — Roadmap v1.6 criado (4 fases, 8/8 requisitos mapea
 
 ## Session Continuity
 
-**Last session:** 2026-06-20T19:30:00.000Z
+**Last session:** 2026-06-20T18:16:58.387Z
 **Stopped at:** Roadmap v1.6 criado (Phases 21–24); planejamento da Phase 21 pendente
 **Resume file:** .planning/ROADMAP.md (seção v1.6)
 
@@ -253,3 +258,4 @@ Last activity: 2026-06-20 — Roadmap v1.6 criado (4 fases, 8/8 requisitos mapea
 - [Phase ?]: 19-02: Dialog de palavras-chave com persistência imediata por ação (sem save em lote); chip X muted, não destructive
 - [Phase ?]: 19-02: fetch agrupado de category_keywords no RSC (Map por category_id, RLS como gate) threaded ao CategoryRowActions
 - [Phase ?]: Phase 20-01: keyword layer between memory and AI; precedence from control-flow placement; confirmImport untouched
+- [Phase ?]: normalizeKeyword preserva glob * via runNormalizePipeline compartilhado; addKeyword rejeita literal-count-0

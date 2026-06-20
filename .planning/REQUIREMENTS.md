@@ -12,7 +12,7 @@ Requisitos deste milestone. Cada um mapeia para exatamente uma fase do roadmap. 
 
 - [ ] **KW-07**: Ao confirmar um padrão merchant→categoria na grid de revisão, o usuário recebe a opção **inline** de criar uma palavra-chave para aquele descritor (opt-in, sem criar automaticamente).
 - [ ] **KW-08**: Em `/categorias`, o usuário vê um painel que analisa padrões já confirmados (`merchant_patterns`) e sugere palavras-chave candidatas, aprovando ou descartando em lote.
-- [ ] **KW-09**: O usuário pode usar wildcard glob (`*`) em uma palavra-chave (ex.: `UBER*`, `*IFOOD*`) além do match por substring atual; em conflito, a palavra-chave mais específica vence ("maior keyword vence" preservado).
+- [x] **KW-09**: O usuário pode usar wildcard glob (`*`) em uma palavra-chave (ex.: `UBER*`, `*IFOOD*`) além do match por substring atual; em conflito, a palavra-chave mais específica vence ("maior keyword vence" preservado).
 - [ ] **KW-10**: A procedência `palavra-chave` é persistida em `transactions.classification_source` (deixa de gravar o coarse `memória`), via widening do CHECK da migration `0020`.
 
 ### Classificação fluida — Sugestões em lote (CLSAI)
@@ -58,7 +58,7 @@ Mapeamento fase↔requisito. Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| KW-09 | Phase 21 | Pending |
+| KW-09 | Phase 21 | Complete |
 | KW-10 | Phase 21 | Pending |
 | KW-07 | Phase 22 | Pending |
 | KW-08 | Phase 22 | Pending |
@@ -68,6 +68,7 @@ Mapeamento fase↔requisito. Preenchido na criação do roadmap.
 | IMP-07 | Phase 24 | Pending |
 
 **Coverage:**
+
 - v1.6 requirements: 8 total
 - Mapped to phases: 8 ✓ (KW-09/KW-10 → P21 · KW-07/KW-08 → P22 · CLSAI-10 → P23 · PDF-06/PDF-07/IMP-07 → P24)
 - Unmapped: 0 ✓
