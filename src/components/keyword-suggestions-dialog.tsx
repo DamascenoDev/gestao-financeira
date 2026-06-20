@@ -67,7 +67,11 @@ type Candidate = {
 
 function toCandidate(s: KeywordSuggestion): Candidate {
   return {
-    key: `${s.descriptorNorm}::${s.categoryId}`,
+    // Key on descriptorNorm alone: merchant_patterns is unique on
+    // (user_id, descriptor_norm), so each descriptor appears once. Keying on the
+    // editable categoryId would freeze a value that setCategory can change; the
+    // descriptor is the stable, collision-free identity.
+    key: s.descriptorNorm,
     descriptorNorm: s.descriptorNorm,
     term: s.descriptorNorm,
     categoryId: s.categoryId,
@@ -171,7 +175,7 @@ export function KeywordSuggestionsDialog({
         return
       }
       if (r.skipped > 0) {
-        toast.success(`${r.created} criadas · ${r.skipped} já cadastradas.`)
+        toast.success(`${r.created} criadas · ${r.skipped} ignoradas.`)
       } else {
         toast.success(
           r.created === 1
