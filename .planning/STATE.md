@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
-current_phase: 23
-current_phase_name: Aplicar sugestões em lote por confiança
+current_phase: 24
+current_phase_name: PDF em PROD + re-import
 status: verifying
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T14:37:11.278Z"
+last_updated: "2026-06-21T14:55:08.897Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 23 execution started
+last_activity_desc: Phase 23 complete, transitioned to Phase 24
 progress:
   total_phases: 4
   completed_phases: 3
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 23 (Aplicar sugestões em lote por confiança) — EXECUTING
-Plan: 1 of 1
+Phase: 24 — Ingestão robusta (PDF em PROD + re-import)
+Plan: Not started
 Status: Phase complete — ready for verification
-Last activity: 2026-06-21 — Phase 23 execution started
+Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
 
 ## Deferred Items
 

@@ -202,7 +202,7 @@ Plans:
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
-| 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete   | 2026-06-21 |
+| 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |
 
 ---
