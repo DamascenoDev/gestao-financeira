@@ -4,9 +4,9 @@ milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
 current_phase: 24
 current_phase_name: PDF em PROD + re-import
-status: verifying
+status: executing
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T14:55:08.897Z"
+last_updated: "2026-06-21T15:16:17.898Z"
 last_activity: 2026-06-21
 last_activity_desc: Phase 23 complete, transitioned to Phase 24
 progress:
@@ -32,7 +32,7 @@ progress:
 
 Phase: 24 — Ingestão robusta (PDF em PROD + re-import)
 Plan: Not started
-Status: Phase complete — ready for verification
+Status: Ready to execute
 Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
 
 ## Deferred Items
