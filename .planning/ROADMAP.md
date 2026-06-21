@@ -206,12 +206,12 @@ Plans:
   4. Ao criar a keyword inline, as demais linhas da grid que casam com a nova palavra-chave são re-classificadas ao vivo (client-side, sem refresh): aplicada às linhas não-classificadas (`category_id === null`) e sobrescrevendo as auto-classificadas (memória/IA), com as linhas recém-casadas recebendo provenance `'palavra-chave'`.
   5. O re-classify ao vivo nunca altera linhas com `origin === 'manual'` — a intenção explícita do usuário é preservada.
 
-**Plans**: 2 plans
+**Plans**: 1/2 plans executed
 
 Plans:
 **Wave 1**
 
-- [ ] 25-01-PLAN.md — Server-side: helper privado `insertKeyword` + `addKeywordInline` (sem revalidate) preservando `addKeyword` (revalida `/categorias`) (UX-01)
+- [x] 25-01-PLAN.md — Server-side: helper privado `insertKeyword` + `addKeywordInline` (sem revalidate) preservando `addKeyword` (revalida `/categorias`) (UX-01)
 
 **Wave 2** *(blocked on Wave 1)*
 
@@ -294,7 +294,7 @@ Plans:
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
-| 25. Fix de scroll na criação de palavra-chave | v1.7 | 0/? | Not started | - |
+| 25. Fix de scroll na criação de palavra-chave | v1.7 | 1/2 | In Progress|  |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/? | Not started | - |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
