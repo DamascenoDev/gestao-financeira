@@ -67,12 +67,13 @@ Reusa `AbastecimentoForm` + actions (`src/actions/abastecimentos.ts`) + views de
 - ✓ **Categoria default "Marketplace"** (MKT-01) — migration `0035` aplicada em PROD; bucket de compras para IA + regras — **v1.5** (live human-verify fechado 2026-06-20: "Marketplace" em /categorias + descritor de marketplace → sugestão de consumo)
 - ✓ **Classificação fluida** (KW-07/KW-08/KW-09/KW-10 + CLSAI-10) — wildcard glob (`*`) na palavra-chave (ReDoS-safe, maior keyword vence) + procedência `palavra-chave` persistida em `transactions.classification_source` (`0037`); sugestão de keyword **inline** na grid + **batch** em `/categorias` minerando `merchant_patterns` confirmados; **aplicar sugestões em lote por confiança** (`>= 0.6`, fracas ficam para revisão manual). Sem auto-cadastro/auto-commit — **v1.6**
 - ✓ **Ingestão robusta** (PDF-06/PDF-07/IMP-07) — worker do `pdfjs` forçado no bundle serverless da Vercel; parser degrada limpo em PDF ruim (sem OCR); re-import liberado quando a importação anterior não foi confirmada (`0038` libera `status='imported'`) — **v1.6** (code-side + localmente provado; PROD push de `0037`+`0038` + live-verify diferidos)
+- ✓ **Fix de scroll + re-classify ao vivo na grid** (UX-01/UX-02) — criar palavra-chave inline na grid de importação não reseta mais o scroll (helper privado `insertKeyword` + action `addKeywordInline` sem `revalidatePath`; `/categorias` segue refletindo via `addKeyword`) + re-classificação ao vivo client-side das linhas que casam (`reclassifyRowsWithKeyword` via `compileRule`/`matchKeyword`; sobrescreve não-classificada/memória/palavra-chave, nunca `manual`, sem refresh) — **v1.7** (Phase 25; UAT vivo aprovado 2026-06-21)
 
 ### Active
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- **(v1.7 — ativo)** Registro rápido de abastecimento na lista `/carros` + abastecimento parcelado (nº parcelas + valor total) + vínculo reverso por valor (sugestão+confirma na grid de importação) + categoria "Combustível" default + fix de UX da criação de palavra-chave (scroll). Detalhamento na `REQUIREMENTS.md` deste milestone.
+- **(v1.7 — ativo)** Registro rápido de abastecimento na lista `/carros` + abastecimento parcelado (nº parcelas + valor total) + vínculo reverso por valor (sugestão+confirma na grid de importação) + categoria "Combustível" default. (Fix de UX do scroll na criação de palavra-chave **entregue na Phase 25** → movido para Validado.) Detalhamento na `REQUIREMENTS.md` deste milestone.
 - _v1.6 totalmente em PROD desde 2026-06-21_ (deploy/UAT diferidos fechados via `/gsd-verify-work 22, 24`). Sem pendências carregadas.
 
 ### Out of Scope
@@ -151,4 +152,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-21 — Milestone **v1.7 "Abastecimento de ponta-a-ponta + UX da grid"** iniciado. Escopo: registro rápido de abastecimento na lista `/carros`, parcelado (nº parcelas + valor total), vínculo reverso por valor (sugestão+confirma na importação), categoria "Combustível" default, e fix de scroll na criação de palavra-chave. Fases continuam em 25. v1.6 fechado + 100% em PROD (deploy/UAT diferidos resolvidos via `/gsd-verify-work 22, 24`, 4/4 pass; phase dirs 14-24 arquivados em `milestones/`).*
+*Last updated: 2026-06-21 — Milestone **v1.7 "Abastecimento de ponta-a-ponta + UX da grid"** em andamento. **Phase 25 (fix de scroll + re-classify ao vivo na grid) COMPLETA** — UX-01/UX-02 validados (UAT vivo aprovado 2026-06-21); 943/943 testes, `tsc`/`build` limpos, code review 0 blockers. Restante v1.7: registro rápido de abastecimento na lista `/carros`, parcelado (nº parcelas + valor total), vínculo reverso por valor (sugestão+confirma na importação), categoria "Combustível" default. Próxima: Phase 26 (substrato do abastecimento ponta-a-ponta). v1.6 fechado + 100% em PROD; phase dirs 14-24 arquivados em `milestones/`.*
