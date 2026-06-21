@@ -91,7 +91,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 - [x] **Phase 21: Match wildcard + procedência persistida** - Wildcard glob (`*`) na palavra-chave (maior keyword vence preservado) + widening do CHECK de `0020` para gravar `palavra-chave` em `transactions.classification_source` (completed 2026-06-20)
 - [x] **Phase 22: Sugestão de palavra-chave (inline + batch)** - Opt-in inline ao confirmar merchant→categoria + painel batch em `/categorias` que analisa `merchant_patterns` e sugere keywords candidatas (completed 2026-06-20)
 - [x] **Phase 23: Aplicar sugestões em lote por confiança** - No review grid, aplicar de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual (sem auto-commit) (completed 2026-06-21)
-- [ ] **Phase 24: Ingestão robusta (PDF em PROD + re-import)** - Worker do `pdfjs` disponível no bundle serverless da Vercel + parser que degrada com clareza (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada
+- [ ] **Phase 24: Ingestão robusta (PDF em PROD + re-import)** - Worker do `pdfjs` disponível no bundle serverless da Vercel + parser que degrada com clareza (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada — **1 plan**
 
 ## Phase Details (v1.6)
 
@@ -172,7 +172,10 @@ Plans:
   2. Diante de um PDF ruim (image-only / 0 linhas extraíveis), o parser degrada de forma clara e previsível — sem travar e sem produzir linhas silenciosamente erradas — orientando o usuário (sem OCR no escopo).
   3. O re-upload do mesmo arquivo é permitido quando a importação anterior NÃO foi confirmada (rows que nunca viraram `transactions`); o `content_hash` continua bloqueando apenas o que já foi confirmado.
 
-**Plans**: TBD
+**Plans**: 1 plan
+
+Plans:
+- [ ] 24-01-PLAN.md — Migration 0038 widens `statements.status` CHECK → `'imported'` (IMP-07, unlocks the re-import fast-path); strengthen the generic PDF degradation test (PDF-07/SC2); source-assert the next.config pdfjs worker include (PDF-06); deferred `autonomous:false` PROD push of 0037+0038. SC1 (live PDF in PROD) = deferred human-verify UAT.
 
 ## Progress
 
