@@ -1,6 +1,6 @@
 ---
 phase: 23-aplicar-sugest-es-em-lote-por-confian-a
-reviewed: 2026-06-21T11:40:00Z
+reviewed: 2026-06-21T11:47:00Z
 depth: standard
 files_reviewed: 2
 files_reviewed_list:
@@ -9,74 +9,111 @@ files_reviewed_list:
 findings:
   critical: 0
   warning: 1
-  info: 1
-  total: 2
+  info: 0
+  total: 1
 status: issues_found
 ---
 
 # Phase 23: Code Review Report
 
-**Reviewed:** 2026-06-21T11:40:00Z
+**Reviewed:** 2026-06-21T11:47:00Z
 **Depth:** standard
 **Files Reviewed:** 2
 **Status:** issues_found
 
 ## Summary
 
-Phase 23 (CLSAI-10) gates the bulk-apply control on confidence: it adds the `isConfidentPending` predicate (`category_id === null && suggestion.categoryId && confidence >= LOW_CONFIDENCE`), replaces `unappliedSuggestionCount` with `confidentSuggestionCount` to drive the button label/visibility, and relabels the button + toast to pt-BR "confiáveis" copy.
+Iteration-2 re-review of the WR-01 fix (commit `83763a6`): the `toast()` was hoisted out
+of the `setRows` updater in `applyAllSuggestions`, the reducer is now a pure `prev.map(...)`,
+the applied count is derived from `rows.filter(isConfidentPending).length` in the callback
+closure, the toast fires once outside the reducer gated on `applied > 0`, and the
+`useCallback` dep array changed `[]` → `[rows]`. The IN-01 back-compat test was also added.
 
-I adversarially traced all four stated invariants and could not break any of them:
+The fix is **correct on all four verification axes**:
 
-1. **Low-confidence rows stay pending + uncategorized.** `isConfidentPending` requires `confidence >= 0.6`, so a `0.3` row is never selected by `applyAllSuggestions` (line 413–437). Verified by tests `confident-applies-low-stays-pending` and `button-hidden-when-zero-confident`.
-2. **Apply path writes nothing.** `applyAllSuggestions` only calls `setRows` + `toast`; no `confirmImport`, no server action. The per-row fill matches the chip path (`origin: 'manual'`, `reserva_id: null`). Verified by `apply-all` asserting `confirmImportMock` is never called.
-3. **Amber-tag predicate + low-confidence-first sort are byte-identical.** `ConfidenceTag` (line 181) and `isLowConfidenceAi` (line 197) both still use `confidence < LOW_CONFIDENCE`; `lowConfidenceFirst` is untouched. The new `isConfidentPending` uses `>= LOW_CONFIDENCE`, so the two predicates partition the space at exactly 0.6 with **no gap and no overlap** — a `0.6` row is confident and shows no amber tag. Verified by `boundary-0.6-is-confident`.
-4. **`r.suggestion!` non-null assertion is sound.** `isConfidentPending` short-circuits on `!!r.suggestion?.categoryId`, so when it returns `true`, `r.suggestion` is defined and `categoryId` is non-null. The `r.suggestion!.categoryId` at line 423 cannot dereference `undefined`. `tsc --noEmit` is clean for this file.
+1. **Count correctness (no off-by-one / no stale undercount).** `useCallback(..., [rows])`
+   recreates the handler on every `rows` change, so the `onClick`-bound closure
+   (line 749) always references the latest committed `rows`. At click time, closure
+   `rows` === reducer `prev` (no intervening setState in the handler), and `applied`
+   (line 435) and the reducer (line 421-433) apply the **same `isConfidentPending`
+   predicate over the same array** → the toast count equals the number actually applied.
+   The dep change `[]` → `[rows]` is *necessary*: with `[]` the closure would freeze at
+   `initialRows` and undercount after any state change. Confirmed correct. The
+   button-label count (`confidentSuggestionCount`, line 735) reads `rows` from the same
+   render closure, so the label count and the toast count are always identical.
 
-Additional checks:
-- **No stale `unappliedSuggestionCount` reference** anywhere in `src/` (grep across `.ts`/`.tsx` returns nothing).
-- **Count/visibility never mismatch.** Both `confidentSuggestionCount` (line 731) and the `applyAllSuggestions` map (line 416–417) derive from the same `rows` state via the same `isConfidentPending` predicate — not from `visibleRows` — so the button count, the apply effect, and the post-apply hide (`> 0` gate, line 741) are always consistent regardless of the `onlyUnclassified` filter.
-- Full suite passes: 21/21 tests green.
+2. **No double-toast / pure reducer.** The reducer is side-effect-free; the toast fires
+   exactly once per click outside the updater. StrictMode double-invocation of the
+   updater no longer emits a duplicate toast (the prior defect). Confirmed.
 
-Findings below are quality-only; neither blocks shipping this phase.
+3. **Phase invariants hold.** Low-confidence rows untouched (`>= LOW_CONFIDENCE` gate
+   unchanged); no `confirmImport`/DB write (`applyAllSuggestions` only calls `setRows` +
+   `toast`; tests assert `confirmImportMock` never called); amber tag (`ConfidenceTag`,
+   `isLowConfidenceAi`) + `lowConfidenceFirst` sort untouched by this diff; LOCKED pt-BR
+   toast copy byte-identical (`"sugestão confiável aplicada"` /
+   `"sugestões confiáveis aplicadas"`).
+
+4. **IN-01 back-compat test is sound.** `apply-all-undefined-suggestion-untouched`
+   (lines 310-345) exercises the `!!r.suggestion?.categoryId` guard for a
+   `suggestion: undefined` row alongside a confident row — asserts the button reads
+   "Aplicar 1", the no-suggestion row stays uncategorized, no chip rendered, the button
+   disappears post-apply, and no write fires. Closes the iteration-1 coverage gap.
+
+Full suite (22 tests) passes (`vitest run` green). The diff matches the described change
+exactly. One behavioral nuance the fix *introduced* is recorded below as a WARNING — it is
+minor and non-destructive, flagged for the record since it is a real change in toast
+behavior versus the pre-fix code.
 
 ## Warnings
 
-### WR-01: Side-effecting `toast()` call inside the `setRows` state updater
+### WR-01: Rapid double-click can emit a spurious second "N aplicadas" toast
 
-**File:** `src/components/import-review-table.tsx:413-437`
-**Issue:** `applyAllSuggestions` fires `toast(...)` from *inside* the `setRows((prev) => { ... })` reducer. State updater functions are supposed to be pure; React may invoke them more than once (notably under StrictMode double-invocation in development, or when bailing out of an update), which would emit a duplicate toast. This is **pre-existing** (it was present before Phase 23 in commit `a3e7405`, and the same pattern is used by `deleteRow`'s undo toast at line 460) — Phase 23 only changed the toast *copy*, not its placement — so it is not a regression introduced by this phase. Flagged because the phase touched these exact lines and the pattern is fragile. StrictMode is not currently enabled in `next.config`, so the impact is latent today.
-**Fix:** Compute the applied count outside the reducer and toast after the state commit, e.g.:
+**File:** `src/components/import-review-table.tsx:435-440`
+**Issue:** Before the fix, the toast lived inside the `setRows` reducer keyed on the
+`applied` delta computed *during that reducer run*; a second reducer invocation over
+already-applied rows recomputed `applied = 0` and did **not** toast. After the fix, the
+toast reads `applied` from the callback closure's `rows`. The bulk-apply button is not
+disabled while the apply settles, so if the user clicks it twice before React commits the
+re-render, the second click still sees the **stale pre-update closure `rows`** (the
+callback has not been recreated yet because `rows` has not changed), recomputes
+`applied = N`, and emits a second identical `"N sugestões confiáveis aplicadas"` toast —
+even though that second click applies nothing new (the reducer's `prev` is now the updated
+state, so `prev.map` is a no-op).
+
+Net effect: a double-click shows two identical success toasts; after re-render the button
+correctly disappears. No data corruption, no extra writes, and the *first* toast's count is
+always correct — purely a duplicate-toast UX blip on fast double-clicks. This is a small
+behavioral regression versus the pre-fix code (which self-suppressed the second toast), so
+it is flagged for the record; acceptable to defer if the phase scope is strictly the
+reducer-purity fix.
+
+**Fix:** Disable the bulk button while the apply settles (mirror the `isConfirming`
+pattern already used for the confirm button at line 758), or early-return + drive the
+button off the next-state so a second click cannot land before re-render:
+
 ```tsx
 const applyAllSuggestions = React.useCallback(() => {
-  setRows((prev) => {
-    let applied = 0
-    const next = prev.map((r) => {
-      if (isConfidentPending(r)) {
-        applied += 1
-        return { ...r, category_id: r.suggestion!.categoryId, reserva_id: null, origin: 'manual' as const }
-      }
-      return r
-    })
-    return next
-  })
-  const applied = rows.filter(isConfidentPending).length
-  if (applied > 0) {
-    toast(`${applied} ${applied === 1 ? 'sugestão confiável aplicada' : 'sugestões confiáveis aplicadas'}`)
-  }
+  const toApply = rows.filter(isConfidentPending)
+  if (toApply.length === 0) return // nothing to apply → no toast, no setRows
+  setRows((prev) =>
+    prev.map((r) =>
+      isConfidentPending(r)
+        ? { ...r, category_id: r.suggestion!.categoryId, reserva_id: null, origin: 'manual' as const }
+        : r,
+    ),
+  )
+  toast(
+    `${toApply.length} ${toApply.length === 1 ? 'sugestão confiável aplicada' : 'sugestões confiáveis aplicadas'}`,
+  )
 }, [rows])
 ```
-(or capture the count via a ref) — keeping the reducer pure and the toast a one-shot effect of the click.
 
-## Info
-
-### IN-01: Test coverage does not pin the `suggestion === undefined` (absent) row through the bulk path
-
-**File:** `src/components/import-review-table.test.tsx:269-308`
-**Issue:** Every bulk-apply test supplies a `suggestion` object. The `isConfidentPending` predicate also has to correctly return `false` for a row with `suggestion: undefined` (the v1.3 / no-AI back-compat path) via the `!!r.suggestion?.categoryId` guard. This path is exercised indirectly by `no-suggestions-v1.3-identical`, but no test mixes an undefined-suggestion row *into a batch that also contains confident rows* and asserts the undefined row is left untouched by `applyAllSuggestions`. The code is correct (optional chaining handles it), so this is a coverage gap, not a defect.
-**Fix:** Add a row with no `suggestion` field alongside a confident row in an `apply-all`-style test and assert the no-suggestion row's category stays `null` (its "Classificar" placeholder remains) after clicking the bulk button.
+The early-return alone does not fully close the race (the second click's closure `rows`
+is still pre-update). The robust fix is to disable the button during the apply so a second
+click cannot fire before the closure refreshes.
 
 ---
 
-_Reviewed: 2026-06-21T11:40:00Z_
+_Reviewed: 2026-06-21T11:47:00Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
