@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
   ImportReviewTable,
+  reclassifyRowsWithKeyword,
   type ReviewCategory,
   type ReviewRow,
 } from '@/components/import-review-table'
@@ -570,5 +571,164 @@ describe('KW-07 inline keyword suggestion', () => {
     // Popover stays open (the term input is still present) and no "criada ✓" flip.
     expect(screen.getAllByLabelText('Palavra-chave').length).toBeGreaterThan(0)
     expect(screen.queryByText(/criada/)).toBeNull()
+  })
+})
+
+/**
+ * UX-02 (D-04/D-05): the PURE client-side re-classify applied after an inline keyword
+ * is persisted. `reclassifyRowsWithKeyword(rows, categoryId, normalizedKeyword)` runs the
+ * pure matcher (`compileRule`/`matchKeyword`) over the rows in state and, WITHOUT any
+ * refresh, applies the new keyword to rows that are either still unclassified
+ * (`category_id === null`) OR owned by a deterministic origin (`memória`/`palavra-chave`),
+ * NEVER touching a hand-classified (`origin === 'manual'`) row. Matched rows take
+ * `category_id = categoryId` + `origin = 'palavra-chave'` (mirrors the upload pipeline),
+ * and NEVER gain a `confidence`. A degenerate keyword (`*`/`''`) compiles to null → no-op.
+ * Pure function — no render, no `@testing-library` (Pitfall 1: `origin === 'ia'` does not
+ * exist; "IA não aplicada" is `category_id === null`).
+ */
+describe('reclassifyRowsWithKeyword', () => {
+  it('applies to an unclassified row whose descriptor matches', () => {
+    const rows = [
+      makeRow({
+        category_id: null,
+        origin: 'não classificada',
+        descriptor_norm: 'uber trip 123',
+      }),
+    ]
+    const [out] = reclassifyRowsWithKeyword(rows, 'cat-transporte', 'uber')
+    expect(out?.category_id).toBe('cat-transporte')
+    expect(out?.origin).toBe('palavra-chave')
+  })
+
+  it('overrides a memória row that matches', () => {
+    const rows = [
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'memória',
+        descriptor_norm: 'pedido ifood centro',
+      }),
+    ]
+    const [out] = reclassifyRowsWithKeyword(rows, 'cat-transporte', 'ifood')
+    expect(out?.category_id).toBe('cat-transporte')
+    expect(out?.origin).toBe('palavra-chave')
+  })
+
+  it('overrides an existing palavra-chave row that matches', () => {
+    const rows = [
+      makeRow({
+        category_id: 'cat-mercado',
+        origin: 'palavra-chave',
+        descriptor_norm: 'uber trip',
+      }),
+    ]
+    const [out] = reclassifyRowsWithKeyword(rows, 'cat-transporte', 'uber')
+    expect(out?.category_id).toBe('cat-transporte')
+    expect(out?.origin).toBe('palavra-chave')
+  })
+
+  it('NEVER touches a manual row, even when it would match (SC5)', () => {
+    const original = makeRow({
+      category_id: 'cat-mercado',
+      origin: 'manual',
+      descriptor_norm: 'uber trip',
+    })
+    const [out] = reclassifyRowsWithKeyword([original], 'cat-transporte', 'uber')
+    // Same reference (untouched) + unchanged fields.
+    expect(out).toBe(original)
+    expect(out?.category_id).toBe('cat-mercado')
+    expect(out?.origin).toBe('manual')
+  })
+
+  it('leaves a non-matching row unchanged (same reference)', () => {
+    const original = makeRow({
+      category_id: null,
+      origin: 'não classificada',
+      descriptor_norm: 'padaria sao joao',
+    })
+    const [out] = reclassifyRowsWithKeyword([original], 'cat-transporte', 'uber')
+    expect(out).toBe(original)
+  })
+
+  it('sets provenance to palavra-chave and never assigns a confidence', () => {
+    const rows = [
+      makeRow({
+        category_id: null,
+        origin: 'não classificada',
+        descriptor_norm: 'uber trip',
+        // A pre-existing suggestion must survive untouched (not overwritten/invented).
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+    ]
+    const [out] = reclassifyRowsWithKeyword(rows, 'cat-transporte', 'uber')
+    expect(out?.origin).toBe('palavra-chave')
+    expect(out?.suggestion).toEqual({
+      categoryId: 'cat-mercado',
+      confidence: 0.9,
+      source: 'ia',
+    })
+    // The row gains no `confidence` field of its own.
+    expect('confidence' in (out ?? {})).toBe(false)
+  })
+
+  it('matches a glob keyword (UBER* preserved, not re-normalized)', () => {
+    const rows = [
+      makeRow({
+        category_id: null,
+        origin: 'não classificada',
+        descriptor_norm: 'uber trip 123',
+      }),
+    ]
+    // Pass the keyword already normalized (lowercase, `*` preserved) — never re-normalize.
+    const [out] = reclassifyRowsWithKeyword(rows, 'cat-transporte', 'uber*')
+    expect(out?.category_id).toBe('cat-transporte')
+    expect(out?.origin).toBe('palavra-chave')
+  })
+
+  it('is a no-op for a degenerate "*"-only keyword (compileRule null)', () => {
+    const a = makeRow({
+      category_id: null,
+      origin: 'não classificada',
+      descriptor_norm: 'uber trip',
+    })
+    const b = makeRow({
+      category_id: 'cat-mercado',
+      origin: 'memória',
+      descriptor_norm: 'pedido ifood',
+    })
+    const out = reclassifyRowsWithKeyword([a, b], 'cat-transporte', '*')
+    expect(at(out, 0)).toBe(a)
+    expect(at(out, 1)).toBe(b)
+  })
+
+  it('is a no-op for an empty keyword', () => {
+    const a = makeRow({
+      category_id: null,
+      origin: 'não classificada',
+      descriptor_norm: 'uber trip',
+    })
+    const out = reclassifyRowsWithKeyword([a], 'cat-transporte', '')
+    expect(at(out, 0)).toBe(a)
+  })
+
+  it('preserves referential identity for untouched rows while updating matches', () => {
+    const matching = makeRow({
+      category_id: null,
+      origin: 'não classificada',
+      descriptor_norm: 'uber trip',
+    })
+    const untouched = makeRow({
+      category_id: 'cat-mercado',
+      origin: 'manual',
+      descriptor_norm: 'mercado central',
+    })
+    const out = reclassifyRowsWithKeyword(
+      [matching, untouched],
+      'cat-transporte',
+      'uber',
+    )
+    // Matching row is a NEW object; untouched row keeps its identity.
+    expect(at(out, 0)).not.toBe(matching)
+    expect(at(out, 0).category_id).toBe('cat-transporte')
+    expect(at(out, 1)).toBe(untouched)
   })
 })
