@@ -30,6 +30,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap. Estende o m
 ### UX da Importação
 
 - [ ] **UX-01**: Criar uma palavra-chave inline na grid de importação preserva a posição de scroll da página (não reseta para o topo após salvar).
+- [ ] **UX-02**: Ao criar uma palavra-chave inline na grid de importação, as demais linhas são re-classificadas ao vivo (client-side, sem refresh): a nova keyword é aplicada às linhas não-classificadas (`category_id === null`) e sobrescreve as auto-classificadas (memória/IA) que casam — nunca alterando linhas `origin === 'manual'` —, marcando as linhas recém-casadas com provenance `'palavra-chave'`.
 
 ## v2 Requirements
 
@@ -64,12 +65,13 @@ Preenchido na criação do roadmap.
 | CAR-12 | Phase 28 | Pending |
 | FUEL-01 | Phase 26 | Pending |
 | UX-01 | Phase 25 | Pending |
+| UX-02 | Phase 25 | Pending |
 
 **Coverage:**
-- v1.7 requirements: 8 total
-- Mapped to phases: 8 (Phase 25: UX-01 · Phase 26: FUEL-01 · Phase 27: CAR-07/CAR-08 · Phase 28: CAR-09/CAR-10/CAR-11/CAR-12)
+- v1.7 requirements: 9 total
+- Mapped to phases: 9 (Phase 25: UX-01/UX-02 · Phase 26: FUEL-01 · Phase 27: CAR-07/CAR-08 · Phase 28: CAR-09/CAR-10/CAR-11/CAR-12)
 - Unmapped: 0 ✅
 
 ---
 *Requirements defined: 2026-06-21*
-*Last updated: 2026-06-21 — roadmap created (Phases 25–28); traceability 8/8 mapped, 0 órfãos.*
+*Last updated: 2026-06-21 — UX-02 (re-classificação ao vivo da grid) adicionado à Phase 25 ao planejar; traceability 9/9 mapped, 0 órfãos.*
