@@ -258,7 +258,22 @@ Plans:
   3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
   4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 27-01-PLAN.md — Schema (TDD): superRefine de 3 estados + campos valorTotalCents/parcelasTotal espelhando o CHECK abastecimentos_cost_xor do 0039 (CAR-08)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 27-02-PLAN.md — Action: abastecimentoWriteFields parcelado-aware (transaction_id/amount_cents null) IDOR-safe + sem double-count (CAR-08)
+- [ ] 27-03-PLAN.md — Form: aba Parcelado + prop manual-only + onSourceChange de 3 estados + preview valor-por-parcela display-only (CAR-07, CAR-08)
+
+**Wave 3** *(blocked on 27-03)*
+
+- [ ] 27-04-PLAN.md — Lista: botão "Novo abastecimento" na face do CarroCard hospedando o form manual-only; page /carros sem fetch de transacoes (CAR-07)
+
 **UI hint**: yes
 
 ### Phase 28: Vínculo reverso por valor + consumo sem double-count
