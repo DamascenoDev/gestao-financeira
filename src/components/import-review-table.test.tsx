@@ -307,6 +307,43 @@ describe('ImportReviewTable — suggestion affordances', () => {
     expect(confirmImportMock).not.toHaveBeenCalled()
   })
 
+  it('apply-all-undefined-suggestion-untouched: a row with NO suggestion (v1.3 back-compat) is left uncategorized by bulk apply alongside a confident row', () => {
+    renderTable([
+      makeRow({
+        descriptor_raw: 'CONFIANTE',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+      // No `suggestion` field at all: the v1.3 / no-AI back-compat path. The
+      // `!!r.suggestion?.categoryId` guard in isConfidentPending must return
+      // false for this row so bulk apply leaves it untouched.
+      makeRow({
+        descriptor_raw: 'SEM-SUGESTAO',
+        category_id: null,
+      }),
+    ])
+
+    // Button counts ONLY the single confident row (the no-suggestion row is excluded).
+    const bulk = screen.getByRole('button', { name: /Aplicar 1 sugest/i })
+    fireEvent.click(bulk)
+
+    // The confident CONFIANTE→Mercado row is applied.
+    expect(screen.getAllByText('Mercado').length).toBeGreaterThan(0)
+    // The no-suggestion row stays uncategorized: its "Classificar" placeholder
+    // remains and it never gained a category. (No chip ever rendered for it.)
+    expect(screen.getAllByText(/Classificar/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText('SEM-SUGESTAO').length).toBeGreaterThan(0)
+    // No apply chip was ever rendered for the no-suggestion row — bulk apply had
+    // nothing to fill from, so it could not have touched that row.
+    expect(screen.queryByText(/Aplicar sugestão/i)).toBeNull()
+    // The bulk button DISAPPEARS — 0 confident suggestions remain.
+    expect(
+      screen.queryByRole('button', { name: /Aplicar \d+ sugest/i }),
+    ).toBeNull()
+    // Client-state only: no write path fired.
+    expect(confirmImportMock).not.toHaveBeenCalled()
+  })
+
   it('confident-applies-low-stays-pending: a 0.9 row applies; a 0.3 row keeps its chip AND its "baixa confiança" tag; no confirmImport', () => {
     renderTable([
       makeRow({
