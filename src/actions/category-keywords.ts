@@ -40,8 +40,15 @@ const CATEGORIAS_PATH = '/categorias'
  */
 const idSchema = z.string().uuid('Identificador inválido')
 
-/** Add a normalized keyword to a category for the caller (KW-01). */
-export async function addKeyword(
+/**
+ * Shared core for keyword cadastro (D-02). Bit-identical to the old addKeyword
+ * body — the SAME four guards in the SAME order with the SAME pt-BR messages,
+ * the getClaims() owner gate (user_id NEVER from the client), the maybeSingle
+ * duplicate pre-check and the 23505 race backstop. Private (not exported): the
+ * ONLY observable difference between addKeyword and addKeywordInline is whether
+ * the caller revalidates afterward, so this never calls revalidatePath itself.
+ */
+async function insertKeyword(
   categoryId: string,
   keyword: string,
 ): Promise<AddKeywordResult> {
@@ -91,8 +98,36 @@ export async function addKeyword(
     return { error: 'Não foi possível salvar a palavra-chave.' }
   }
 
-  revalidatePath(CATEGORIAS_PATH)
   return { ok: true }
+}
+
+/**
+ * Add a normalized keyword to a category for the caller (KW-01). The /categorias
+ * cadastro path: runs the shared core then revalidatePath('/categorias') ONLY on
+ * success (SC3). A duplicate/error returns before any revalidate — identical to
+ * the prior behavior, where duplicate returned ahead of the revalidate call.
+ */
+export async function addKeyword(
+  categoryId: string,
+  keyword: string,
+): Promise<AddKeywordResult> {
+  const result = await insertKeyword(categoryId, keyword)
+  if ('ok' in result) revalidatePath(CATEGORIAS_PATH)
+  return result
+}
+
+/**
+ * UX-01 / SC1: the inline cadastro path used by the /importar review grid. Runs
+ * the SAME shared core as addKeyword but NEVER calls revalidatePath — a Server
+ * Action revalidate invalidates the client Router Cache and re-renders the active
+ * route (/importar/[statementId]), resetting scroll. Omitting it kills that
+ * refresh signal without touching the shared contract or the /categorias path.
+ */
+export async function addKeywordInline(
+  categoryId: string,
+  keyword: string,
+): Promise<AddKeywordResult> {
+  return insertKeyword(categoryId, keyword)
 }
 
 /**
