@@ -5,10 +5,10 @@ milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 26
 current_phase_name: Substrato do abastecimento ponta-a-ponta
 status: ready
-stopped_at: Phase 26 context gathered
+stopped_at: Phase 26 planned (4 plans, 3 waves) — ready to execute
 last_updated: "2026-06-21T19:13:41.138Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 25 complete + verified, transitioned to Phase 26
+last_activity_desc: Phase 26 planned — 4 plans across 3 waves (research + nyquist + patterns), verification passed
 progress:
   total_phases: 4
   completed_phases: 1
@@ -31,9 +31,9 @@ progress:
 ## Current Position
 
 Phase: 26 — Substrato do abastecimento ponta-a-ponta
-Plan: Not started
-Status: READY. Phase 25 COMPLETE + verified passed (7/7 must-haves) — UX-01/UX-02 shipped: `addKeywordInline` (no `revalidatePath`) corta o scroll jump + `reclassifyRowsWithKeyword` re-classifica a grid ao vivo (nunca toca `manual`). UAT vivo aprovado pelo founder 2026-06-21. 943/943 testes, `tsc`/`build` limpos, code review 0 blockers (2 warnings advisory: WR-01 single-keyword precedence, WR-02 filtered-view feedback). Commits 25-01: `543a229`→`37cdfa5`→`17c11f1`; 25-02: `aa37e8f`→`e8e9d67`→`2353a74`.
-Last activity: 2026-06-21 — Phase 25 complete + verified, transitioned to Phase 26
+Plan: Planned — 4 plans (26-01..26-04) across 3 waves; verification passed (iter 2); ready to execute
+Status: READY TO EXECUTE Phase 26 (pure data-layer substrate). 4 plans: W0 26-01 (4 RED vitest gates: CHECK truth table, junction uniques/double-link/RLS, Combustível seed, parcelado no-double-count) → W1 26-02 (migration 0039 schema: relaxed `abastecimentos_cost_xor` + `parcelas_total`/`valor_total_cents` + `abastecimento_parcelas` junction + `v_abastecimento_consumo` rewrite from 0029 body + gen:types) ∥ 26-03 (migration 0040 seed: handle_new_user + idempotent backfill, no types diff) → W2 26-04 [BLOCKING] `npm run db:reset` clean replay + scoped types diff + full suite. Artefatos: research (HIGH) + nyquist VALIDATION + patterns + threat models (ASVS L1). Needs local Supabase Docker stack (`supabase start`) for W2. NOTE: prod `supabase db push` é deploy-time autonomous:false. — Phase 25 COMPLETE + verified (7/7) shipped 2026-06-21 (commits 25-01 `17c11f1` / 25-02 `2353a74`).
+Last activity: 2026-06-21 — Phase 26 planned (4 plans, 3 waves), verification passed
 
 ## Deferred Items
 

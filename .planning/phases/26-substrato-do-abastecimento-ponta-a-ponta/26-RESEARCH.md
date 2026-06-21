@@ -375,19 +375,19 @@ All canonical patterns are inline in **Architecture Patterns** above, copied/ada
 | A4 | Two migrations (0039 schema / 0040 seed) is preferred over one. | Summary / layout | Planner's call (CONTEXT L145–146 explicitly leaves one-vs-two to the planner). One migration also works but blurs the gen:types-diff boundary. |
 | A5 | Validation is vitest-against-local-stack (no pgTAP in repo). | Validation Architecture | Verified by grep — no pgTAP. If the planner introduces pgTAP it's net-new infra (not recommended; breaks repo convention). |
 
-## Open Questions
+## Open Questions (RESOLVED)
 
 1. **One migration or two?**
    - What we know: CONTEXT L145–146 leaves it to the planner; schema has a types diff, seed doesn't.
-   - Recommendation: **two** (`0039` schema, `0040` seed) — cleanest SC5 story.
+   - RESOLVED: **two migrations** — `0039` (schema, has gen:types diff) + `0040` (seed, no types diff). Adopted by the plans (cleanest SC5 story; preserves the diff boundary).
 
 2. **Re-sort existing accounts' categories, or insert-only?**
    - What we know: 0035 inserted-only (no renumber) and shipped; `categories.sort` has no unique constraint.
-   - Recommendation: insert-only (parity with 0035); flag the cosmetic tie for the founder.
+   - RESOLVED: **insert-only backfill** (where-not-exists, parity with 0035); the cosmetic sort tie on existing accounts is accepted/flagged, no renumber.
 
 3. **Optional cross-table double-link trigger?**
    - What we know: unique indexes + relaxed CHECK make the common double-links impossible; the residual cross-row reuse is the same class the action layer already guards.
-   - Recommendation: rely on action-layer enforcement (27/28), document residual in the 0039 header. Add a trigger only if the founder asks for pure-schema guarantee.
+   - RESOLVED: **double-link enforcement deferred to the action layer in Phases 27/28** (no P26 trigger). Residual cross-row reuse is documented in the 0039 header and tracked as threat T-26-06; matches the repo's existing `ALREADY_LINKED` action-layer precedent.
 
 ## Environment Availability
 
