@@ -4,15 +4,15 @@ milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 25
 current_phase_name: Fix de scroll na criação de palavra-chave
-status: planning
-stopped_at: Phase 25 context gathered
-last_updated: "2026-06-21T16:59:35.706Z"
+status: planned
+stopped_at: Phase 25 planned (2 plans, verification passed)
+last_updated: "2026-06-21T17:30:00.000Z"
 last_activity: 2026-06-21
-last_activity_desc: Roadmap do milestone v1.7 criado (8/8 requisitos mapeados)
+last_activity_desc: Phase 25 planejada (2 plans em 2 waves; plan-checker PASSED; UX-02 re-classify adicionado ao escopo)
 progress:
   total_phases: 4
   completed_phases: 0
-  total_plans: 0
+  total_plans: 2
   completed_plans: 0
   percent: 0
 ---
@@ -26,13 +26,13 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 25 — Fix de scroll na criação de palavra-chave (v1.7 roadmap criado; pronto para `/gsd-plan-phase 25`)
+- **Current focus:** Phase 25 — Fix de scroll na criação de palavra-chave (planejada: 2 plans em 2 waves, verificação passou; pronto para `/gsd-execute-phase 25`)
 
 ## Current Position
 
-Phase: 25 (Fix de scroll na criação de palavra-chave) — not started
-Plan: —
-Status: Roadmap criado (Phases 25–28); pronto para planejar
+Phase: 25 (Fix de scroll na criação de palavra-chave) — planned (2 plans, 2 waves)
+Plan: 25-01 (Wave 1, autonomous) → 25-02 (Wave 2, ends in UAT checkpoint)
+Status: Planejada (2 plans, plan-checker PASSED); pronto para executar
 Last activity: 2026-06-21 — Roadmap do milestone v1.7 criado (8/8 requisitos mapeados)
 
 ## Deferred Items
