@@ -1,20 +1,16 @@
 ---
 gsd_state_version: 1.0
-milestone: v1.6
-milestone_name: Classificação fluida & ingestão robusta
-current_phase: 6
-status: Awaiting next milestone
-stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T15:40:00.928Z"
+milestone: v1.7
+milestone_name: Abastecimento de ponta-a-ponta + UX da grid
+status: planning
+last_updated: "2026-06-21T16:33:03.340Z"
 last_activity: 2026-06-21
-last_activity_desc: Milestone v1.6 completed and archived
 progress:
-  total_phases: 4
-  completed_phases: 4
-  total_plans: 9
-  completed_plans: 9
-  percent: 100
-current_phase_name: Ingestão robusta (PDF em PROD + re-import
+  total_phases: 0
+  completed_phases: 0
+  total_plans: 0
+  completed_plans: 0
+  percent: 0
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,10 +26,10 @@ current_phase_name: Ingestão robusta (PDF em PROD + re-import
 
 ## Current Position
 
-Phase: Milestone v1.6 complete
+Phase: Not started (defining requirements)
 Plan: —
-Status: Awaiting next milestone
-Last activity: 2026-06-21 — Milestone v1.6 completed and archived
+Status: Defining requirements
+Last activity: 2026-06-21 — Milestone v1.7 started
 
 ## Deferred Items
 

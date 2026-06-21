@@ -28,9 +28,20 @@ Suíte **917/917** verde, `tsc --noEmit` + `npm run build` limpos, code review p
 
 </details>
 
-## Current Milestone: none — v1.6 shipped 2026-06-21
+## Current Milestone: v1.7 Abastecimento de ponta-a-ponta + UX da grid
 
-v1.6 fechado (code-side, audit `tech_debt`, 8/8 requisitos). Nenhum milestone ativo. Próximo via `/gsd-new-milestone`. **Pendência de deploy antes de declarar o app 100% atualizado em PROD:** `supabase db push` de `0037`+`0038` + deploy na Vercel + live-verify dos UATs de P22/P24 (ver STATE.md "Deferred Items").
+**Goal:** Registrar abastecimento na hora (sem esperar a fatura), casar o lançamento da fatura por valor quando ela chegar, e tirar o atrito da criação de palavra-chave na importação.
+
+**Target features:**
+- **UX fix** — criar palavra-chave na grid de importação não dá mais scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`).
+- **Registro rápido de abastecimento** — botão "Novo abastecimento" acessível na lista `/carros` (reusa o `AbastecimentoForm` do detalhe; permite lançar à vista/manual durante o mês, antes da fatura).
+- **Abastecimento parcelado** — nº de parcelas + valor total; relaxa o `abastecimentos_cost_xor` para permitir "esperado manual + vínculo depois".
+- **Vínculo reverso por valor** — ao subir a fatura, casa lançamento↔abastecimento pré-registrado pelo valor (à vista = total; parcelado = ~total/N), sugerido na grid de revisão com confirmação humana (sem auto-commit). Habilita attach-later (hoje o vínculo é só no create).
+- **Categoria "Combustível"** — default seedada (migration estilo `0035`) + auto-aplica/sugere ao vincular.
+
+Reusa `AbastecimentoForm` + actions (`src/actions/abastecimentos.ts`) + views de consumo (`v_abastecimento_consumo`/`v_carro_resumo`) de v1.2. Numeração de fases continua em 25.
+
+> **Nota v1.6 (resolvido 2026-06-21):** o deploy diferido foi fechado via `/gsd-verify-work 22, 24` — `supabase db push` de `0037`+`0038` aplicado em PROD + live-verify de PDF e dos UATs de P22/P24 (4/4 pass). v1.6 está 100% em PROD; sem pendências de deploy carregadas para v1.7.
 
 ## Requirements
 
@@ -61,7 +72,8 @@ v1.6 fechado (code-side, audit `tech_debt`, 8/8 requisitos). Nenhum milestone at
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- _Nenhum milestone ativo._ v1.6 fechado 2026-06-21 (code-side). Próximo milestone via `/gsd-new-milestone` (gera uma `REQUIREMENTS.md` fresca). Antes de declarar PROD 100% atualizado: `supabase db push` de `0037`+`0038` + deploy na Vercel + UATs de P22/P24 (ver STATE.md "Deferred Items").
+- **(v1.7 — ativo)** Registro rápido de abastecimento na lista `/carros` + abastecimento parcelado (nº parcelas + valor total) + vínculo reverso por valor (sugestão+confirma na grid de importação) + categoria "Combustível" default + fix de UX da criação de palavra-chave (scroll). Detalhamento na `REQUIREMENTS.md` deste milestone.
+- _v1.6 totalmente em PROD desde 2026-06-21_ (deploy/UAT diferidos fechados via `/gsd-verify-work 22, 24`). Sem pendências carregadas.
 
 ### Out of Scope
 
@@ -139,4 +151,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-21 — Milestone v1.6 "Classificação fluida & ingestão robusta" SHIPPED (code-side) + arquivado (`milestones/v1.6-*`), tag git `v1.6`. 8/8 requisitos code-side (KW-07..10 · CLSAI-10 · PDF-06/07 · IMP-07); auditoria `tech_debt` (0 blockers, integração WIRED, 917/917). Diferido (autonomous:false): `supabase db push` de `0037`+`0038` + deploy Vercel + live-verify dos UATs de P22/P24 — ver STATE.md "Deferred Items". Resolveu a tech-debt v1.5 (procedência `palavra-chave` agora persistida). Próximo milestone via `/gsd-new-milestone`.*
+*Last updated: 2026-06-21 — Milestone **v1.7 "Abastecimento de ponta-a-ponta + UX da grid"** iniciado. Escopo: registro rápido de abastecimento na lista `/carros`, parcelado (nº parcelas + valor total), vínculo reverso por valor (sugestão+confirma na importação), categoria "Combustível" default, e fix de scroll na criação de palavra-chave. Fases continuam em 25. v1.6 fechado + 100% em PROD (deploy/UAT diferidos resolvidos via `/gsd-verify-work 22, 24`, 4/4 pass; phase dirs 14-24 arquivados em `milestones/`).*
