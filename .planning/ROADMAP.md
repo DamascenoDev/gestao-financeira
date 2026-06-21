@@ -230,7 +230,21 @@ Plans:
   4. Uma transação pode ser **re-vinculada** a um abastecimento pré-existente (re-link habilitado no banco/contrato), destravando o attach-later que o v1.2 só permitia no create.
   5. Migrations aplicam limpas em ordem no stack local (replay) e `database.types.ts` é regenerado refletindo as colunas de parcelamento.
 
-**Plans**: TBD
+**Plans**: 4 plans
+
+Plans:
+**Wave 0**
+
+- [ ] 26-01-PLAN.md — Wave 0 tests (RED): 9-row CHECK truth table + junction unique/double-link/RLS + Combustível seed/backfill + parcelado no-double-count fixture (FUEL-01)
+
+**Wave 1** *(blocked on Wave 0)*
+
+- [ ] 26-02-PLAN.md — Migration 0039 (schema): relaxa `abastecimentos_cost_xor` + colunas `parcelas_total`/`valor_total_cents` + junção `abastecimento_parcelas` (RLS) + reescrita de `v_abastecimento_consumo` do corpo 0029 (custo parcelado uma vez) + gen:types (FUEL-01)
+- [ ] 26-03-PLAN.md — Migration 0040 (seed): re-seed `handle_new_user()` com "Combustível" (consumo, sort 4) + backfill idempotente, padrão 0035, sem gen:types diff (FUEL-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 26-04-PLAN.md — [BLOCKING] replay limpo `npm run db:reset` + `gen:types` com diff escopado + suíte vitest verde (SC5) (FUEL-01)
 
 ### Phase 27: Registro rápido + abastecimento parcelado
 
@@ -295,7 +309,7 @@ Plans:
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
-| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/? | Not started | - |
+| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/4 | Planned | - |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
