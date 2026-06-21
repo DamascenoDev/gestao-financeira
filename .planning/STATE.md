@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
-current_phase: 25
-current_phase_name: fix-de-scroll-na-cria-o-de-palavra-chave
-status: executing
-stopped_at: "Paused at 25-02-PLAN.md Task 3 (checkpoint:human-verify UAT)"
-last_updated: "2026-06-21T17:52:04.069Z"
+current_phase: 26
+current_phase_name: Substrato do abastecimento ponta-a-ponta
+status: paused
+stopped_at: Completed 25-01-PLAN.md
+last_updated: "2026-06-21T18:20:40.208Z"
 last_activity: 2026-06-21
-last_activity_desc: 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpoint
+last_activity_desc: Phase 25 complete, transitioned to Phase 26
 progress:
   total_phases: 4
   completed_phases: 1
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 25 (fix-de-scroll-na-cria-o-de-palavra-chave) — EXECUTING
-Plan: 2 of 2
+Phase: 26 — Substrato do abastecimento ponta-a-ponta
+Plan: Not started
 Status: PAUSED at 25-02 Task 3 — checkpoint:human-verify (UAT). Tasks 1 (RED, `aa37e8f`) + 2 (GREEN, `e8e9d67`) committed. Awaiting human browser UAT (scroll preserved + live re-classify + manual intact + /categorias reflects keyword).
-Last activity: 2026-06-21 — 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpoint
+Last activity: 2026-06-21 — Phase 25 complete, transitioned to Phase 26
 
 ## Deferred Items
 
