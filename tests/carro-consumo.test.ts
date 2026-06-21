@@ -34,6 +34,11 @@ let userA: { id: string; jwt: string }
 let carroHappyId: string
 let carroGuardId: string
 let carroSameOdoId: string
+// 26-W0-03 parcelado no-double-count fixture: a carro whose closing interval fill is
+// PARCELADO. The consumo view must read the interval cost from the abastecimento's
+// `valor_total_cents` ONCE — never summed across parcelas, never pulled from tagged
+// transactions.
+let carroParceladoId: string
 
 // WR-02 fixture liters/cost: the closing fill of the ONLY valid interval (30000→30500)
 // is L2/C2; its SIBLING at the same odometer (30500) is L3/C3 and must NOT be swept in.
@@ -41,6 +46,11 @@ const SAME_ODO_L2 = 40 // closing fill of the 30000→30500 interval
 const SAME_ODO_C2 = 24000 // cents — its cost
 const SAME_ODO_L3 = 25 // sibling fill at the SAME odometer — must be excluded
 const SAME_ODO_C3 = 15000 // cents — sibling cost, must be excluded
+
+// 26-W0-03 parcelado fixture: the closing fill of the ONLY valid interval is parcelado.
+// Its full fuel cost lives in `valor_total_cents` and must be counted ONCE.
+const PARCELADO_VALOR_TOTAL_C = 60000 // cents — full fuel cost of the parcelado fill
+const PARCELADO_LITROS = 40 // closing-fill liters of the parcelado interval
 
 async function createUser(prefix: string): Promise<{ id: string; jwt: string }> {
   const email = `${prefix}-${crypto.randomUUID()}@example.test`
@@ -184,6 +194,55 @@ beforeAll(async () => {
     },
   ])
   if (sameOdoAbErr) throw new Error(`seed same-odo abastecimentos failed: ${sameOdoAbErr.message}`)
+
+  // ── Carro 4 (26-W0-03 parcelado no-double-count): an OPENING à-vista full-tank fill
+  //    and a CLOSING full-tank fill that is PARCELADO (parcelas_total=3, valor_total_cents
+  //    set, transaction_id null, amount_cents null — the only legal parcelado shape under
+  //    the relaxed CHECK). Δkm = +500 over one valid interval. The consumo view must read
+  //    the interval cost from valor_total_cents ONCE, never summed across parcelas and
+  //    never pulled from any carro_id-tagged transaction (RESEARCH Pattern 3). ──
+  const { data: parcelado, error: parceladoErr } = await a
+    .from('carros')
+    .insert({ user_id: userA.id, apelido: 'HB20' })
+    .select('id')
+    .single()
+  if (parceladoErr || !parcelado) throw new Error(`seed parcelado carro failed: ${parceladoErr?.message}`)
+  carroParceladoId = parcelado.id
+
+  const { error: parceladoAbErr } = await a.from('abastecimentos').insert([
+    {
+      user_id: userA.id,
+      carro_id: carroParceladoId,
+      occurred_on: '2026-06-01',
+      odometro_km: 40000, // opening full tank — no prior interval
+      litros: 30,
+      tanque_cheio: true,
+      amount_cents: 18000,
+    },
+    {
+      user_id: userA.id,
+      carro_id: carroParceladoId,
+      occurred_on: '2026-06-15',
+      odometro_km: 40500, // +500 km closing fill — PARCELADO cost source
+      litros: PARCELADO_LITROS,
+      tanque_cheio: true,
+      parcelas_total: 3,
+      valor_total_cents: PARCELADO_VALOR_TOTAL_C,
+    },
+  ])
+  if (parceladoAbErr) throw new Error(`seed parcelado abastecimentos failed: ${parceladoAbErr.message}`)
+
+  // A transaction tagged with the parcelado carro (a "parcela" cash-flow tag). It must
+  // NOT inflate the consumo view's custo_intervalo_cents — the view reads cost from
+  // abastecimentos.valor_total_cents, never from carro_id-tagged transactions.
+  const { error: parcelaTxErr } = await a.from('transactions').insert({
+    user_id: userA.id,
+    amount_cents: 20000, // a parcela cash-flow that must be ignored by the consumo view
+    occurred_on: '2026-06-15',
+    description: 'parcela 1/3 combustível',
+    carro_id: carroParceladoId,
+  })
+  if (parcelaTxErr) throw new Error(`seed parcelado tagged tx failed: ${parcelaTxErr.message}`)
 })
 
 afterAll(async () => {
@@ -297,5 +356,28 @@ describe('v_abastecimento_consumo same-odometer sweep-in guard (WR-02, DEBT-01)'
     // C2/500 (NOT overstated by the sibling's cost).
     expect(Number(row.km_por_litro)).toBeCloseTo(500 / SAME_ODO_L2, 4) // 12.5
     expect(Number(row.reais_por_km)).toBeCloseTo(SAME_ODO_C2 / 500, 4) // 48
+  })
+})
+
+describe('v_abastecimento_consumo parcelado no-double-count (26-W0-03, view invariant)', () => {
+  it('parcelado interval cost = valor_total_cents counted ONCE (not summed, not from tagged tx)', async () => {
+    const a = userClient(userA.jwt, config) // RLS-active read (security_invoker scopes to A)
+    const { data, error } = await a
+      .from('v_abastecimento_consumo')
+      .select('km_rodados, litros_intervalo, custo_intervalo_cents, km_por_litro, reais_por_km')
+      .eq('carro_id', carroParceladoId)
+    expect(error).toBeNull()
+    // The 40000→40500 interval is the only surfaced row.
+    expect((data ?? []).length).toBe(1)
+
+    const row = data![0]!
+    expect(Number(row.km_rodados)).toBe(500)
+    expect(Number(row.litros_intervalo)).toBe(PARCELADO_LITROS)
+
+    // The full fuel cost comes from valor_total_cents ONCE — not summed across the 3
+    // parcelas, and NOT inflated by the carro_id-tagged "parcela" transaction.
+    expect(Number(row.custo_intervalo_cents)).toBe(PARCELADO_VALOR_TOTAL_C)
+    expect(Number(row.reais_por_km)).toBeCloseTo(PARCELADO_VALOR_TOTAL_C / 500, 4)
+    expect(Number(row.km_por_litro)).toBeCloseTo(500 / PARCELADO_LITROS, 4) // 12.5
   })
 })
