@@ -75,8 +75,9 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip'
 import { confirmImport } from '@/actions/import'
-import { addKeyword } from '@/actions/category-keywords'
+import { addKeywordInline } from '@/actions/category-keywords'
 import { CARRO_NONE } from '@/lib/carro'
+import { compileRule, matchKeyword } from '@/lib/classifier/keywords'
 import { normalizeKeyword } from '@/lib/normalize'
 import { cn } from '@/lib/utils'
 
@@ -302,6 +303,42 @@ export function confirmToastMessage(imported: number, duplicated: number): strin
 }
 
 /**
+ * UX-02 (D-04/D-05): the PURE client-side re-classify run after an inline keyword is
+ * persisted (Plan 02). Given the rows in state, the new keyword's category, and the
+ * ALREADY-normalized keyword (never re-normalized here — re-deriving would re-strip the
+ * glob `*`), apply the keyword to every row the user has NOT hand-classified:
+ *   - target = `category_id === null` (unclassified / IA-não-aplicada) OR
+ *     `origin ∈ {'memória', 'palavra-chave'}` (deterministic, owned origins);
+ *   - a `origin === 'manual'` row is returned UNTOUCHED (same reference) before any
+ *     match — explicit user intent is never overridden (SC5/T-25-06);
+ *   - a matched target becomes `{ ..., category_id, origin: 'palavra-chave' }` (mirrors
+ *     the upload pipeline's provenance) and gains NO `confidence`; its `suggestion`
+ *     (if any) is left intact.
+ * A degenerate keyword (`''`, `'*'`, `'**'`) compiles to null → the whole call is a no-op
+ * (defense-in-depth alongside the Plan 01 cadastro reject; T-25-05). Pure + exported,
+ * returns a NEW array; rows that do not change keep their referential identity so React
+ * skips re-rendering them.
+ */
+export function reclassifyRowsWithKeyword(
+  rows: ReviewRow[],
+  categoryId: string,
+  normalizedKeyword: string,
+): ReviewRow[] {
+  const rule = compileRule(categoryId, normalizedKeyword, 0)
+  if (rule === null) return rows // degenerate keyword → no-op
+  return rows.map((r) => {
+    if (r.origin === 'manual') return r // never override hand-classified intent (SC5)
+    const isTarget =
+      r.category_id === null ||
+      r.origin === 'memória' ||
+      r.origin === 'palavra-chave'
+    if (!isTarget) return r
+    if (matchKeyword(r.descriptor_norm, [rule]) === null) return r
+    return { ...r, category_id: categoryId, origin: 'palavra-chave' as const }
+  })
+}
+
+/**
  * ImportReviewTable (UI-SPEC §3) — the core pre-persist review grid. A SIBLING of
  * ExtratoTable: @tanstack/react-table, getRowId by the parsed row's stable key, the
  * SAME checkbox/select model, the SAME inline CategoryBadge Select cell, and the SAME
@@ -369,6 +406,22 @@ export function ImportReviewTable({
       return next
     })
   }, [])
+
+  /**
+   * UX-02 lift-state: after an inline keyword is persisted (ok OR duplicate), re-classify
+   * the OTHER rows in client state via the pure `reclassifyRowsWithKeyword` — no refetch /
+   * remount, so scroll + selection survive (SC4). DISTINCT from `markKeywordCreated`
+   * (which only flips the "criada ✓" affordance). The immutable map keeps untouched rows
+   * by reference; `origin === 'manual'` rows are never touched (SC5).
+   */
+  const reclassifyWithKeyword = React.useCallback(
+    (categoryId: string, normalizedKeyword: string) => {
+      setRows((prev) =>
+        reclassifyRowsWithKeyword(prev, categoryId, normalizedKeyword),
+      )
+    },
+    [],
+  )
 
   // The Reserva category is NOT a valid bulk target (the bulk path can't collect a
   // per-row reservaId for the aporte) — drop it from the picker, same rule as Extrato.
@@ -577,6 +630,7 @@ export function ImportReviewTable({
             onClassify={classifyRow}
             keywordCreated={createdKeywordRows.has(row.original.id)}
             onKeywordCreated={markKeywordCreated}
+            onKeywordPersisted={reclassifyWithKeyword}
           />
         ),
       },
@@ -651,6 +705,7 @@ export function ImportReviewTable({
       deleteRow,
       createdKeywordRows,
       markKeywordCreated,
+      reclassifyWithKeyword,
     ],
   )
 
@@ -871,6 +926,7 @@ export function ImportReviewTable({
                     onClassify={classifyRow}
                     keywordCreated={createdKeywordRows.has(r.id)}
                     onKeywordCreated={markKeywordCreated}
+                    onKeywordPersisted={reclassifyWithKeyword}
                   />
                   <InlineReviewCarroCell
                     row={r}
@@ -959,6 +1015,7 @@ function InlineReviewCategoryCell({
   onClassify,
   keywordCreated,
   onKeywordCreated,
+  onKeywordPersisted,
 }: {
   row: ReviewRow
   categories: ReviewCategory[]
@@ -969,6 +1026,9 @@ function InlineReviewCategoryCell({
   keywordCreated: boolean
   /** KW-07: flips this row to "criada ✓" after a successful create/duplicate. */
   onKeywordCreated: (rowId: string) => void
+  /** UX-02: re-classify the other rows in state after an inline keyword persists
+   *  (ok/duplicate). Distinct from onKeywordCreated. */
+  onKeywordPersisted: (categoryId: string, normalizedKeyword: string) => void
 }) {
   const current = categories.find((c) => c.id === row.category_id)
   const [pendingCategoryId, setPendingCategoryId] = React.useState<string | null>(
@@ -1055,15 +1115,16 @@ function InlineReviewCategoryCell({
         ) : null}
         <ConfidenceTag row={row} />
         {/* KW-07: opt-in "+ palavra-chave" inline control — ONLY on a row the user
-            classified by hand (origin === 'manual'). Reuses addKeyword verbatim (no
-            new server action, no confirmImport). The gate is strictly 'manual' (the
-            origin union has NO 'IA' member). */}
+            classified by hand (origin === 'manual'). Persists via addKeywordInline
+            (no revalidatePath → no scroll jump, UX-01), no confirmImport. The gate is
+            strictly 'manual' (the origin union has NO 'IA' member). */}
         {row.origin === 'manual' && row.category_id !== null ? (
           <KeywordInlineSuggest
             row={row}
             categoryName={current?.name ?? ''}
             created={keywordCreated}
             onCreated={onKeywordCreated}
+            onPersisted={onKeywordPersisted}
           />
         ) : null}
       </div>
@@ -1112,13 +1173,15 @@ function InlineReviewCategoryCell({
 /**
  * KW-07: the opt-in inline "+ palavra-chave" control rendered on a `manual` review
  * row's chip line. A discreet neutral pill opens a small popover prefilled with the
- * row's normalized `descriptor_norm` (editable); Salvar reuses the EXISTING
- * `addKeyword(categoryId, term)` action verbatim — no new server surface, no
- * `confirmImport`, no `transactions`/`merchant_patterns` write. On success OR duplicate
- * the control flips to a disabled "criada ✓" for the rest of the session (the keyword
- * now exists either way); a server error keeps the popover open with a `FieldError`.
+ * row's normalized `descriptor_norm` (editable); Salvar persists via `addKeywordInline`
+ * (UX-01: same guards/RLS as `addKeyword` but WITHOUT `revalidatePath`, so the page does
+ * not scroll-jump) — no new server surface beyond Plan 01, no `confirmImport`, no
+ * `transactions`/`merchant_patterns` write. On success OR duplicate the control flips to a
+ * disabled "criada ✓" for the rest of the session (the keyword now exists either way) AND
+ * the parent re-classifies the matching rows live (UX-02); a server error keeps the
+ * popover open with a `FieldError`.
  *
- * `addKeyword` already validates (idSchema uuid + keywordSchema) and normalizes via
+ * `addKeywordInline` already validates (idSchema uuid + keywordSchema) and normalizes via
  * `normalizeKeyword`, so the popover sends the user's edited term verbatim and only
  * echoes `normalizeKeyword(term)` in the toast (mirrors category-keywords-dialog.tsx)
  * — it never re-normalizes a render value.
@@ -1128,11 +1191,15 @@ function KeywordInlineSuggest({
   categoryName,
   created,
   onCreated,
+  onPersisted,
 }: {
   row: ReviewRow
   categoryName: string
   created: boolean
   onCreated: (rowId: string) => void
+  /** UX-02: fired ONLY on the success path (ok/duplicate) with the row's category +
+   *  the already-normalized keyword, so the parent re-classifies the other rows. */
+  onPersisted: (categoryId: string, normalizedKeyword: string) => void
 }) {
   const [open, setOpen] = React.useState(false)
   // descriptor_norm is row-stable (immutable for a parsed review row), so this
@@ -1159,7 +1226,8 @@ function KeywordInlineSuggest({
     const normalized = normalizeKeyword(value.trim())
     setError(undefined)
     startTransition(async () => {
-      const r = await addKeyword(row.category_id!, value)
+      // UX-01: addKeywordInline persists WITHOUT revalidatePath → no scroll jump.
+      const r = await addKeywordInline(row.category_id!, value)
       if ('error' in r) {
         // Keep the popover open + show the FieldError; do NOT flip to "criada ✓".
         setError(r.error)
@@ -1172,6 +1240,10 @@ function KeywordInlineSuggest({
       }
       // Both { ok } and { duplicate } flip to "criada ✓" — the keyword now exists.
       onCreated(row.id)
+      // UX-02: re-classify the other rows live (ok OR duplicate — the keyword exists
+      // either way, so the grid aligns; NEVER on the error branch above). Uses the
+      // already-computed normalized term (never re-normalize a render value).
+      onPersisted(row.category_id!, normalized)
       setOpen(false)
     })
   }

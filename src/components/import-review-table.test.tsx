@@ -27,10 +27,13 @@ vi.mock('@/actions/import', () => ({
   confirmImport: (...args: unknown[]) => confirmImportMock(...args),
 }))
 
-// KW-07: stub addKeyword so the inline control renders without a Supabase server
-// boundary, and sonner so the toasts don't touch the DOM.
+// KW-07/UX-01: stub the keyword actions so the inline control renders without a Supabase
+// server boundary, and sonner so the toasts don't touch the DOM. The inline caller now
+// uses addKeywordInline (no revalidatePath → no scroll jump); addKeyword stays mocked for
+// the /categorias path (unused here but kept stable).
 vi.mock('@/actions/category-keywords', () => ({
   addKeyword: vi.fn(async () => ({ ok: true })),
+  addKeywordInline: vi.fn(async () => ({ ok: true })),
 }))
 // `toast` is used both as a bare callable (toast('…')) AND via methods
 // (toast.success/info/error), so the mock must be a function with attached spies.
@@ -496,8 +499,8 @@ describe('KW-07 inline keyword suggestion', () => {
     expect(screen.queryByText('+ palavra-chave')).toBeNull()
   })
 
-  it('Salvar calls addKeyword(row.category_id, term) and flips to criada ✓', async () => {
-    const { addKeyword } = await import('@/actions/category-keywords')
+  it('Salvar calls addKeywordInline(row.category_id, term) and flips to criada ✓', async () => {
+    const { addKeywordInline } = await import('@/actions/category-keywords')
     renderTable([
       makeRow({
         category_id: 'cat-transporte',
@@ -518,8 +521,9 @@ describe('KW-07 inline keyword suggestion', () => {
 
     fireEvent.click(at(screen.getAllByRole('button', { name: 'Salvar' }), 0))
 
-    // addKeyword receives the just-picked category + the (un-re-normalized) term.
-    expect(addKeyword).toHaveBeenCalledWith('cat-transporte', 'uber trip 99')
+    // UX-01: the inline caller is addKeywordInline (no revalidate → no scroll jump),
+    // receiving the just-picked category + the (un-re-normalized) term.
+    expect(addKeywordInline).toHaveBeenCalledWith('cat-transporte', 'uber trip 99')
 
     // The control flips to the disabled "criada ✓" — no second create on offer.
     // findAllByText retries past the startTransition commit + popover teardown.
@@ -528,9 +532,9 @@ describe('KW-07 inline keyword suggestion', () => {
   })
 
   it('duplicate still flips to criada ✓ (toast.info)', async () => {
-    const { addKeyword } = await import('@/actions/category-keywords')
+    const { addKeywordInline } = await import('@/actions/category-keywords')
     const { toast } = await import('sonner')
-    vi.mocked(addKeyword).mockResolvedValueOnce({ duplicate: true })
+    vi.mocked(addKeywordInline).mockResolvedValueOnce({ duplicate: true })
 
     renderTable([
       makeRow({
@@ -549,8 +553,8 @@ describe('KW-07 inline keyword suggestion', () => {
   })
 
   it('error keeps the popover open (no flip)', async () => {
-    const { addKeyword } = await import('@/actions/category-keywords')
-    vi.mocked(addKeyword).mockResolvedValueOnce({
+    const { addKeywordInline } = await import('@/actions/category-keywords')
+    vi.mocked(addKeywordInline).mockResolvedValueOnce({
       error: 'Não foi possível salvar a palavra-chave.',
     })
 
