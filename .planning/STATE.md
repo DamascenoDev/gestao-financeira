@@ -4,8 +4,8 @@ milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 26
 current_phase_name: Substrato do abastecimento ponta-a-ponta
-status: paused
-stopped_at: Completed 25-01-PLAN.md
+status: ready
+stopped_at: Completed Phase 25 (25-02-PLAN.md) — verified passed
 last_updated: "2026-06-21T18:20:40.208Z"
 last_activity: 2026-06-21
 last_activity_desc: Phase 25 complete, transitioned to Phase 26
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 25 — fix-de-scroll-na-cria-o-de-palavra-chave
+- **Current focus:** Phase 26 — Substrato do abastecimento ponta-a-ponta (próxima)
 
 ## Current Position
 
 Phase: 26 — Substrato do abastecimento ponta-a-ponta
 Plan: Not started
-Status: PAUSED at 25-02 Task 3 — checkpoint:human-verify (UAT). Tasks 1 (RED, `aa37e8f`) + 2 (GREEN, `e8e9d67`) committed. Awaiting human browser UAT (scroll preserved + live re-classify + manual intact + /categorias reflects keyword).
-Last activity: 2026-06-21 — Phase 25 complete, transitioned to Phase 26
+Status: READY. Phase 25 COMPLETE + verified passed (7/7 must-haves) — UX-01/UX-02 shipped: `addKeywordInline` (no `revalidatePath`) corta o scroll jump + `reclassifyRowsWithKeyword` re-classifica a grid ao vivo (nunca toca `manual`). UAT vivo aprovado pelo founder 2026-06-21. 943/943 testes, `tsc`/`build` limpos, code review 0 blockers (2 warnings advisory: WR-01 single-keyword precedence, WR-02 filtered-view feedback). Commits 25-01: `543a229`→`37cdfa5`→`17c11f1`; 25-02: `aa37e8f`→`e8e9d67`→`2353a74`.
+Last activity: 2026-06-21 — Phase 25 complete + verified, transitioned to Phase 26
 
 ## Deferred Items
 
