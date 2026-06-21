@@ -34,6 +34,23 @@ const fromFaturaBase = {
   transactionId: TX_ID,
 }
 
+/**
+ * A valid parcelado base: cost from valorTotalCents + parcelasTotal, with NO
+ * transactionId and NO amountCents (mirrors the 0039 cost XOR truth table for
+ * a parcelado fuel-up — parcelas_total > 1 → valor_total_cents present, both
+ * transaction_id and amount_cents null).
+ */
+const parceladoBase = {
+  carroId: CARRO_ID,
+  occurredOn: '2026-06-17',
+  odometroKm: 10000,
+  litros: 40.5,
+  tanqueCheio: true,
+  combustivel: 'Gasolina' as const,
+  valorTotalCents: 60000,
+  parcelasTotal: 6,
+}
+
 const COST_SOURCE_MESSAGE =
   'Informe exatamente uma fonte de custo: lançamento da fatura ou valor manual.'
 
@@ -84,6 +101,72 @@ describe('abastecimentoSchema — cost-source XOR (D2)', () => {
     if (!r.success) {
       expect(r.error.issues.some((i) => i.message === COST_SOURCE_MESSAGE)).toBe(true)
     }
+  })
+})
+
+describe('abastecimentoSchema — parcelado (3 estados)', () => {
+  it('accepts a valid parcelado (valorTotalCents + parcelasTotal, no tx/amount)', () => {
+    const r = abastecimentoSchema.safeParse(parceladoBase)
+    expect(r.success).toBe(true)
+  })
+
+  it('accepts parcelasTotal at the lower bound (2)', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, parcelasTotal: 2 })
+    expect(r.success).toBe(true)
+  })
+
+  it('accepts parcelasTotal at the upper bound (24)', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, parcelasTotal: 24 })
+    expect(r.success).toBe(true)
+  })
+
+  it('rejects parcelasTotal < 2 (e.g. 1) when valorTotalCents is present', () => {
+    // parcelas_total === 1 with a valor_total_cents is a mixed/invalid state:
+    // not parcelado (needs > 1) and not à-vista (has no tx/amount, carries valor).
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, parcelasTotal: 1 })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects parcelasTotal > 24 (e.g. 25) — D-07 ceiling', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, parcelasTotal: 25 })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects a non-integer parcelasTotal (e.g. 6.5)', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, parcelasTotal: 6.5 })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects valorTotalCents <= 0 (D-09)', () => {
+    expect(abastecimentoSchema.safeParse({ ...parceladoBase, valorTotalCents: 0 }).success).toBe(
+      false,
+    )
+    expect(
+      abastecimentoSchema.safeParse({ ...parceladoBase, valorTotalCents: -100 }).success,
+    ).toBe(false)
+  })
+
+  it('rejects a MIXED state: parcelado + transactionId present', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, transactionId: TX_ID })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects a MIXED state: parcelado + amountCents present', () => {
+    const r = abastecimentoSchema.safeParse({ ...parceladoBase, amountCents: 25000 })
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects parcelasTotal >= 2 WITHOUT valorTotalCents (parcelado needs the cost)', () => {
+    const { valorTotalCents: _drop, ...rest } = parceladoBase
+    const r = abastecimentoSchema.safeParse(rest)
+    expect(r.success).toBe(false)
+  })
+
+  it('rejects an à-vista state that also carries valorTotalCents', () => {
+    // À-vista (amountCents) must NEVER carry valorTotalCents — mirrors the 0039
+    // CHECK else-branch (valor_total_cents must be null on the à-vista path).
+    const r = abastecimentoSchema.safeParse({ ...manualBase, valorTotalCents: 60000 })
+    expect(r.success).toBe(false)
   })
 })
 
