@@ -21,12 +21,12 @@ Requisitos deste milestone. Cada um mapeia para exatamente uma fase do roadmap. 
 
 ### Ingestão robusta — PDF (PDF)
 
-- [ ] **PDF-06**: Upload de fatura PDF funciona em **produção** (Vercel): o worker do `pdfjs` está disponível no bundle serverless, sem erro de "worker faltando".
-- [ ] **PDF-07**: O parser de PDF degrada de forma clara e previsível em entradas ruins (image-only / 0 linhas), sem travar nem produzir linhas silenciosamente erradas — robustez genérica, **sem OCR**.
+- [x] **PDF-06**: Upload de fatura PDF funciona em **produção** (Vercel): o worker do `pdfjs` está disponível no bundle serverless, sem erro de "worker faltando".
+- [x] **PDF-07**: O parser de PDF degrada de forma clara e previsível em entradas ruins (image-only / 0 linhas), sem travar nem produzir linhas silenciosamente erradas — robustez genérica, **sem OCR**.
 
 ### Ingestão robusta — Re-import (IMP)
 
-- [ ] **IMP-07**: Re-upload do mesmo arquivo é permitido quando a importação anterior **não foi confirmada** (rows que nunca viraram transactions); o `content_hash` só bloqueia o que já foi confirmado.
+- [x] **IMP-07**: Re-upload do mesmo arquivo é permitido quando a importação anterior **não foi confirmada** (rows que nunca viraram transactions); o `content_hash` só bloqueia o que já foi confirmado.
 
 ## Future Requirements
 
@@ -63,9 +63,9 @@ Mapeamento fase↔requisito. Preenchido na criação do roadmap.
 | KW-07 | Phase 22 | Complete |
 | KW-08 | Phase 22 | Complete |
 | CLSAI-10 | Phase 23 | Complete |
-| PDF-06 | Phase 24 | Pending |
-| PDF-07 | Phase 24 | Pending |
-| IMP-07 | Phase 24 | Pending |
+| PDF-06 | Phase 24 | Complete |
+| PDF-07 | Phase 24 | Complete |
+| IMP-07 | Phase 24 | Complete |
 
 **Coverage:**
 

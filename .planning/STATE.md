@@ -3,18 +3,18 @@ gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
 current_phase: 24
-current_phase_name: PDF em PROD + re-import
-status: executing
+current_phase_name: Ingestão robusta (PDF em PROD + re-import
+status: verifying
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T15:16:17.898Z"
+last_updated: "2026-06-21T15:23:02.978Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 23 complete, transitioned to Phase 24
+last_activity_desc: Phase 24 execution started
 progress:
   total_phases: 4
-  completed_phases: 3
-  total_plans: 8
-  completed_plans: 8
-  percent: 75
+  completed_phases: 4
+  total_plans: 9
+  completed_plans: 9
+  percent: 100
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 23 — Aplicar sugestões em lote por confiança
+- **Current focus:** Phase 24 — Ingestão robusta (PDF em PROD + re-import)
 
 ## Current Position
 
-Phase: 24 — Ingestão robusta (PDF em PROD + re-import)
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
+Phase: 24 (Ingestão robusta (PDF em PROD + re-import)) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-06-21 — Phase 24 execution started
 
 ## Deferred Items
 
@@ -98,6 +98,7 @@ Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
 | Phase 22 P02 | 12m | 2 tasks | 3 files |
 | Phase 22 P03 | 16m | 3 tasks | 4 files |
 | Phase 23 P01 | 4min | 1 tasks | 2 files |
+| Phase 24 P01 | 257s | 3 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -177,10 +178,11 @@ Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
 - **01-04 ADIADO (decisão do usuário, 2026-06-16):** plano `autonomous:false` de deploy — credenciais do Supabase remoto + Vercel + verificação no browser. Código da Fase 1 está provado no stack LOCAL. Fases 2-5 serão construídas/testadas contra o Supabase local; todo o wiring remoto + deploy fica para o fim, quando o usuário tiver as credenciais à mão. NÃO é gap de implementação — é etapa de credencial/deploy pendente.
 - Punch list (12-03 live-verify): /receitas has no delete affordance for an added income (Phase-2 inherited gap, not a deploy regression). Candidate for /gsd-plan-phase 12 --gaps.
 - 21-03 Task 2 (db push de 0037 ao PROD linkado) bloqueada no gate human-action: requer auth interativa/SUPABASE_ACCESS_TOKEN. Migration escrita+validada por replay; aguardando 'supabase db push' + npm run gen:types.
+- 24-01 Task 4 DIFERIDA (autonomous:false, human-action): PROD `supabase db push` de 0037 + 0038 (bundle — replays all un-applied em ordem) + `npm run gen:types` empty-diff check. Requer SUPABASE_ACCESS_TOKEN/auth interativa. 0038 escrita + replay-validada LOCAL (UPDATE 1, era 23514). Não bloqueia o fechamento da fase em código. SC1 (upload PDF ao vivo em PROD pós-deploy) é human-verify UAT diferido.
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T14:36:34.709Z
+**Last session:** 2026-06-21T15:22:28.971Z
 **Stopped at:** Phase 23 UI-SPEC approved
 **Resume file:** .planning/phases/23-aplicar-sugest-es-em-lote-por-confian-a/23-UI-SPEC.md
 
@@ -272,3 +274,5 @@ Last activity: 2026-06-21 — Phase 23 complete, transitioned to Phase 24
 - [Phase ?]: KW-07 inline control inlined in import-review-table.tsx; reuses addKeyword verbatim (no new server action, no confirmImport)
 - [Phase ?]: KW-08 dialog loads via a plain async effect (not startTransition) so the candidate seed render is high-priority — a deferrable transition starved it under the full-suite gate
 - [Phase 23]: CLSAI-10: bulk-apply gated on confidence >= LOW_CONFIDENCE (0.6, reused constant); low-confidence rows left pending for manual review; confirmImport untouched
+- [Phase 24]: 24-01 (IMP-07): 0038 widens statements.status CHECK to 5-value superset incl 'imported' (canonical name statements_status_check, text+CHECK no enum, non-destructive, no backfill); replay-validated LOCAL via `supabase migration up --local` (UPDATE→'imported' returns UPDATE 1, was 23514); database.types.ts diff empty; RLS/grants untouched (T-24-01). PROD push of 0037+0038 deferred (human-action).
+- [Phase 24]: 24-01 (PDF-07/SC2): garbage-text degradation test strengthened with .not.toThrow() + full-shape { rows:[], dropped:any, capped:false }. PDF-06 worker include asserted source-only in next.config.ts (no rebuild); SC1 live PROD upload deferred to human-verify UAT.
