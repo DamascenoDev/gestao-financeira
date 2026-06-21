@@ -284,9 +284,9 @@ const confidentSuggestionCount = rows.filter(isConfidentPending).length
 
 **If this table is empty:** All claims in this research were verified or cited — no user confirmation needed. (Every line number was read from `import-review-table.tsx` directly; `unappliedSuggestionCount` single-use was grep-confirmed; vitest jsdom config was read from `vitest.config.ts`; the LOCKED copy is taken verbatim from 23-UI-SPEC.md.)
 
-## Open Questions
+## Open Questions (RESOLVED)
 
-1. **Type-guard vs. non-null assertion for the shared predicate**
+1. **Type-guard vs. non-null assertion for the shared predicate** — RESOLVED: use a `!` assertion (adopted in PLAN 23-01 Edit B), verified with `npm run build`.
    - What we know: `isConfidentPending(r): boolean` won't narrow `r.suggestion` for the apply branch under TS strict.
    - What's unclear: Whether the planner prefers a typed guard (`row is ReviewRow & { suggestion: { categoryId: string; confidence: number; source: 'ia' } }`), a `!` assertion, or keeping the inline predicate in the map and sharing only the count.
    - Recommendation: Use a `!` assertion inside the branch (smallest diff, matches the existing inline `r.suggestion?.categoryId != null` intent) and confirm with `npm run build`/`tsc`. This is Claude's discretion per CONTEXT.md.
