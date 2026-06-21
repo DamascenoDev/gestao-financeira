@@ -34,6 +34,55 @@ export type Database = {
   }
   public: {
     Tables: {
+      abastecimento_parcelas: {
+        Row: {
+          abastecimento_id: string
+          created_at: string
+          id: string
+          parcela_num: number
+          transaction_id: string
+          user_id: string
+        }
+        Insert: {
+          abastecimento_id: string
+          created_at?: string
+          id?: string
+          parcela_num: number
+          transaction_id: string
+          user_id: string
+        }
+        Update: {
+          abastecimento_id?: string
+          created_at?: string
+          id?: string
+          parcela_num?: number
+          transaction_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "abastecimento_parcelas_abastecimento_id_fkey"
+            columns: ["abastecimento_id"]
+            isOneToOne: false
+            referencedRelation: "abastecimentos"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abastecimento_parcelas_abastecimento_id_fkey"
+            columns: ["abastecimento_id"]
+            isOneToOne: false
+            referencedRelation: "v_abastecimento_consumo"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "abastecimento_parcelas_transaction_id_fkey"
+            columns: ["transaction_id"]
+            isOneToOne: true
+            referencedRelation: "transactions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       abastecimentos: {
         Row: {
           amount_cents: number | null
@@ -45,9 +94,11 @@ export type Database = {
           note: string | null
           occurred_on: string
           odometro_km: number
+          parcelas_total: number | null
           tanque_cheio: boolean
           transaction_id: string | null
           user_id: string
+          valor_total_cents: number | null
         }
         Insert: {
           amount_cents?: number | null
@@ -59,9 +110,11 @@ export type Database = {
           note?: string | null
           occurred_on: string
           odometro_km: number
+          parcelas_total?: number | null
           tanque_cheio: boolean
           transaction_id?: string | null
           user_id: string
+          valor_total_cents?: number | null
         }
         Update: {
           amount_cents?: number | null
@@ -73,9 +126,11 @@ export type Database = {
           note?: string | null
           occurred_on?: string
           odometro_km?: number
+          parcelas_total?: number | null
           tanque_cheio?: boolean
           transaction_id?: string | null
           user_id?: string
+          valor_total_cents?: number | null
         }
         Relationships: [
           {
