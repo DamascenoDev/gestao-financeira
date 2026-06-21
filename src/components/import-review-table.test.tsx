@@ -98,9 +98,13 @@ function renderTable(rows: ReviewRow[]) {
   )
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   rowSeq = 0
   confirmImportMock.mockReset()
+  // The bare `toast(...)` callable is asserted by the bulk-toast cases via
+  // toHaveBeenCalledWith — clear it each test so a prior toast() call can't leak.
+  const { toast } = await import('sonner')
+  vi.mocked(toast).mockClear()
 })
 
 describe('ImportReviewTable — suggestion affordances', () => {
@@ -262,7 +266,7 @@ describe('ImportReviewTable — suggestion affordances', () => {
     expect(confirmImportMock).not.toHaveBeenCalled()
   })
 
-  it('apply-all: the bulk button fills every unapplied suggestion (excluding memory hits) and invokes NO confirmImport', () => {
+  it('apply-all: the bulk button fills only CONFIDENT suggestions (>= 0.6), leaving low-confidence pending, excluding memory hits, and invokes NO confirmImport', () => {
     renderTable([
       makeRow({
         descriptor_raw: 'NETFLIX',
@@ -275,7 +279,7 @@ describe('ImportReviewTable — suggestion affordances', () => {
         suggestion: { categoryId: 'cat-transporte', confidence: 0.3, source: 'ia' },
       }),
       // An already-classified memory hit: the bulk count must EXCLUDE it (gate on
-      // category_id === null), so the button reads "2", not "3".
+      // category_id === null) AND it is below threshold anyway, so it never counts.
       makeRow({
         descriptor_raw: 'PADARIA',
         category_id: 'cat-mercado',
@@ -284,19 +288,132 @@ describe('ImportReviewTable — suggestion affordances', () => {
       }),
     ])
 
-    // Button reflects ONLY the two unapplied suggestions.
-    const bulk = screen.getByRole('button', { name: /Aplicar 2 sugest/i })
+    // CLSAI-10: button reflects ONLY the single confident (>= 0.6) unapplied suggestion.
+    const bulk = screen.getByRole('button', { name: /Aplicar 1 sugest/i })
     fireEvent.click(bulk)
 
-    // Every per-row chip is gone and the bulk button disappears (0 unapplied left).
+    // The confident NETFLIX→Mercado row is applied (Mercado appears in its Select).
+    expect(screen.getAllByText('Mercado').length).toBeGreaterThan(0)
+    // The low-confidence UBER (0.3) row STAYS pending: its "Aplicar sugestão" chip
+    // remains and the row is still uncategorized.
+    expect(screen.getAllByText(/Aplicar sugestão: Transporte/i).length).toBeGreaterThan(
+      0,
+    )
+    // The bulk button DISAPPEARS — 0 confident suggestions remain.
+    expect(
+      screen.queryByRole('button', { name: /Aplicar \d+ sugest/i }),
+    ).toBeNull()
+    // Client-state only: no write path fired.
+    expect(confirmImportMock).not.toHaveBeenCalled()
+  })
+
+  it('confident-applies-low-stays-pending: a 0.9 row applies; a 0.3 row keeps its chip AND its "baixa confiança" tag; no confirmImport', () => {
+    renderTable([
+      makeRow({
+        descriptor_raw: 'ALTA',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+      makeRow({
+        descriptor_raw: 'BAIXA',
+        category_id: null,
+        suggestion: { categoryId: 'cat-transporte', confidence: 0.3, source: 'ia' },
+      }),
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar 1 sugest/i }))
+
+    // The 0.9 row is applied.
+    expect(screen.getAllByText('Mercado').length).toBeGreaterThan(0)
+    // The 0.3 row still has its apply chip AND still shows "baixa confiança".
+    expect(screen.getAllByText(/Aplicar sugestão: Transporte/i).length).toBeGreaterThan(
+      0,
+    )
+    expect(screen.getAllByText(/baixa confiança/i).length).toBeGreaterThan(0)
+    expect(confirmImportMock).not.toHaveBeenCalled()
+  })
+
+  it('boundary-0.6-is-confident: a row at exactly 0.6 is confident (button reads 1, NO "baixa confiança"), and applies on click', () => {
+    renderTable([
+      makeRow({
+        descriptor_raw: 'LIMIAR',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.6, source: 'ia' },
+      }),
+    ])
+
+    // Before click: counted as confident, no amber tag.
+    expect(
+      screen.getByRole('button', { name: /Aplicar 1 sugest/i }),
+    ).toBeTruthy()
+    expect(screen.queryByText(/baixa confiança/i)).toBeNull()
+
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar 1 sugest/i }))
+
+    // After click: applied (category shows, chip gone, button gone).
+    expect(screen.getAllByText('Mercado').length).toBeGreaterThan(0)
     expect(screen.queryByText(/Aplicar sugestão/i)).toBeNull()
     expect(
       screen.queryByRole('button', { name: /Aplicar \d+ sugest/i }),
     ).toBeNull()
-    // The UBER row now shows its applied category.
-    expect(screen.getAllByText('Transporte').length).toBeGreaterThan(0)
-    // Client-state only: no write path fired.
-    expect(confirmImportMock).not.toHaveBeenCalled()
+  })
+
+  it('button-hidden-when-zero-confident: only low-confidence rows → no bulk-apply button even though rows stay pending', () => {
+    renderTable([
+      makeRow({
+        descriptor_raw: 'BAIXA-1',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.3, source: 'ia' },
+      }),
+      makeRow({
+        descriptor_raw: 'BAIXA-2',
+        category_id: null,
+        suggestion: { categoryId: 'cat-transporte', confidence: 0.3, source: 'ia' },
+      }),
+    ])
+
+    // No confident pending → the bulk-apply button is not rendered.
+    expect(
+      screen.queryByRole('button', { name: /Aplicar \d+ sugest/i }),
+    ).toBeNull()
+    // Both rows are still pending with their chips + amber tags.
+    expect(screen.getAllByText(/Aplicar sugestão/i).length).toBeGreaterThan(0)
+    expect(screen.getAllByText(/baixa confiança/i).length).toBeGreaterThan(0)
+  })
+
+  it('bulk-toast-confident-copy (plural): apply with 2 confident rows toasts "2 sugestões confiáveis aplicadas"', async () => {
+    const { toast } = await import('sonner')
+    renderTable([
+      makeRow({
+        descriptor_raw: 'A',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+      makeRow({
+        descriptor_raw: 'B',
+        category_id: null,
+        suggestion: { categoryId: 'cat-transporte', confidence: 0.8, source: 'ia' },
+      }),
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar 2 sugest/i }))
+
+    expect(toast).toHaveBeenCalledWith('2 sugestões confiáveis aplicadas')
+  })
+
+  it('bulk-toast-confident-copy (singular): apply with 1 confident row toasts "1 sugestão confiável aplicada"', async () => {
+    const { toast } = await import('sonner')
+    renderTable([
+      makeRow({
+        descriptor_raw: 'SO-UMA',
+        category_id: null,
+        suggestion: { categoryId: 'cat-mercado', confidence: 0.9, source: 'ia' },
+      }),
+    ])
+
+    fireEvent.click(screen.getByRole('button', { name: /Aplicar 1 sugest/i }))
+
+    expect(toast).toHaveBeenCalledWith('1 sugestão confiável aplicada')
   })
 })
 
