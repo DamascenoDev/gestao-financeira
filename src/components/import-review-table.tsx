@@ -411,11 +411,15 @@ export function ImportReviewTable({
    * null` gate inside isConfidentPending).
    */
   const applyAllSuggestions = React.useCallback(() => {
-    setRows((prev) => {
-      let applied = 0
-      const next = prev.map((r) => {
+    // Keep the reducer PURE: derive the applied count outside it and fire the
+    // toast once after the state update. A state updater may be invoked more
+    // than once (e.g. StrictMode double-invocation), which — with the toast
+    // inside — would emit a duplicate toast. The count read from `rows` matches
+    // the reducer because both use the same isConfidentPending predicate over
+    // the same committed state at click time.
+    setRows((prev) =>
+      prev.map((r) => {
         if (isConfidentPending(r)) {
-          applied += 1
           // isConfidentPending guarantees a non-null suggestion.categoryId, but the
           // boolean helper does not narrow r.suggestion for TS strict — assert it.
           return {
@@ -426,15 +430,15 @@ export function ImportReviewTable({
           }
         }
         return r
-      })
-      if (applied > 0) {
-        toast(
-          `${applied} ${applied === 1 ? 'sugestão confiável aplicada' : 'sugestões confiáveis aplicadas'}`,
-        )
-      }
-      return next
-    })
-  }, [])
+      }),
+    )
+    const applied = rows.filter(isConfidentPending).length
+    if (applied > 0) {
+      toast(
+        `${applied} ${applied === 1 ? 'sugestão confiável aplicada' : 'sugestões confiáveis aplicadas'}`,
+      )
+    }
+  }, [rows])
 
   /** Tag a row to a carro (or "Nenhum") in client state — sets carro_id ONLY, no
    *  other field (D4 additive). Mirrors classifyRow but orthogonal to category. */
