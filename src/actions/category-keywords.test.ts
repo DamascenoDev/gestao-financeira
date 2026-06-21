@@ -117,6 +117,7 @@ vi.mock('@/lib/supabase/server', () => ({
 
 import {
   addKeyword,
+  addKeywordInline,
   removeKeyword,
   getKeywordSuggestions,
   approveKeywordSuggestions,
@@ -281,6 +282,150 @@ describe('addKeyword', () => {
 
   it('carries user_id from getClaims on the insert payload (with-check half / owner)', async () => {
     await addKeyword(CAT_ID, 'uber')
+    const insert = calls.find((c) => c.op === 'insert')
+    expect((insert!.payload as { user_id: string }).user_id).toBe('user-1')
+  })
+})
+
+// --- addKeywordInline -------------------------------------------------------
+//
+// SC1: the inline caller (the /importar grid) must NOT trigger a router refresh
+// that resets scroll. addKeywordInline shares insertKeyword's core (bit-identical
+// guards/dup/23505) with addKeyword but NEVER calls revalidatePath. Mirrors the
+// addKeyword suite, plus a direct contrast test pinning SC1 (inline, no revalidate)
+// vs SC3 (addKeyword still revalidates '/categorias').
+
+describe('addKeywordInline', () => {
+  it('inserts a normalized keyword with the owner and does NOT revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, 'uber')
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'category_keywords' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    expect(insert!.payload).toMatchObject({
+      user_id: 'user-1',
+      category_id: CAT_ID,
+      keyword: 'uber',
+    })
+    // SC1: the inline action must never invalidate the router cache.
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('SC1 vs SC3 contrast: addKeyword revalidates /categorias; addKeywordInline does NOT', async () => {
+    await addKeyword(CAT_ID, 'uber')
+    expect(revalidatePath).toHaveBeenCalledWith('/categorias')
+
+    revalidatePath.mockClear()
+
+    await addKeywordInline(CAT_ID, 'ifood')
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('KW-09 GATE: a `UBER*` keyword reaches the DB STILL containing `*`, no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, 'UBER*')
+    expect(r).toEqual({ ok: true })
+    const insert = calls.find(
+      (c) => c.from === 'category_keywords' && c.op === 'insert',
+    )
+    expect(insert).toBeDefined()
+    const stored = (insert!.payload as { keyword: string }).keyword
+    expect(stored).toContain('*')
+    expect(stored).toBe('uber*')
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects a lone `*` (literal-count-0) with a pt-BR message, NO insert, NO revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '*')
+    expect(r).toHaveProperty('error')
+    expect((r as { error: string }).error).not.toBe('Informe uma palavra-chave.')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects `**` (only-wildcard, zero literals) with NO insert, NO revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '**')
+    expect(r).toHaveProperty('error')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects `***` via the literal-count-0 guard (not the empty guard), no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '***')
+    expect(r).toHaveProperty('error')
+    expect((r as { error: string }).error).not.toBe('Informe uma palavra-chave.')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects an empty keyword via Zod before the DB, no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '')
+    expect(r).toEqual({ error: 'Informe uma palavra-chave.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects a whitespace-only keyword (empty) before the DB, no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '   ')
+    expect(r).toHaveProperty('error')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects punctuation-only input that normalizes to empty, no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, '/')
+    expect(r).toEqual({ error: 'Informe uma palavra-chave.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects a too-long keyword (>60) via Zod with no insert, no revalidate', async () => {
+    const r = await addKeywordInline(CAT_ID, 'a'.repeat(61))
+    expect(r).toHaveProperty('error')
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('returns { duplicate: true } via the maybeSingle pre-check, no insert, no revalidate', async () => {
+    dupPreCheckResult = { data: { id: KW_ID }, error: null }
+    const r = await addKeywordInline(CAT_ID, 'uber')
+    expect(r).toEqual({ duplicate: true })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('returns { duplicate: true } via the 23505 backstop when the insert races, no revalidate', async () => {
+    dupPreCheckResult = { data: null, error: null }
+    insertResult = { data: null, error: { code: '23505', message: 'dup' } }
+    const r = await addKeywordInline(CAT_ID, 'uber')
+    expect(r).toEqual({ duplicate: true })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('maps a non-23505 insert error to a friendly pt-BR message, no revalidate', async () => {
+    insertResult = { data: null, error: { code: '23502', message: 'boom' } }
+    const r = await addKeywordInline(CAT_ID, 'uber')
+    expect(r).toEqual({ error: 'Não foi possível salvar a palavra-chave.' })
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('rejects a non-uuid categoryId before the DB (WR-06), no revalidate', async () => {
+    const r = await addKeywordInline('not-a-uuid', 'uber')
+    expect(r).toEqual({ error: 'Identificador inválido.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('returns the session error when there is no authenticated user, no revalidate', async () => {
+    claimsSub = null
+    const r = await addKeywordInline(CAT_ID, 'uber')
+    expect(r).toEqual({ error: 'Sessão expirada.' })
+    expect(calls.find((c) => c.op === 'insert')).toBeUndefined()
+    expect(revalidatePath).not.toHaveBeenCalled()
+  })
+
+  it('carries user_id from getClaims on the insert payload (owner / with-check half)', async () => {
+    await addKeywordInline(CAT_ID, 'uber')
     const insert = calls.find((c) => c.op === 'insert')
     expect((insert!.payload as { user_id: string }).user_id).toBe('user-1')
   })
