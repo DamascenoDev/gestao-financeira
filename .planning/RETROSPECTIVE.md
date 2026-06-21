@@ -143,6 +143,37 @@ A deterministic keyword layer slotted into the upload classifier *between* memor
 
 ---
 
+## Milestone: v1.6 — Classificação fluida & ingestão robusta
+
+**Shipped:** 2026-06-21 (code-side) | **Phases:** 4 (21–24) | **Plans:** 9 | **Tasks:** 13
+
+### What Was Built
+Wildcard glob + persisted `palavra-chave` provenance (P21); inline + batch keyword suggestion from confirmed signals (P22); confidence-gated batch-apply of AI suggestions (P23); robust PDF ingestion — worker in the Vercel serverless bundle, clean degradation (no OCR), and a re-import-unlocking migration (P24). Suite 917/917, tsc/build clean, per-phase code review (review→fix→re-review clean).
+
+### What Worked
+- **Scout-before-discuss paid off hardest on P24:** an exhaustive Explore pass revealed PDF-06 and PDF-07 were already code-complete and the only real build was a one-line-CHECK migration — turning a "3-requirement phase" into a tight migration + test-strengthen + 2 deferred deploy items. Avoided rebuilding shipped code.
+- **Brownfield reuse discipline:** every phase mirrored an existing analog (P22 ← category-keywords-dialog; P23 ← existing applyAllSuggestions/LOW_CONFIDENCE; P24 ← migration 0032). Pattern-mapper was skipped on the single-file phases (23) where the analog was the file itself.
+- **Autonomous code-review chain (review→fix→re-review) caught a real bug** in P22 (WR-02 archived-category candidate persisting an invisible keyword) and a latent one in P23 (toast inside the setRows reducer), each fixed and re-verified clean before phase close.
+- **Worktree auto-degrade (#683, fork-ref-unknown)** transparently fell back to sequential main-tree executors — no node_modules friction, no manual intervention.
+
+### What Was Inefficient
+- The P23 reducer-purity fix traded one latent issue (StrictMode double-toast) for another (double-click double-toast); accepted as cosmetic rather than bolting an async-style disable flag onto a synchronous handler. A sharper first fix would have hoisted the toast AND guarded re-entry in one pass.
+- `milestone.complete` auto-extracted SUMMARY one-liners produced noisy accomplishments (raw code fragments); required a manual MILESTONES.md rewrite.
+
+### Patterns Established
+- **"Verify, don't rebuild" scoping** for brownfield phases where prior commits already shipped the fix (P24 PDF-06 = `fb91b58`): treat already-correct config/code as a deploy/verify item, not a build.
+- **Deferred-deploy as `autonomous:false` task + UAT**, bundling pending migrations (0037+0038) into one human-gated PROD push — consistent with the v1.0/v1.4 deferred-deploy precedent.
+- **Migration replay as the DB-side proof** when a local Supabase stack is up (`UPDATE 1` where it raised 23514) — stronger than mock-only evidence without needing PROD.
+
+### Key Lessons
+- A goal's prose ("memória/palavra-chave/IA") can over-imply scope: only IA was ever "pending" (memory/keyword are pre-fill bindings). Documenting that in CONTEXT.md stopped the planner/verifier from hunting a non-existent path.
+- A green `tsc`/`vitest`/`build` can hide a schema/runtime gap: `status text + CHECK` types as `string`, so the missing `'imported'` value only surfaced at the live constraint (23514). Schema-push gates exist for exactly this.
+
+### Cost Observations
+- Model mix: ~100% opus (Opus 4.8 1M). Per-phase subagent orchestration (scout → discuss → research → pattern-map → plan → check → execute → review→fix→re-review → verify) run from one autonomous main thread. P22 was the heaviest (3 plans, real review bug); P23/P24 lean (1 plan each).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
