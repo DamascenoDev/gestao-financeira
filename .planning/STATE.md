@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
-current_phase: 24
-current_phase_name: Ingestão robusta (PDF em PROD + re-import
-status: verifying
+current_phase: 6
+status: Awaiting next milestone
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T15:23:02.978Z"
+last_updated: "2026-06-21T15:40:00.928Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 24 execution started
+last_activity_desc: Milestone v1.6 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
   total_plans: 9
   completed_plans: 9
   percent: 100
+current_phase_name: Ingestão robusta (PDF em PROD + re-import
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -30,12 +30,23 @@ progress:
 
 ## Current Position
 
-Phase: 24 (Ingestão robusta (PDF em PROD + re-import)) — EXECUTING
-Plan: 1 of 1
-Status: Phase complete — ready for verification
-Last activity: 2026-06-21 — Phase 24 execution started
+Phase: Milestone v1.6 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-21 — Milestone v1.6 completed and archived
 
 ## Deferred Items
+
+**v1.6-close items (2026-06-21) — acknowledged + deferred at milestone close (owner chose "defer + run lifecycle"):**
+
+| Category | Item | Status |
+|----------|------|--------|
+| verification | 22-VERIFICATION.md (Phase 22) | human_needed — code-side passed (4/4 truths, review clean, 917/917). Live-DB UAT deferred. Run `/gsd-verify-work 22` after deploy. |
+| uat | 22-UAT.md (Phase 22) | testing — 2 pending: inline "+ palavra-chave" live-persist; batch panel mining real merchant_patterns. |
+| verification | 24-VERIFICATION.md (Phase 24) | human_needed — code-side passed (8/8 truths, integration WIRED, 917/917, migration 0038 locally replay-proven). Deploy/UAT deferred. |
+| uat | 24-UAT.md (Phase 24) | testing — 2 pending: PROD `supabase db push` of 0037+0038 (credential-gated); live PDF upload in PROD (SC1). |
+
+**Deploy actions still pending (autonomous:false, credential-gated):** `supabase db push` of `0037` (from P21) + `0038` (from P24) to the linked PROD project (needs `SUPABASE_ACCESS_TOKEN`), then `npm run gen:types` (expected empty diff). Until pushed: KW-10 `palavra-chave` persist (0037) and IMP-07 re-import fast-path (0038) 23514-fail-and-swallow in PROD. Code-complete + locally proven; PDF-06 worker bundle proven by deploy + live PDF UAT.
 
 **v1.3-close items (2026-06-18) — ALL RESOLVED by Phase 17 (2026-06-19):**
 

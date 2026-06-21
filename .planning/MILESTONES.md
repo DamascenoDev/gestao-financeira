@@ -1,5 +1,23 @@
 # Milestones
 
+## v1.6 Classificação fluida & ingestão robusta (Shipped: 2026-06-21)
+
+**Phases completed:** 4 phases (21–24), 9 plans, 13 tasks
+**Git range:** `c0eb7ec` → `7b146d8` · 73 commits · ~2026-06-20→21
+**Requirements:** 8/8 code-side satisfeitos (KW-09/KW-10 · KW-07/KW-08 · CLSAI-10 · PDF-06/PDF-07/IMP-07) — auditoria do milestone `tech_debt` (0 blockers; integration WIRED 8/8)
+**Quality:** suíte **917/917** verde · `tsc --noEmit` + `npm run build` limpos · code review por fase (review→fix→re-review limpo) · migration 0038 replay-provada no stack local (`UPDATE 1`, antes 23514)
+
+**Key accomplishments:**
+
+- **Match wildcard + procedência persistida** (Phase 21, KW-09/KW-10): glob `*` opt-in na palavra-chave (`UBER*`, `*IFOOD*`) ReDoS-safe com especificidade por contagem de literais, e a procedência `palavra-chave` finalmente PERSISTE em `transactions.classification_source` (migration `0037` widening do CHECK; `deriveSource` re-deriva server-side com guarda de igualdade de categoria) — resolve o coarse-`memória` do v1.5.
+- **Sugestão de palavra-chave inline + batch** (Phase 22, KW-07/KW-08): controle inline "+ palavra-chave" por linha na grid de revisão (opt-in, só em linha `origin==='manual'`, reusa `addKeyword`); e um dialog global em `/categorias` que minera `merchant_patterns` confirmados, exclui descritores já cobertos (via `matchKeyword`), e aprova/descarta candidatas em lote (`getKeywordSuggestions`/`approveKeywordSuggestions`, owner-gate único + um revalidate, descarte session-only). Sem auto-cadastro.
+- **Aplicar sugestões em lote por confiança** (Phase 23, CLSAI-10): o "aplicar todas" agora preenche só as sugestões de IA confiáveis (`confidence >= LOW_CONFIDENCE` 0.6), deixando as de baixa confiança pendentes para revisão manual — limiar único reusado, copy pt-BR "confiáveis", sem auto-commit, `confirmImport` intacto.
+- **Ingestão robusta** (Phase 24, PDF-06/PDF-07/IMP-07): worker do `pdfjs` forçado no bundle serverless da Vercel (`outputFileTracingIncludes`), parser degrada limpo em PDF image-only/ruído (sem OCR), e migration `0038` libera o re-import — `statements.status` aceita `'imported'`, destravando a fast-path "já confirmado → bloqueia re-review" que estava morta (23514 engolido).
+
+**Deferred items (autonomous:false, credential/deploy-gated — acknowledged at close):** PROD `supabase db push` de `0037`+`0038` (precisa `SUPABASE_ACCESS_TOKEN`) + live-verify de PDF em PROD (SC1) e dos UATs de P22/P24. Code-complete + localmente provado; ver STATE.md "Deferred Items" + `22-UAT.md`/`24-UAT.md`.
+
+---
+
 ## v1.5 Classificação determinística (Shipped: 2026-06-20)
 
 **Phases completed:** 3 phases (18–20), 6 plans

@@ -10,12 +10,14 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 ## Current State
 
-**v1.5 "Classificação determinística" — SHIPPED 2026-06-20.** A classificação no upload ganhou uma camada determinística, grátis e controlada pelo usuário, rodando antes da IA. Pipeline agora é **memória → palavra-chave → IA**: o usuário cadastra/remove palavras-chave por categoria em `/categorias` (tabela `category_keywords`, migration `0036`, RLS user-scoped; actions `addKeyword`/`removeKeyword` com Zod + owner gate + dedupe), e no upload um descritor que CONTÉM uma keyword cadastrada chega pré-classificado (`source = "palavra-chave"`, badge próprio na grid), **maior keyword vence**, sobrescrevível, sem auto-commit, aprendendo no confirm como hoje — reduzindo as chamadas de IA. A camada de IA ficou **kind-aware** (CLSAI-09): cada categoria vai ao prompt com seu `kind` (consumo/alocação) + regra dura anti-alocação + code gate, corrigindo "AliExpress/Mercado Livre → Investimentos". E a categoria default **"Marketplace"** (migration `0035`) foi aplicada em PROD, dando à IA e às regras um bucket de compras. Tag git: `v1.5`.
+**v1.6 "Classificação fluida & ingestão robusta" — SHIPPED 2026-06-21 (code-side).** O atrito da classificação caiu e a ingestão endureceu. A palavra-chave ganhou **wildcard glob** (`UBER*`, `*IFOOD*`, ReDoS-safe, maior keyword vence preservado) e a procedência `palavra-chave` agora **persiste** em `transactions.classification_source` (migration `0037`). O usuário deixa de cadastrar keyword só no braço: opção **inline** "+ palavra-chave" por linha na grid de revisão + um **painel batch** em `/categorias` que minera `merchant_patterns` confirmados e sugere candidatas para aprovar/descartar em lote (sem auto-cadastro). O "aplicar todas as sugestões" virou **aplicar por confiança** — só as de IA com `confidence >= 0.6`, deixando as fracas para revisão manual. E a ingestão de PDF parou de quebrar: worker do `pdfjs` forçado no bundle serverless da Vercel (`outputFileTracingIncludes`), parser que degrada limpo em PDF ruim (sem OCR), e migration `0038` libera o re-import de arquivo não-confirmado (`statements.status` aceita `'imported'`). Tag git: `v1.6`.
 
-Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECURED + nyquist-compliant. Auditoria do milestone: **`passed` — 8/8 requisitos**. MKT-01 (live human-verify) fechado ao vivo em PROD 2026-06-20 via `/gsd-verify-work 18`: `0035` na coluna Remote, "Marketplace" presente em `/categorias`, e um descritor de marketplace nunca visto recebeu sugestão de consumo (nunca Investimentos/Reserva) — 18-UAT.md 3/3 pass → 18-VERIFICATION.md `passed`. Ver `milestones/v1.5-MILESTONE-AUDIT.md`.
+Suíte **917/917** verde, `tsc --noEmit` + `npm run build` limpos, code review por fase (review→fix→re-review limpo). Auditoria do milestone: **`tech_debt`** — 8/8 requisitos code-side satisfeitos, integração cross-phase WIRED 8/8, 0 blockers. **Deferred (autonomous:false, credential/deploy-gated):** `supabase db push` de `0037`+`0038` ao PROD + live-verify de PDF em PROD (SC1) e dos UATs de P22/P24 — code-complete + localmente provado (`0038` replay `UPDATE 1`, antes 23514). Ver `milestones/v1.6-MILESTONE-AUDIT.md` + STATE.md "Deferred Items".
 
 <details>
-<summary>Milestones anteriores (v1.0–v1.4)</summary>
+<summary>Milestones anteriores (v1.0–v1.5)</summary>
+
+- **v1.5 Classificação determinística** (Phases 18-20) — pipeline **memória → palavra-chave → IA** no upload (cadastro de keyword por categoria em `/categorias`, `category_keywords`/`0036`, maior keyword vence, sem auto-commit), prompt da IA **kind-aware** (CLSAI-09, corrige marketplace→Investimentos), categoria default **"Marketplace"** (`0035`) em PROD. SHIPPED 2026-06-20, 8/8 requisitos (`milestones/v1.5-*`).
 
 - **v1.4 IA de Classificação (BYOK)** (Phases 14-17) — IA wired no seam `suggestCategory()` com BYOK multi-provedor (Gemini/Claude): Vault `ai_settings` + RLS + RPCs (`0033`), Settings write-only, pipeline memory-first → 1 chamada batched/enum-gated → sugestão não-vinculante na grid (procedência + confiança) → aprende só no confirm. Live-smokes real-key/PROD fechados ao vivo (quick-task `260619-d68`). Dívida v1.3 quitada na Phase 17 (delete destrutivo DATA-02 ao vivo). SHIPPED 2026-06-19 (`milestones/v1.4-*`).
 
@@ -26,21 +28,9 @@ Suíte 857 testes verde, `tsc --noEmit` + `npm run build` limpos, 3/3 fases SECU
 
 </details>
 
-## Current Milestone: v1.6 Classificação fluida & ingestão robusta
+## Current Milestone: none — v1.6 shipped 2026-06-21
 
-**Goal:** Reduzir o atrito da classificação (auto-sugestão de palavras-chave, match wildcard, aplicar sugestões em lote) e endurecer a ingestão (PDF funcionando em PROD, re-import liberado quando não confirmado).
-
-**Target features:**
-
-_Classificação fluida_
-- Auto-sugestão de palavra-chave **inline** ao confirmar merchant→categoria + **painel batch** em `/categorias` analisando padrões confirmados (era KW-F1; v1.5 era só cadastro manual)
-- Match **wildcard glob (`*`)** em palavra-chave, opt-in além de substring, mantendo "maior keyword vence" (era KW-F2; regex puro fica fora por risco de ReDoS)
-- Persistir `palavra-chave` em `transactions.classification_source` (widen do CHECK da migration `0020`, hoje grava o coarse `memória`)
-- Aplicar sugestões **em lote** no review grid **por limiar de confiança** (finding v1.4: "aplicar todas as sugestões")
-
-_Ingestão robusta_
-- PDF worker disponível em **PROD** (finding v1.4: upload de PDF quebra em produção por worker faltando) + robustez genérica do parser — **sem OCR**, per-bank só quando aparecer banco real falhando
-- **Re-import liberado** quando a importação anterior do mesmo arquivo NÃO foi confirmada (finding v1.4: `content_hash` bloqueia re-upload de rows que nunca viraram transactions)
+v1.6 fechado (code-side, audit `tech_debt`, 8/8 requisitos). Nenhum milestone ativo. Próximo via `/gsd-new-milestone`. **Pendência de deploy antes de declarar o app 100% atualizado em PROD:** `supabase db push` de `0037`+`0038` + deploy na Vercel + live-verify dos UATs de P22/P24 (ver STATE.md "Deferred Items").
 
 ## Requirements
 
@@ -64,12 +54,14 @@ _Ingestão robusta_
 - ✓ **Regras de palavra-chave determinísticas** (KW-01..06) — cadastro manual por categoria em `/categorias` (RLS user-scoped); no upload o pipeline roda **memória → palavra-chave → IA**, auto-classificando o match (maior keyword vence, sobrescrevível, aprende no confirm, sem auto-commit) — **v1.5**
 - ✓ **Prompt da IA kind-aware** (CLSAI-09) — cada categoria enviada com seu `kind` + regra dura anti-alocação + code gate; corrige "AliExpress/Mercado Livre → Investimentos/Reserva" — **v1.5**
 - ✓ **Categoria default "Marketplace"** (MKT-01) — migration `0035` aplicada em PROD; bucket de compras para IA + regras — **v1.5** (live human-verify fechado 2026-06-20: "Marketplace" em /categorias + descritor de marketplace → sugestão de consumo)
+- ✓ **Classificação fluida** (KW-07/KW-08/KW-09/KW-10 + CLSAI-10) — wildcard glob (`*`) na palavra-chave (ReDoS-safe, maior keyword vence) + procedência `palavra-chave` persistida em `transactions.classification_source` (`0037`); sugestão de keyword **inline** na grid + **batch** em `/categorias` minerando `merchant_patterns` confirmados; **aplicar sugestões em lote por confiança** (`>= 0.6`, fracas ficam para revisão manual). Sem auto-cadastro/auto-commit — **v1.6**
+- ✓ **Ingestão robusta** (PDF-06/PDF-07/IMP-07) — worker do `pdfjs` forçado no bundle serverless da Vercel; parser degrada limpo em PDF ruim (sem OCR); re-import liberado quando a importação anterior não foi confirmada (`0038` libera `status='imported'`) — **v1.6** (code-side + localmente provado; PROD push de `0037`+`0038` + live-verify diferidos)
 
 ### Active
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- **v1.6 Classificação fluida & ingestão robusta** — auto-sugestão de palavra-chave (inline + batch), match wildcard glob, persistir `palavra-chave` no source, aplicar sugestões em lote por confiança, PDF worker em PROD + robustez do parser, re-import liberado quando não confirmado. Detalhamento na `REQUIREMENTS.md`.
+- _Nenhum milestone ativo._ v1.6 fechado 2026-06-21 (code-side). Próximo milestone via `/gsd-new-milestone` (gera uma `REQUIREMENTS.md` fresca). Antes de declarar PROD 100% atualizado: `supabase db push` de `0037`+`0038` + deploy na Vercel + UATs de P22/P24 (ver STATE.md "Deferred Items").
 
 ### Out of Scope
 
@@ -121,8 +113,13 @@ _Ingestão robusta_
 | (v1.2) Consumo pelo método tanque-cheio | Mais preciso que km/l por abastecimento isolado; requer flag tanque_cheio + odômetro | ✓ Good — edge same-odometer (WR-02) fechado no v1.3 via migration 0029 (DEBT-01) |
 | (v1.5) Classificação ganha camada determinística de palavra-chave antes da IA | IA fraca (flash-lite) erra; regra cadastrada pelo usuário é grátis, instantânea, previsível e reduz chamadas de IA | ✓ Good — pipeline memória→palavra-chave→IA wired no upload; suíte 857 verde |
 | (v1.5) Match por substring no `descriptor_norm`, maior keyword vence | Substring cobre o caso de uso sem regex; "maior keyword" desambígua conflito de categorias pelo match mais específico | ✓ Good — KW-04 provado por testes |
-| (v1.5) `palavra-chave` é procedência review-time only (não persistida em `transactions`) | CHECK da migration `0020` não inclui o valor; widening = migration futura, fora do escopo determinístico do v1.5 | ⚠️ Revisit — tech-debt documentada; persistir o enum em milestone futuro |
+| (v1.5) `palavra-chave` é procedência review-time only (não persistida em `transactions`) | CHECK da migration `0020` não inclui o valor; widening = migration futura, fora do escopo determinístico do v1.5 | ✓ Resolved — v1.6 KW-10: migration `0037` faz o widening do CHECK; `deriveSource` re-deriva server-side e persiste `palavra-chave` (guarda de igualdade de categoria) |
 | (v1.5) Prompt da IA kind-aware (envia `kind` + regra anti-alocação) | Sem o kind, o modelo mandava compra de marketplace para Investimentos/Reserva | ✓ Good — CLSAI-09 verificado (code gate + fixtures) |
+| (v1.6) Wildcard glob opt-in na palavra-chave (não regex puro) | Glob (`*`) cobre prefixo/contém sem o risco de ReDoS de regex livre; especificidade por contagem de literais mantém "maior keyword vence" | ✓ Good — KW-09 ReDoS-safe, provado por testes |
+| (v1.6) Sugestão de keyword é sempre opt-in (inline + batch), nunca auto-cadastro | Cadastro automático poluiria as regras; o usuário aprova a partir de sinais já confirmados (`merchant_patterns`) | ✓ Good — KW-07/KW-08; descarte batch é session-only (sem nova tabela) |
+| (v1.6) Aplicar-em-lote por confiança reusa o `LOW_CONFIDENCE` 0.6 existente | As linhas deixadas pendentes são exatamente o conjunto amber "baixa confiança"; limiar único, sem nova constante nem slider na UI | ✓ Good — CLSAI-10; só IA é "pendente" (memória/keyword já são bindings aplicados) |
+| (v1.6) PDF worker via `outputFileTracingIncludes` (não rebuild do bundling) | O `@vercel/nft` não vê o import dinâmico do `pdf.worker.mjs`; forçar o asset no trace é o fix mínimo e idiomático | ✓ Good — PDF-06 (code, `fb91b58`); live-verify em PROD diferido |
+| (v1.6) Re-import destravado por widening do CHECK de `status` (não refactor do fluxo) | A fast-path "já confirmado → bloqueia" já existia mas estava morta (confirmImport gravava `'imported'`, rejeitado por 23514 e engolido); a migration `0038` é a correção cirúrgica | ✓ Good — IMP-07; `0038` replay-provado local (`UPDATE 1`); PROD push diferido |
 
 ## Evolution
 
@@ -142,4 +139,4 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-20 — Milestone v1.6 "Classificação fluida & ingestão robusta" iniciado via `/gsd-new-milestone`. Escopo: auto-sugestão de palavra-chave (inline + batch), match wildcard glob, persistir `palavra-chave` no `classification_source`, aplicar sugestões em lote por confiança, PDF worker em PROD + robustez do parser (sem OCR), re-import liberado quando não confirmado. Requirements/roadmap a seguir. Anterior: v1.5 SHIPPED + arquivado (`milestones/v1.5-*`), tag git `v1.5`, 8/8 requisitos.*
+*Last updated: 2026-06-21 — Milestone v1.6 "Classificação fluida & ingestão robusta" SHIPPED (code-side) + arquivado (`milestones/v1.6-*`), tag git `v1.6`. 8/8 requisitos code-side (KW-07..10 · CLSAI-10 · PDF-06/07 · IMP-07); auditoria `tech_debt` (0 blockers, integração WIRED, 917/917). Diferido (autonomous:false): `supabase db push` de `0037`+`0038` + deploy Vercel + live-verify dos UATs de P22/P24 — ver STATE.md "Deferred Items". Resolveu a tech-debt v1.5 (procedência `palavra-chave` agora persistida). Próximo milestone via `/gsd-new-milestone`.*
