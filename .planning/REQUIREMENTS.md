@@ -11,7 +11,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap. Estende o m
 ### Registro de Abastecimento
 
 - [ ] **CAR-07**: O usuário registra um abastecimento direto da lista `/carros` (botão "Novo abastecimento" por carro), sem precisar abrir a página de detalhe.
-- [ ] **CAR-08**: Ao registrar um abastecimento manual (antes da fatura), o usuário pode marcá-lo como **parcelado**, informando o número de parcelas e o valor total.
+- [x] **CAR-08**: Ao registrar um abastecimento manual (antes da fatura), o usuário pode marcá-lo como **parcelado**, informando o número de parcelas e o valor total.
 
 ### Vínculo Fatura ↔ Abastecimento
 
@@ -58,7 +58,7 @@ Preenchido na criação do roadmap.
 | Requirement | Phase | Status |
 |-------------|-------|--------|
 | CAR-07 | Phase 27 | Pending |
-| CAR-08 | Phase 27 | Pending |
+| CAR-08 | Phase 27 | Complete |
 | CAR-09 | Phase 28 | Pending |
 | CAR-10 | Phase 28 | Pending |
 | CAR-11 | Phase 28 | Pending |

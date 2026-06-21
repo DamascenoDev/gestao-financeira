@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 27
-current_phase_name: Registro rápido + abastecimento parcelado
+current_phase_name: registro-r-pido-abastecimento-parcelado
 status: executing
-stopped_at: Phase 27 context gathered
-last_updated: "2026-06-21T22:17:56.395Z"
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-06-21T22:49:48.693Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 26 complete, transitioned to Phase 27
+last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 4
   completed_phases: 2
-  total_plans: 6
-  completed_plans: 6
+  total_plans: 10
+  completed_plans: 7
   percent: 50
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 26 — substrato-do-abastecimento-ponta-a-ponta
+- **Current focus:** Phase 27 — registro-r-pido-abastecimento-parcelado
 
 ## Current Position
 
-Phase: 27 — Registro rápido + abastecimento parcelado
-Plan: Not started
+Phase: 27 (registro-r-pido-abastecimento-parcelado) — EXECUTING
+Plan: 2 of 4
 Status: Ready to execute
-Last activity: 2026-06-21 — Phase 26 complete, transitioned to Phase 27
+Last activity: 2026-06-21 — Phase 27 execution started
 
 ## Deferred Items
 
@@ -115,6 +115,7 @@ Last activity: 2026-06-21 — Phase 26 complete, transitioned to Phase 27
 | Phase 26 P02 | 5min | 2 tasks | 2 files |
 | Phase 26 P03 | 2min | 1 tasks | 1 files |
 | Phase 26 P04 | 6min | 1 tasks | 3 files |
+| Phase 27 P01 | 1min | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -198,8 +199,8 @@ Last activity: 2026-06-21 — Phase 26 complete, transitioned to Phase 27
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T20:58:18.868Z
-**Stopped at:** Phase 27 context gathered
+**Last session:** 2026-06-21T22:49:48.684Z
+**Stopped at:** Completed 27-01-PLAN.md
 **Resume file:** .planning/phases/27-registro-r-pido-abastecimento-parcelado/27-CONTEXT.md
 
 **Roadmap do milestone v1.7 "Abastecimento de ponta-a-ponta + UX da grid" criado.** Derivei 4 fases novas (25–28, modo `mvp`, vertical slices) das 8 requirements (UX-01, FUEL-01, CAR-07/08/09/10/11/12). Numeração CONTINUA das fases 1–24 (v1.6 terminou na 24; nada renumerado). Brownfield: ESTENDE o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — não re-planeja o que já existe. **Mapeamento (8/8, 0 órfãos):** **Phase 25 — Fix de scroll na criação de palavra-chave** (UX-01): bug isolado de UX — `addKeyword` (`src/actions/category-keywords.ts:94`) chama `revalidatePath('/categorias')` que reseta o scroll na página `/importar/[id]`; escopar/remover a revalidação cross-page sem quebrar o refresh legítimo de `/categorias`. Independente e quick. **Phase 26 — Substrato do abastecimento ponta-a-ponta** (FUEL-01): migration (próxima da fila, `~0039`+) que RELAXA o CHECK `abastecimentos_cost_xor` (do `0027`, hoje `transaction_id` XOR `amount_cents`) para permitir "valor manual esperado + vínculo de transação depois" (attach-later), adiciona colunas de parcelamento (nº parcelas + valor total), e habilita re-link num abastecimento já existente; + seed da categoria default "Combustível" (kind `consumo`) no padrão `handle_new_user` + backfill idempotente do `0035` (Marketplace). Substrato puro de dados — base das fases 27 e 28. **Phase 27 — Registro rápido + abastecimento parcelado** (CAR-07, CAR-08): botão "Novo abastecimento" por carro na lista `/carros` reusando o `AbastecimentoForm` do detalhe (registra à vista/manual durante o mês, antes da fatura) + marcar o abastecimento como parcelado (nº parcelas + valor total, gravados nas colunas da Phase 26). Depende de 26. **Phase 28 — Vínculo reverso por valor + consumo sem double-count** (CAR-09, CAR-10, CAR-11, CAR-12): ao subir a fatura, casa por VALOR um lançamento↔abastecimento pré-registrado (à vista = total; parcelado = ~total ÷ N) e sugere o vínculo na grid de revisão (`src/components/import-review-table.tsx`), espelhando o padrão sugestão/confirma da classificação IA — sem auto-commit; ao confirmar, vincula + etiqueta `carro_id` + aplica "Combustível" (FUEL-01 apply-on-confirm); um parcelado casa UMA parcela por fatura ao longo dos meses sem recontar o custo (sem double-count em `v_abastecimento_consumo`/`v_carro_resumo`); o consumo reflete registros manuais E vinculados (km/l = litros+odômetro, não exige a fatura). Depende de 26 e 27. **Ordem de execução:** 25 (independente, quick, a qualquer momento) · 26 → 27 → 28 (cadeia ponta-a-ponta). **Escritos:** ROADMAP.md (anexada `## Milestone v1.7` + checklist + `## Phase Details (v1.7)` + 4 linhas de Progress + nota de execução + footer; milestones v1.0–v1.6 preservados verbatim), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 25/26/27/28; coverage mapped:8/unmapped:0), STATE.md. **Invariantes honrados:** sem auto-commit (o vínculo por valor é sugestão + confirma humano), sem double-count (parcela única por fatura; custo via `coalesce(t.amount_cents, a.amount_cents)`), RLS por `user_id` + IDOR-safe (`assertOwnedCarro`), reuso do `AbastecimentoForm`/actions/views do v1.2 (sem re-desenho de relatório), categoria "Combustível" seedada estilo `0035`, sem OCR (entrada manual + vínculo por valor). **Próxima ação:** `/gsd-plan-phase 25` (independente) ou `/gsd-plan-phase 26` (substrato da cadeia). Sem código novo ainda; sem push remoto.
@@ -303,3 +304,4 @@ Last activity: 2026-06-21 — Phase 26 complete, transitioned to Phase 27
 - [Phase ?]: Cross-row tx double-link enforced at action layer (Phase 27/28), not a P26 DB constraint (RESEARCH A1)
 - [Phase ?]: P26-03: Combustivel seeded at sort 4 (insert-only backfill, mirrors 0035, no gen:types diff)
 - [Phase ?]: Phase 26 SC5 gate proven green: clean replay 0001→0040 (db:reset exit 0) + scoped gen:types (abastecimento_parcelas present, zero categories/handle_new_user drift) + full vitest 960/960; aligned 3 stale assertions to the 0039/0040 documented contracts without weakening any test; local-only (no prod push).
+- [Phase 27]: abastecimentoSchema relaxado para 3 estados de custo espelhando o CHECK abastecimentos_cost_xor do 0039; convenção à-vista parcelasTotal ausente-ou-1 documentada para a action 27-02.
