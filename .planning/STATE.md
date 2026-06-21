@@ -37,16 +37,15 @@ Last activity: 2026-06-21 — Milestone v1.6 completed and archived
 
 ## Deferred Items
 
-**v1.6-close items (2026-06-21) — acknowledged + deferred at milestone close (owner chose "defer + run lifecycle"):**
+**v1.6-close items — ALL RESOLVED 2026-06-21 by `/gsd-verify-work 22, 24` (live human-verify):**
 
-| Category | Item | Status |
-|----------|------|--------|
-| verification | 22-VERIFICATION.md (Phase 22) | human_needed — code-side passed (4/4 truths, review clean, 917/917). Live-DB UAT deferred. Run `/gsd-verify-work 22` after deploy. |
-| uat | 22-UAT.md (Phase 22) | testing — 2 pending: inline "+ palavra-chave" live-persist; batch panel mining real merchant_patterns. |
-| verification | 24-VERIFICATION.md (Phase 24) | human_needed — code-side passed (8/8 truths, integration WIRED, 917/917, migration 0038 locally replay-proven). Deploy/UAT deferred. |
-| uat | 24-UAT.md (Phase 24) | testing — 2 pending: PROD `supabase db push` of 0037+0038 (credential-gated); live PDF upload in PROD (SC1). |
+| Category | Item | Resolution |
+|----------|------|-----------|
+| uat | 22-UAT.md (Phase 22) | ✅ RESOLVED — 2/2 `pass`: inline "+ palavra-chave" live-persist to /categorias; batch panel mined real merchant_patterns + persisted approvals. status `complete` (`3b3986e`). |
+| uat | 24-UAT.md (Phase 24) | ✅ RESOLVED — 2/2 `pass`: PROD `supabase db push` of 0037+0038 applied in order (empty gen:types diff, `status='imported'` no 23514); live PDF upload in PROD parsed (worker resolves in Vercel bundle) + re-import gates (IMP-07). status `complete` (`1062a39`). |
+| verification | 22/24-VERIFICATION.md | ⚠ still `human_needed` frontmatter — code-side passed; live UAT now confirms truths. Flip to `passed` at next milestone audit. |
 
-**Deploy actions still pending (autonomous:false, credential-gated):** `supabase db push` of `0037` (from P21) + `0038` (from P24) to the linked PROD project (needs `SUPABASE_ACCESS_TOKEN`), then `npm run gen:types` (expected empty diff). Until pushed: KW-10 `palavra-chave` persist (0037) and IMP-07 re-import fast-path (0038) 23514-fail-and-swallow in PROD. Code-complete + locally proven; PDF-06 worker bundle proven by deploy + live PDF UAT.
+**Deploy actions (autonomous:false, credential-gated) — ✅ DONE 2026-06-21:** `supabase db push` of `0037` (P21) + `0038` (P24) applied to PROD; `npm run gen:types` empty diff confirmed via UAT. KW-10 `palavra-chave` persist (0037) + IMP-07 re-import fast-path (0038) now live in PROD; PDF-06 worker bundle proven by live PDF UAT.
 
 **v1.3-close items (2026-06-18) — ALL RESOLVED by Phase 17 (2026-06-19):**
 
