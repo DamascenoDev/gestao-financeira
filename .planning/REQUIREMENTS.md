@@ -56,20 +56,20 @@ Preenchido na criação do roadmap.
 
 | Requirement | Phase | Status |
 |-------------|-------|--------|
-| CAR-07 | TBD | Pending |
-| CAR-08 | TBD | Pending |
-| CAR-09 | TBD | Pending |
-| CAR-10 | TBD | Pending |
-| CAR-11 | TBD | Pending |
-| CAR-12 | TBD | Pending |
-| FUEL-01 | TBD | Pending |
-| UX-01 | TBD | Pending |
+| CAR-07 | Phase 27 | Pending |
+| CAR-08 | Phase 27 | Pending |
+| CAR-09 | Phase 28 | Pending |
+| CAR-10 | Phase 28 | Pending |
+| CAR-11 | Phase 28 | Pending |
+| CAR-12 | Phase 28 | Pending |
+| FUEL-01 | Phase 26 | Pending |
+| UX-01 | Phase 25 | Pending |
 
 **Coverage:**
 - v1.7 requirements: 8 total
-- Mapped to phases: 0 (pending roadmap)
-- Unmapped: 8 ⚠️
+- Mapped to phases: 8 (Phase 25: UX-01 · Phase 26: FUEL-01 · Phase 27: CAR-07/CAR-08 · Phase 28: CAR-09/CAR-10/CAR-11/CAR-12)
+- Unmapped: 0 ✅
 
 ---
 *Requirements defined: 2026-06-21*
-*Last updated: 2026-06-21 after initial definition (milestone v1.7)*
+*Last updated: 2026-06-21 — roadmap created (Phases 25–28); traceability 8/8 mapped, 0 órfãos.*

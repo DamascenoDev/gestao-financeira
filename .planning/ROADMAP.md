@@ -15,6 +15,7 @@
 - ✅ **v1.4 IA de Classificação (BYOK)** — Phases 14–17 (wire IA no seam `suggestCategory()` + BYOK Settings + dívida v1.3) — shipped 2026-06-19 (`milestones/v1.4-*`)
 - ✅ **v1.5 Classificação determinística** — Phases 18–20 (pipeline memória→palavra-chave→IA + prompt da IA kind-aware + Marketplace em PROD) — shipped 2026-06-20 (`milestones/v1.5-*`; 8/8 requisitos — MKT-01 live human-verify fechado 2026-06-20)
 - ✅ **v1.6 Classificação fluida & ingestão robusta** — Phases 21–24 (match wildcard + procedência persistida → sugestão de palavra-chave inline+batch → aplicar sugestões em lote por confiança → PDF em PROD + parser robusto + re-import liberado) — shipped 2026-06-21 (`milestones/v1.6-*`; 8/8 requisitos code-side, audit `tech_debt` — PROD push de 0037+0038 + UATs de P22/P24 diferidos)
+- 🟢 **v1.7 Abastecimento de ponta-a-ponta + UX da grid** — Phases 25–28 (fix de scroll na criação de palavra-chave → substrato do abastecimento ponta-a-ponta: relaxa o XOR de custo + parcelas + attach-later + categoria "Combustível" → registro rápido na lista /carros + parcelado → vínculo reverso por valor na importação + consumo sem double-count) — ACTIVE (`REQUIREMENTS.md`; 8/8 requisitos mapeados — UX-01 → P25 · FUEL-01 → P26 · CAR-07/08 → P27 · CAR-09/10/11/12 → P28)
 
 ## Phases
 
@@ -181,9 +182,80 @@ Plans:
 
 </details>
 
+## Milestone v1.7 — Abastecimento de ponta-a-ponta + UX da grid
+
+**Milestone goal:** Registrar abastecimento na hora (sem esperar a fatura), casar o lançamento da fatura por valor quando ela chegar, e tirar o atrito da criação de palavra-chave na importação. Brownfield: estende o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — NÃO re-planeja o que já existe. Numeração continua de 24 → 25+.
+
+- [ ] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) — **independente, pequeno, sem dependências**
+- [ ] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28
+- [ ] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total)
+- [ ] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados
+
+## Phase Details (v1.7)
+
+### Phase 25: Fix de scroll na criação de palavra-chave
+
+**Goal**: Criar uma palavra-chave inline na grid de revisão de importação (`/importar/[id]`) deixa de jogar o scroll da página pro topo. Hoje `addKeyword` (`src/actions/category-keywords.ts:94`) chama `revalidatePath('/categorias')`, que numa página diferente força um re-render que reseta a posição de scroll. Bug isolado de UX — escopar/remover essa revalidação cross-page sem quebrar o caso legítimo (a página `/categorias` ainda reflete a keyword nova quando for ela a origem da ação).
+**Depends on**: Nothing (isolado e independente — corrige o efeito colateral do `revalidatePath` adicionado no v1.5/v1.6 para a UI inline do v1.6)
+**Requirements**: UX-01
+**Success Criteria** (what must be TRUE):
+
+  1. Após criar uma palavra-chave inline ("+ palavra-chave") numa linha da grid de importação, a página `/importar/[id]` mantém a posição de scroll — não pula pro topo após salvar.
+  2. A keyword recém-criada continua aparecendo cadastrada na categoria correta (em `/categorias` e no matcher do upload) — a correção do scroll não regride a persistência nem a cobertura da regra.
+  3. O cadastro inline (caminho `origin === 'manual'`) e o cadastro a partir de `/categorias` (onde a revalidação É desejada) continuam ambos funcionando — a mudança escopa a revalidação à origem certa, sem remover o refresh legítimo da página de categorias.
+
+**Plans**: TBD
+
+### Phase 26: Substrato do abastecimento ponta-a-ponta
+
+**Goal**: O modelo de dados deixa de exigir o custo no momento da criação e passa a suportar o fluxo "registro agora, fatura depois". A migration (próxima da fila, `~0039`+) relaxa o CHECK `abastecimentos_cost_xor` (migration `0027`) — que hoje força `transaction_id` XOR `amount_cents` — para permitir um abastecimento com **valor manual esperado E vínculo de transação estabelecido depois** (attach-later), adiciona colunas de **parcelamento** (nº de parcelas + valor total), e libera o **re-link** de uma transação num abastecimento já existente (hoje o vínculo é só no create). Em paralelo, seeda a categoria default **"Combustível"** (kind `consumo`) para todos os usuários, no padrão `handle_new_user` + backfill idempotente do `0035` (Marketplace). Substrato puro de dados — habilita as fases 27 (parcelado) e 28 (vínculo reverso + auto-Combustível).
+**Depends on**: Nothing (migration sobre o schema de `abastecimentos` do v1.2 + seed estilo `0035`; é a base das fases 27 e 28)
+**Requirements**: FUEL-01
+**Success Criteria** (what must be TRUE):
+
+  1. Existe a categoria default "Combustível" (kind `consumo`) para todo usuário — presente em `/categorias` numa conta nova (via `handle_new_user`) e backfillada nas contas existentes (idempotente, estilo `0035`), sem efeito no `gen:types` (data/trigger only).
+  2. Um abastecimento pode ser registrado com um **valor manual esperado** e ter a transação da fatura **vinculada depois** — o CHECK de custo aceita esse estado (manual esperado + link posterior), sem permitir custo duplicado nem nenhum.
+  3. Um abastecimento pode ser marcado como **parcelado** com nº de parcelas + valor total persistidos (colunas novas), preservando o caso à-vista existente sem regressão.
+  4. Uma transação pode ser **re-vinculada** a um abastecimento pré-existente (re-link habilitado no banco/contrato), destravando o attach-later que o v1.2 só permitia no create.
+  5. Migrations aplicam limpas em ordem no stack local (replay) e `database.types.ts` é regenerado refletindo as colunas de parcelamento.
+
+**Plans**: TBD
+
+### Phase 27: Registro rápido + abastecimento parcelado
+
+**Goal**: O usuário lança um abastecimento na hora, sem depender da fatura nem da página de detalhe do carro. Um botão **"Novo abastecimento"** por carro na lista `/carros` abre o `AbastecimentoForm` já existente (reaproveitado do `/carros/[id]`), permitindo registrar à vista/manual durante o mês. E no próprio form o usuário pode marcar o abastecimento como **parcelado**, informando nº de parcelas + valor total — gravados nas colunas criadas na Phase 26.
+**Depends on**: Phase 26 (precisa do XOR relaxado para "valor manual esperado" e das colunas de parcelamento; reusa `AbastecimentoForm` + `createAbastecimento`/`updateAbastecimento` do v1.2)
+**Requirements**: CAR-07, CAR-08
+**Success Criteria** (what must be TRUE):
+
+  1. Na lista `/carros`, cada carro expõe um botão "Novo abastecimento" que abre o `AbastecimentoForm` (o mesmo do detalhe) e registra o abastecimento sem precisar navegar para `/carros/[id]`.
+  2. Pelo botão da lista, o usuário registra um abastecimento manual/à vista (litros + odômetro + valor) durante o mês, antes da fatura chegar — e ele aparece no histórico do carro.
+  3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
+  4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
+
+**Plans**: TBD
+**UI hint**: yes
+
+### Phase 28: Vínculo reverso por valor + consumo sem double-count
+
+**Goal**: Quando a fatura chega, o sistema casa por **valor** um lançamento com um abastecimento pré-registrado (à vista = valor total; parcelado = ~valor total ÷ nº de parcelas) e sugere o vínculo na grid de revisão de importação (`src/components/import-review-table.tsx`), espelhando o padrão de sugestão/confirmação da classificação por IA — **sem auto-commit**. Ao confirmar, o lançamento fica vinculado ao abastecimento, o `carro_id` é etiquetado no lançamento e a categoria **"Combustível"** é sugerida/aplicada. Um abastecimento parcelado casa **uma parcela por fatura** ao longo dos meses sem recontar o custo, e as views de consumo (km/l + R$/km, `v_abastecimento_consumo`/`v_carro_resumo`) refletem tanto os registros manuais quanto os vinculados — sem double-count.
+**Depends on**: Phase 26 (XOR relaxado + attach-later + re-link + colunas de parcelamento + categoria "Combustível"), Phase 27 (os abastecimentos pré-registrados à vista/parcelados que o matcher vai casar)
+**Requirements**: CAR-09, CAR-10, CAR-11, CAR-12
+**Success Criteria** (what must be TRUE):
+
+  1. Ao subir uma fatura, um lançamento cujo valor casa um abastecimento pré-registrado (à vista = valor total; parcelado = ~valor total ÷ nº de parcelas) recebe uma **sugestão de vínculo** na grid de revisão — sem nada ser commitado automaticamente.
+  2. O usuário **confirma ou descarta** a sugestão na grid; ao confirmar, o lançamento fica vinculado ao abastecimento, o `carro_id` é etiquetado no lançamento e a categoria "Combustível" é sugerida/aplicada (FUEL-01 apply-on-confirm).
+  3. Um abastecimento **parcelado** casa **uma parcela por fatura** ao longo dos meses; cada parcela confirmada é registrada **sem recontar** o custo — sem double-count no consumo (`v_abastecimento_consumo`) nem no gasto total do carro (`v_carro_resumo`).
+  4. O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o **km/l é calculado só com litros + odômetro** (não exige a fatura para existir).
+
+**Plans**: TBD
+**UI hint**: yes
+
 ## Progress
 
 **Execution Order (v1.6):** 21 (substrato do matcher: wildcard + procedência persistida — base das fases 22 e 23) → 22 (sugestão de keyword inline + batch, depende de 21) · 23 (aplicar em lote por confiança, depende de 21) · 24 (ingestão robusta — independente, pode rodar em paralelo a qualquer momento). 22 e 23 podem rodar em paralelo após 21; 24 não tem dependências.
+
+**Execution Order (v1.7):** 25 (fix de scroll — independente, pode rodar a qualquer momento) · 26 (substrato: relaxa XOR + parcelas + attach-later + re-link + categoria "Combustível" — base das fases 27 e 28) → 27 (registro rápido na lista /carros + parcelado, depende de 26) → 28 (vínculo reverso por valor na importação + consumo sem double-count, depende de 26 e 27). 25 é independente e quick; 26 → 27 → 28 é a cadeia ponta-a-ponta.
 
 | Phase | Milestone | Plans Complete | Status | Completed |
 |-------|-----------|----------------|--------|-----------|
@@ -211,6 +283,10 @@ Plans:
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
+| 25. Fix de scroll na criação de palavra-chave | v1.7 | 0/? | Not started | - |
+| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/? | Not started | - |
+| 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
+| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
@@ -218,3 +294,4 @@ Plans:
 *v1.4 shipped + collapsed 2026-06-19 — Phases 14–17, 17/17 v1.4 requirements. Full detail in `milestones/v1.4-ROADMAP.md`.*
 *v1.5 shipped + collapsed 2026-06-20 — Phases 18–20, 8/8 v1.5 requirements satisfeitos (MKT-01 live human-verify fechado 2026-06-20 via `/gsd-verify-work 18`). Full detail in `milestones/v1.5-ROADMAP.md`.*
 *v1.6 added 2026-06-20 — Phases 21–24, 8/8 v1.6 requirements mapped (KW-09/KW-10 → P21 · KW-07/KW-08 → P22 · CLSAI-10 → P23 · PDF-06/PDF-07/IMP-07 → P24). Brownfield: refina o pipeline memória→palavra-chave→IA já em PROD + endurece a ingestão. Phases continue from 20 → 21+.*
+*v1.7 added 2026-06-21 — Phases 25–28, 8/8 v1.7 requirements mapped (UX-01 → P25 · FUEL-01 → P26 · CAR-07/CAR-08 → P27 · CAR-09/CAR-10/CAR-11/CAR-12 → P28). Brownfield: estende o módulo Carro (v1.2) reusando `AbastecimentoForm` + `actions/abastecimentos.ts` + views de consumo. Phases continue from 24 → 25+.*

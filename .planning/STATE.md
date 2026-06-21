@@ -3,10 +3,10 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: Abastecimento de ponta-a-ponta + UX da grid
 status: planning
-last_updated: "2026-06-21T16:33:03.340Z"
+last_updated: "2026-06-21T17:30:00.000Z"
 last_activity: 2026-06-21
 progress:
-  total_phases: 0
+  total_phases: 4
   completed_phases: 0
   total_plans: 0
   completed_plans: 0
@@ -22,14 +22,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 24 — Ingestão robusta (PDF em PROD + re-import)
+- **Current focus:** Phase 25 — Fix de scroll na criação de palavra-chave (v1.7 roadmap criado; pronto para `/gsd-plan-phase 25`)
 
 ## Current Position
 
-Phase: Not started (defining requirements)
+Phase: 25 (Fix de scroll na criação de palavra-chave) — not started
 Plan: —
-Status: Defining requirements
-Last activity: 2026-06-21 — Milestone v1.7 started
+Status: Roadmap criado (Phases 25–28); pronto para planejar
+Last activity: 2026-06-21 — Roadmap do milestone v1.7 criado (8/8 requisitos mapeados)
 
 ## Deferred Items
 
@@ -188,9 +188,11 @@ Last activity: 2026-06-21 — Milestone v1.7 started
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T15:22:28.971Z
-**Stopped at:** Phase 23 UI-SPEC approved
-**Resume file:** .planning/phases/23-aplicar-sugest-es-em-lote-por-confian-a/23-UI-SPEC.md
+**Last session:** 2026-06-21T17:30:00.000Z
+**Stopped at:** Roadmap do milestone v1.7 criado (Phases 25–28)
+**Resume file:** .planning/ROADMAP.md (seção `## Milestone v1.7` + `## Phase Details (v1.7)`)
+
+**Roadmap do milestone v1.7 "Abastecimento de ponta-a-ponta + UX da grid" criado.** Derivei 4 fases novas (25–28, modo `mvp`, vertical slices) das 8 requirements (UX-01, FUEL-01, CAR-07/08/09/10/11/12). Numeração CONTINUA das fases 1–24 (v1.6 terminou na 24; nada renumerado). Brownfield: ESTENDE o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — não re-planeja o que já existe. **Mapeamento (8/8, 0 órfãos):** **Phase 25 — Fix de scroll na criação de palavra-chave** (UX-01): bug isolado de UX — `addKeyword` (`src/actions/category-keywords.ts:94`) chama `revalidatePath('/categorias')` que reseta o scroll na página `/importar/[id]`; escopar/remover a revalidação cross-page sem quebrar o refresh legítimo de `/categorias`. Independente e quick. **Phase 26 — Substrato do abastecimento ponta-a-ponta** (FUEL-01): migration (próxima da fila, `~0039`+) que RELAXA o CHECK `abastecimentos_cost_xor` (do `0027`, hoje `transaction_id` XOR `amount_cents`) para permitir "valor manual esperado + vínculo de transação depois" (attach-later), adiciona colunas de parcelamento (nº parcelas + valor total), e habilita re-link num abastecimento já existente; + seed da categoria default "Combustível" (kind `consumo`) no padrão `handle_new_user` + backfill idempotente do `0035` (Marketplace). Substrato puro de dados — base das fases 27 e 28. **Phase 27 — Registro rápido + abastecimento parcelado** (CAR-07, CAR-08): botão "Novo abastecimento" por carro na lista `/carros` reusando o `AbastecimentoForm` do detalhe (registra à vista/manual durante o mês, antes da fatura) + marcar o abastecimento como parcelado (nº parcelas + valor total, gravados nas colunas da Phase 26). Depende de 26. **Phase 28 — Vínculo reverso por valor + consumo sem double-count** (CAR-09, CAR-10, CAR-11, CAR-12): ao subir a fatura, casa por VALOR um lançamento↔abastecimento pré-registrado (à vista = total; parcelado = ~total ÷ N) e sugere o vínculo na grid de revisão (`src/components/import-review-table.tsx`), espelhando o padrão sugestão/confirma da classificação IA — sem auto-commit; ao confirmar, vincula + etiqueta `carro_id` + aplica "Combustível" (FUEL-01 apply-on-confirm); um parcelado casa UMA parcela por fatura ao longo dos meses sem recontar o custo (sem double-count em `v_abastecimento_consumo`/`v_carro_resumo`); o consumo reflete registros manuais E vinculados (km/l = litros+odômetro, não exige a fatura). Depende de 26 e 27. **Ordem de execução:** 25 (independente, quick, a qualquer momento) · 26 → 27 → 28 (cadeia ponta-a-ponta). **Escritos:** ROADMAP.md (anexada `## Milestone v1.7` + checklist + `## Phase Details (v1.7)` + 4 linhas de Progress + nota de execução + footer; milestones v1.0–v1.6 preservados verbatim), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 25/26/27/28; coverage mapped:8/unmapped:0), STATE.md. **Invariantes honrados:** sem auto-commit (o vínculo por valor é sugestão + confirma humano), sem double-count (parcela única por fatura; custo via `coalesce(t.amount_cents, a.amount_cents)`), RLS por `user_id` + IDOR-safe (`assertOwnedCarro`), reuso do `AbastecimentoForm`/actions/views do v1.2 (sem re-desenho de relatório), categoria "Combustível" seedada estilo `0035`, sem OCR (entrada manual + vínculo por valor). **Próxima ação:** `/gsd-plan-phase 25` (independente) ou `/gsd-plan-phase 26` (substrato da cadeia). Sem código novo ainda; sem push remoto.
 
 **Roadmap do milestone v1.6 "Classificação fluida & ingestão robusta" criado.** Derivei 4 fases novas (21–24, modo `mvp`, vertical slices) das 8 requirements (KW-07/08/09/10, CLSAI-10, PDF-06/07, IMP-07). Numeração CONTINUA das fases 1–20 já executadas (v1.5 terminou na 20; nada renumerado). Brownfield: refina o pipeline memória→palavra-chave→IA já em PROD + fecha findings do v1.4. **Mapeamento (8/8, 0 órfãos):** **Phase 21 — Match wildcard + procedência persistida** (KW-09, KW-10): estende o `matchKeyword` (substring) com wildcard glob (`*`) opt-in preservando "maior keyword vence", e amplia o CHECK da migration `0020` (próxima migration ~`0037`) para gravar `classification_source = 'palavra-chave'` em `transactions` (hoje grava o coarse `memória`). Substrato do matcher — base das fases 22 e 23. **Phase 22 — Sugestão de palavra-chave (inline + batch)** (KW-07, KW-08): opção inline (opt-in) ao confirmar merchant→categoria no review grid + painel batch em `/categorias` que varre `merchant_patterns` confirmados e sugere keywords candidatas para aprovar/descartar em lote. Depende de 21. **Phase 23 — Aplicar sugestões em lote por confiança** (CLSAI-10): ação explícita no review grid que aplica de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual — sem auto-commit (persiste/aprende só no confirm). Depende de 21 (procedência persistida → confiança consistente). **Phase 24 — Ingestão robusta (PDF em PROD + re-import)** (PDF-06, PDF-07, IMP-07): worker do `pdfjs` no bundle serverless da Vercel (corrige o bug PROD do v1.4) + parser que degrada com clareza em PDF ruim/image-only (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada (`content_hash` só bloqueia o já-confirmado). Independente — pode rodar em paralelo. **Ordem de execução:** 21 → (22 ∥ 23) ; 24 a qualquer momento. **Escritos:** ROADMAP.md (anexada `### 🟢 v1.6 ...` ACTIVE + Phase Details v1.6 + 4 linhas de Progress; v1.5 colapsado em `<details>`; milestones v1.0–v1.5 preservados), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 21/22/23/24; coverage 8/8, 0 órfãos), STATE.md. **Invariantes honrados:** sem auto-commit (nem keyword, nem IA, nem aplicar-em-lote commitam no upload — só no confirm humano), RLS por `user_id`, "maior keyword vence" preservado, sem regex/ReDoS (só wildcard glob), sem OCR. **Próxima ação:** `/gsd-plan-phase 21` (ou discuss → plan). Sem código novo ainda; sem push remoto.
 
