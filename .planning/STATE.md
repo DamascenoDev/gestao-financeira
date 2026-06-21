@@ -5,16 +5,16 @@ milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 25
 current_phase_name: fix-de-scroll-na-cria-o-de-palavra-chave
 status: executing
-stopped_at: Paused at 25-02-PLAN.md Task 3 (checkpoint:human-verify UAT)
-last_updated: "2026-06-21T17:46:36.309Z"
+stopped_at: "Paused at 25-02-PLAN.md Task 3 (checkpoint:human-verify UAT)"
+last_updated: "2026-06-21T17:52:04.069Z"
 last_activity: 2026-06-21
-last_activity_desc: 25-02 Tasks 1-2 done (RED+GREEN); paused at Task 3 UAT checkpoint
+last_activity_desc: 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpoint
 progress:
   total_phases: 4
-  completed_phases: 0
+  completed_phases: 1
   total_plans: 2
-  completed_plans: 1
-  percent: 0
+  completed_plans: 2
+  percent: 25
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -110,6 +110,7 @@ Last activity: 2026-06-21 — 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpo
 | Phase 23 P01 | 4min | 1 tasks | 2 files |
 | Phase 24 P01 | 257s | 3 tasks | 2 files |
 | Phase 25 P01 | 2min | 2 tasks | 2 files |
+| Phase 25 P02 | 10min | 3 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -193,7 +194,7 @@ Last activity: 2026-06-21 — 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpo
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T17:45:27.079Z
+**Last session:** 2026-06-21T17:51:44.423Z
 **Stopped at:** Completed 25-01-PLAN.md
 **Resume file:** .planning/phases/25-fix-de-scroll-na-cria-o-de-palavra-chave/25-CONTEXT.md
 
@@ -292,3 +293,4 @@ Last activity: 2026-06-21 — 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpo
 - [Phase 25]: addKeywordInline (no revalidate) added via shared private insertKeyword; addKeyword still revalidates /categorias on success (SC3)
 - [Phase 25]: 25-02: reclassifyRowsWithKeyword is a pure exported fn (compileRule/matchKeyword); inline caller swapped to addKeywordInline (no revalidate) — UX-01 scroll fix at the root
 - [Phase 25]: 25-02: live re-classify fires on BOTH ok and duplicate (A2/Open Question 1) so the grid always realigns; never on error; origin==='manual' never overridden (SC5)
+- [Phase ?]: 25-02: re-classify da grid roda também no caminho duplicate para re-alinhar a grid (A2) — confirmado no UAT

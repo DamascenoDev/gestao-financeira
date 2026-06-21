@@ -186,7 +186,7 @@ Plans:
 
 **Milestone goal:** Registrar abastecimento na hora (sem esperar a fatura), casar o lançamento da fatura por valor quando ela chegar, e tirar o atrito da criação de palavra-chave na importação. Brownfield: estende o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — NÃO re-planeja o que já existe. Numeração continua de 24 → 25+.
 
-- [ ] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) + re-classificação ao vivo da grid ao criar a keyword (client-side, sem refresh) — **independente, pequeno, sem dependências**
+- [x] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) + re-classificação ao vivo da grid ao criar a keyword (client-side, sem refresh) — **independente, pequeno, sem dependências** (completed 2026-06-21)
 - [ ] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28
 - [ ] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total)
 - [ ] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados
@@ -206,7 +206,7 @@ Plans:
   4. Ao criar a keyword inline, as demais linhas da grid que casam com a nova palavra-chave são re-classificadas ao vivo (client-side, sem refresh): aplicada às linhas não-classificadas (`category_id === null`) e sobrescrevendo as auto-classificadas (memória/IA), com as linhas recém-casadas recebendo provenance `'palavra-chave'`.
   5. O re-classify ao vivo nunca altera linhas com `origin === 'manual'` — a intenção explícita do usuário é preservada.
 
-**Plans**: 1/2 plans executed
+**Plans**: 2/2 plans complete
 
 Plans:
 **Wave 1**
@@ -215,7 +215,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 25-02-PLAN.md — Client-side: export puro `reclassifyRowsWithKeyword` + lift-state + swap do caller para `addKeywordInline` + UAT vivo (UX-01, UX-02)
+- [x] 25-02-PLAN.md — Client-side: export puro `reclassifyRowsWithKeyword` + lift-state + swap do caller para `addKeywordInline` + UAT vivo (UX-01, UX-02)
 
 ### Phase 26: Substrato do abastecimento ponta-a-ponta
 
@@ -294,7 +294,7 @@ Plans:
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
-| 25. Fix de scroll na criação de palavra-chave | v1.7 | 1/2 | In Progress|  |
+| 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete   | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/? | Not started | - |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
