@@ -1,10 +1,14 @@
 ---
 gsd_state_version: 1.0
 milestone: v1.7
-milestone_name: Abastecimento de ponta-a-ponta + UX da grid
+milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
+current_phase: 25
+current_phase_name: Fix de scroll na criação de palavra-chave
 status: planning
-last_updated: "2026-06-21T17:30:00.000Z"
+stopped_at: Phase 25 context gathered
+last_updated: "2026-06-21T16:59:35.706Z"
 last_activity: 2026-06-21
+last_activity_desc: Roadmap do milestone v1.7 criado (8/8 requisitos mapeados)
 progress:
   total_phases: 4
   completed_phases: 0
@@ -188,9 +192,9 @@ Last activity: 2026-06-21 — Roadmap do milestone v1.7 criado (8/8 requisitos m
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T17:30:00.000Z
-**Stopped at:** Roadmap do milestone v1.7 criado (Phases 25–28)
-**Resume file:** .planning/ROADMAP.md (seção `## Milestone v1.7` + `## Phase Details (v1.7)`)
+**Last session:** 2026-06-21T16:59:35.697Z
+**Stopped at:** Phase 25 context gathered
+**Resume file:** .planning/phases/25-fix-de-scroll-na-cria-o-de-palavra-chave/25-CONTEXT.md
 
 **Roadmap do milestone v1.7 "Abastecimento de ponta-a-ponta + UX da grid" criado.** Derivei 4 fases novas (25–28, modo `mvp`, vertical slices) das 8 requirements (UX-01, FUEL-01, CAR-07/08/09/10/11/12). Numeração CONTINUA das fases 1–24 (v1.6 terminou na 24; nada renumerado). Brownfield: ESTENDE o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — não re-planeja o que já existe. **Mapeamento (8/8, 0 órfãos):** **Phase 25 — Fix de scroll na criação de palavra-chave** (UX-01): bug isolado de UX — `addKeyword` (`src/actions/category-keywords.ts:94`) chama `revalidatePath('/categorias')` que reseta o scroll na página `/importar/[id]`; escopar/remover a revalidação cross-page sem quebrar o refresh legítimo de `/categorias`. Independente e quick. **Phase 26 — Substrato do abastecimento ponta-a-ponta** (FUEL-01): migration (próxima da fila, `~0039`+) que RELAXA o CHECK `abastecimentos_cost_xor` (do `0027`, hoje `transaction_id` XOR `amount_cents`) para permitir "valor manual esperado + vínculo de transação depois" (attach-later), adiciona colunas de parcelamento (nº parcelas + valor total), e habilita re-link num abastecimento já existente; + seed da categoria default "Combustível" (kind `consumo`) no padrão `handle_new_user` + backfill idempotente do `0035` (Marketplace). Substrato puro de dados — base das fases 27 e 28. **Phase 27 — Registro rápido + abastecimento parcelado** (CAR-07, CAR-08): botão "Novo abastecimento" por carro na lista `/carros` reusando o `AbastecimentoForm` do detalhe (registra à vista/manual durante o mês, antes da fatura) + marcar o abastecimento como parcelado (nº parcelas + valor total, gravados nas colunas da Phase 26). Depende de 26. **Phase 28 — Vínculo reverso por valor + consumo sem double-count** (CAR-09, CAR-10, CAR-11, CAR-12): ao subir a fatura, casa por VALOR um lançamento↔abastecimento pré-registrado (à vista = total; parcelado = ~total ÷ N) e sugere o vínculo na grid de revisão (`src/components/import-review-table.tsx`), espelhando o padrão sugestão/confirma da classificação IA — sem auto-commit; ao confirmar, vincula + etiqueta `carro_id` + aplica "Combustível" (FUEL-01 apply-on-confirm); um parcelado casa UMA parcela por fatura ao longo dos meses sem recontar o custo (sem double-count em `v_abastecimento_consumo`/`v_carro_resumo`); o consumo reflete registros manuais E vinculados (km/l = litros+odômetro, não exige a fatura). Depende de 26 e 27. **Ordem de execução:** 25 (independente, quick, a qualquer momento) · 26 → 27 → 28 (cadeia ponta-a-ponta). **Escritos:** ROADMAP.md (anexada `## Milestone v1.7` + checklist + `## Phase Details (v1.7)` + 4 linhas de Progress + nota de execução + footer; milestones v1.0–v1.6 preservados verbatim), REQUIREMENTS.md (traceability 8/8 preenchida — TBD → Phase 25/26/27/28; coverage mapped:8/unmapped:0), STATE.md. **Invariantes honrados:** sem auto-commit (o vínculo por valor é sugestão + confirma humano), sem double-count (parcela única por fatura; custo via `coalesce(t.amount_cents, a.amount_cents)`), RLS por `user_id` + IDOR-safe (`assertOwnedCarro`), reuso do `AbastecimentoForm`/actions/views do v1.2 (sem re-desenho de relatório), categoria "Combustível" seedada estilo `0035`, sem OCR (entrada manual + vínculo por valor). **Próxima ação:** `/gsd-plan-phase 25` (independente) ou `/gsd-plan-phase 26` (substrato da cadeia). Sem código novo ainda; sem push remoto.
 
