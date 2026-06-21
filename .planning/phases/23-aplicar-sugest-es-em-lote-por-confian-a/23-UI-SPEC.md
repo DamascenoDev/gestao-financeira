@@ -1,10 +1,11 @@
 ---
 phase: 23
 slug: aplicar-sugest-es-em-lote-por-confian-a
-status: draft
+status: approved
 shadcn_initialized: true
 preset: navy+gold (v1.1 re-skin, Tailwind v4 CSS-first @theme)
 created: 2026-06-21
+reviewed_at: 2026-06-21
 ---
 
 # Phase 23 — UI Design Contract
