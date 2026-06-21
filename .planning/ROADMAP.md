@@ -155,7 +155,8 @@ Plans:
   2. As sugestões abaixo do limiar permanecem pendentes e sem categoria aplicada, deixadas para revisão manual linha a linha.
   3. Aplicar em lote NÃO commita nada no upload: as categorias só são preenchidas na grid (sobrescrevíveis); a persistência e o aprendizado merchant→categoria continuam acontecendo apenas no confirm humano.
 
-**Plans**: TBD
+**Plans**: 1 plan
+- [ ] 23-01-PLAN.md — Gate bulk-apply on confidence (`>= 0.6`): only confident IA suggestions applied, low-confidence left pending; relabel button + toast to LOCKED "confiáveis" copy; confirmImport untouched. Single-file edit (`import-review-table.tsx` + test).
 **UI hint**: yes
 
 ### Phase 24: Ingestão robusta (PDF em PROD + re-import)
