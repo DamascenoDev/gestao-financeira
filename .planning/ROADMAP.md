@@ -206,7 +206,16 @@ Plans:
   4. Ao criar a keyword inline, as demais linhas da grid que casam com a nova palavra-chave são re-classificadas ao vivo (client-side, sem refresh): aplicada às linhas não-classificadas (`category_id === null`) e sobrescrevendo as auto-classificadas (memória/IA), com as linhas recém-casadas recebendo provenance `'palavra-chave'`.
   5. O re-classify ao vivo nunca altera linhas com `origin === 'manual'` — a intenção explícita do usuário é preservada.
 
-**Plans**: TBD
+**Plans**: 2 plans
+
+Plans:
+**Wave 1**
+
+- [ ] 25-01-PLAN.md — Server-side: helper privado `insertKeyword` + `addKeywordInline` (sem revalidate) preservando `addKeyword` (revalida `/categorias`) (UX-01)
+
+**Wave 2** *(blocked on Wave 1)*
+
+- [ ] 25-02-PLAN.md — Client-side: export puro `reclassifyRowsWithKeyword` + lift-state + swap do caller para `addKeywordInline` + UAT vivo (UX-01, UX-02)
 
 ### Phase 26: Substrato do abastecimento ponta-a-ponta
 
