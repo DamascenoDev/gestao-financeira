@@ -4,17 +4,17 @@ milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 26
 current_phase_name: substrato-do-abastecimento-ponta-a-ponta
-status: executing
+status: verifying
 stopped_at: Phase 26 planned (4 plans, 3 waves) — ready to execute
-last_updated: "2026-06-21T20:10:27.596Z"
+last_updated: "2026-06-21T20:20:59.730Z"
 last_activity: 2026-06-21
 last_activity_desc: Phase 26 execution started
 progress:
   total_phases: 4
-  completed_phases: 1
+  completed_phases: 2
   total_plans: 6
-  completed_plans: 5
-  percent: 25
+  completed_plans: 6
+  percent: 50
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -32,7 +32,7 @@ progress:
 
 Phase: 26 (substrato-do-abastecimento-ponta-a-ponta) — EXECUTING
 Plan: 4 of 4
-Status: Ready to execute
+Status: Phase complete — ready for verification
 Last activity: 2026-06-21 — Phase 26 execution started
 
 ## Deferred Items
@@ -114,6 +114,7 @@ Last activity: 2026-06-21 — Phase 26 execution started
 | Phase 26 P01 | 6min | 3 tasks | 4 files |
 | Phase 26 P02 | 5min | 2 tasks | 2 files |
 | Phase 26 P03 | 2min | 1 tasks | 1 files |
+| Phase 26 P04 | 6min | 1 tasks | 3 files |
 
 ### Plan Execution Log
 
@@ -197,7 +198,7 @@ Last activity: 2026-06-21 — Phase 26 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T20:09:55.875Z
+**Last session:** 2026-06-21T20:20:29.640Z
 **Stopped at:** Phase 26 context gathered
 **Resume file:** .planning/phases/26-substrato-do-abastecimento-ponta-a-ponta/26-CONTEXT.md
 
@@ -301,3 +302,4 @@ Last activity: 2026-06-21 — Phase 26 execution started
 - [Phase ?]: 0039: relaxed abastecimentos_cost_xor to attach-later + parcelado CASE truth table; v_carro_resumo left untouched per 0028/0029 precedent
 - [Phase ?]: Cross-row tx double-link enforced at action layer (Phase 27/28), not a P26 DB constraint (RESEARCH A1)
 - [Phase ?]: P26-03: Combustivel seeded at sort 4 (insert-only backfill, mirrors 0035, no gen:types diff)
+- [Phase ?]: Phase 26 SC5 gate proven green: clean replay 0001→0040 (db:reset exit 0) + scoped gen:types (abastecimento_parcelas present, zero categories/handle_new_user drift) + full vitest 960/960; aligned 3 stale assertions to the 0039/0040 documented contracts without weakening any test; local-only (no prod push).

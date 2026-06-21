@@ -187,7 +187,7 @@ Plans:
 **Milestone goal:** Registrar abastecimento na hora (sem esperar a fatura), casar o lançamento da fatura por valor quando ela chegar, e tirar o atrito da criação de palavra-chave na importação. Brownfield: estende o módulo **Carro (v1.2)** reusando `AbastecimentoForm`, `src/actions/abastecimentos.ts` (create/update/delete) e as views de consumo `v_abastecimento_consumo`/`v_carro_resumo` — NÃO re-planeja o que já existe. Numeração continua de 24 → 25+.
 
 - [x] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) + re-classificação ao vivo da grid ao criar a keyword (client-side, sem refresh) — **independente, pequeno, sem dependências** (completed 2026-06-21)
-- [ ] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28
+- [x] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28 (completed 2026-06-21)
 - [ ] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total)
 - [ ] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados
 
@@ -230,7 +230,7 @@ Plans:
   4. Uma transação pode ser **re-vinculada** a um abastecimento pré-existente (re-link habilitado no banco/contrato), destravando o attach-later que o v1.2 só permitia no create.
   5. Migrations aplicam limpas em ordem no stack local (replay) e `database.types.ts` é regenerado refletindo as colunas de parcelamento.
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 0**
@@ -244,7 +244,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 26-04-PLAN.md — [BLOCKING] replay limpo `npm run db:reset` + `gen:types` com diff escopado + suíte vitest verde (SC5) (FUEL-01)
+- [x] 26-04-PLAN.md — [BLOCKING] replay limpo `npm run db:reset` + `gen:types` com diff escopado + suíte vitest verde (SC5) (FUEL-01)
 
 ### Phase 27: Registro rápido + abastecimento parcelado
 
@@ -309,7 +309,7 @@ Plans:
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
-| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 3/4 | In Progress|  |
+| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete   | 2026-06-21 |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
