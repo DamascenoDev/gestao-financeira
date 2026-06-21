@@ -2,19 +2,19 @@
 gsd_state_version: 1.0
 milestone: v1.6
 milestone_name: Classificação fluida & ingestão robusta
-current_phase: 22
-current_phase_name: Sugestão de palavra-chave (inline + batch
-status: executing
+current_phase: 23
+current_phase_name: Aplicar sugestões em lote por confiança
+status: verifying
 stopped_at: Phase 23 UI-SPEC approved
-last_updated: "2026-06-21T14:29:50.228Z"
-last_activity: 2026-06-20
-last_activity_desc: Phase 22 execution started
+last_updated: "2026-06-21T14:37:11.278Z"
+last_activity: 2026-06-21
+last_activity_desc: Phase 23 execution started
 progress:
   total_phases: 4
-  completed_phases: 2
-  total_plans: 7
-  completed_plans: 7
-  percent: 50
+  completed_phases: 3
+  total_plans: 8
+  completed_plans: 8
+  percent: 75
 ---
 
 # Project State: Gestão Financeira Pessoal
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 22 — Sugestão de palavra-chave (inline + batch)
+- **Current focus:** Phase 23 — Aplicar sugestões em lote por confiança
 
 ## Current Position
 
-Phase: 22 (Sugestão de palavra-chave (inline + batch)) — EXECUTING
-Plan: 3 of 3
-Status: Ready to execute
-Last activity: 2026-06-20 — Phase 22 execution started
+Phase: 23 (Aplicar sugestões em lote por confiança) — EXECUTING
+Plan: 1 of 1
+Status: Phase complete — ready for verification
+Last activity: 2026-06-21 — Phase 23 execution started
 
 ## Deferred Items
 
@@ -97,6 +97,7 @@ Last activity: 2026-06-20 — Phase 22 execution started
 | Phase 22 P01 | 16m | 2 tasks | 2 files |
 | Phase 22 P02 | 12m | 2 tasks | 3 files |
 | Phase 22 P03 | 16m | 3 tasks | 4 files |
+| Phase 23 P01 | 4min | 1 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -179,7 +180,7 @@ Last activity: 2026-06-20 — Phase 22 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T14:20:23.720Z
+**Last session:** 2026-06-21T14:36:34.709Z
 **Stopped at:** Phase 23 UI-SPEC approved
 **Resume file:** .planning/phases/23-aplicar-sugest-es-em-lote-por-confian-a/23-UI-SPEC.md
 
@@ -270,3 +271,4 @@ Last activity: 2026-06-20 — Phase 22 execution started
 - [Phase ?]: 21-04: keyword globs compiled once per rule via compileRule at both pre-fetch paths; persisted classification_source re-derived server-side with category-equality guard (no false provenance)
 - [Phase ?]: KW-07 inline control inlined in import-review-table.tsx; reuses addKeyword verbatim (no new server action, no confirmImport)
 - [Phase ?]: KW-08 dialog loads via a plain async effect (not startTransition) so the candidate seed render is high-priority — a deferrable transition starved it under the full-suite gate
+- [Phase 23]: CLSAI-10: bulk-apply gated on confidence >= LOW_CONFIDENCE (0.6, reused constant); low-confidence rows left pending for manual review; confirmImport untouched

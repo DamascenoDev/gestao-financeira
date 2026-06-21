@@ -90,7 +90,7 @@ Full detail: `milestones/v1.5-ROADMAP.md`. Audit: `milestones/v1.5-MILESTONE-AUD
 
 - [x] **Phase 21: Match wildcard + procedência persistida** - Wildcard glob (`*`) na palavra-chave (maior keyword vence preservado) + widening do CHECK de `0020` para gravar `palavra-chave` em `transactions.classification_source` (completed 2026-06-20)
 - [x] **Phase 22: Sugestão de palavra-chave (inline + batch)** - Opt-in inline ao confirmar merchant→categoria + painel batch em `/categorias` que analisa `merchant_patterns` e sugere keywords candidatas (completed 2026-06-20)
-- [ ] **Phase 23: Aplicar sugestões em lote por confiança** - No review grid, aplicar de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual (sem auto-commit)
+- [x] **Phase 23: Aplicar sugestões em lote por confiança** - No review grid, aplicar de uma vez todas as sugestões (memória/palavra-chave/IA) acima de um limiar de confiança, deixando as fracas para revisão manual (sem auto-commit) (completed 2026-06-21)
 - [ ] **Phase 24: Ingestão robusta (PDF em PROD + re-import)** - Worker do `pdfjs` disponível no bundle serverless da Vercel + parser que degrada com clareza (sem OCR) + re-upload liberado quando a importação anterior não foi confirmada
 
 ## Phase Details (v1.6)
@@ -155,8 +155,10 @@ Plans:
   2. As sugestões abaixo do limiar permanecem pendentes e sem categoria aplicada, deixadas para revisão manual linha a linha.
   3. Aplicar em lote NÃO commita nada no upload: as categorias só são preenchidas na grid (sobrescrevíveis); a persistência e o aprendizado merchant→categoria continuam acontecendo apenas no confirm humano.
 
-**Plans**: 1 plan
-- [ ] 23-01-PLAN.md — Gate bulk-apply on confidence (`>= 0.6`): only confident IA suggestions applied, low-confidence left pending; relabel button + toast to LOCKED "confiáveis" copy; confirmImport untouched. Single-file edit (`import-review-table.tsx` + test).
+**Plans**: 1/1 plans complete
+
+- [x] 23-01-PLAN.md — Gate bulk-apply on confidence (`>= 0.6`): only confident IA suggestions applied, low-confidence left pending; relabel button + toast to LOCKED "confiáveis" copy; confirmImport untouched. Single-file edit (`import-review-table.tsx` + test).
+
 **UI hint**: yes
 
 ### Phase 24: Ingestão robusta (PDF em PROD + re-import)
@@ -200,7 +202,7 @@ Plans:
 | 20. Auto-classificação por palavra-chave no upload | v1.5 | 2/2 | Complete | 2026-06-19 |
 | 21. Match wildcard + procedência persistida | v1.6 | 4/4 | Complete    | 2026-06-20 |
 | 22. Sugestão de palavra-chave (inline + batch) | v1.6 | 3/3 | Complete   | 2026-06-20 |
-| 23. Aplicar sugestões em lote por confiança | v1.6 | 0/TBD | Not started | - |
+| 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 0/TBD | Not started | - |
 
 ---

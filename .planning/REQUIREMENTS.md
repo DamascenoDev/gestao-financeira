@@ -17,7 +17,7 @@ Requisitos deste milestone. Cada um mapeia para exatamente uma fase do roadmap. 
 
 ### Classificação fluida — Sugestões em lote (CLSAI)
 
-- [ ] **CLSAI-10**: No review grid, o usuário pode aplicar de uma vez todas as sugestões pendentes (memória / palavra-chave / IA) cuja confiança esteja **acima de um limiar**, deixando as de baixa confiança para revisão manual. Sem auto-commit no upload — a ação é explícita do usuário.
+- [x] **CLSAI-10**: No review grid, o usuário pode aplicar de uma vez todas as sugestões pendentes (memória / palavra-chave / IA) cuja confiança esteja **acima de um limiar**, deixando as de baixa confiança para revisão manual. Sem auto-commit no upload — a ação é explícita do usuário.
 
 ### Ingestão robusta — PDF (PDF)
 
@@ -62,7 +62,7 @@ Mapeamento fase↔requisito. Preenchido na criação do roadmap.
 | KW-10 | Phase 21 | Complete |
 | KW-07 | Phase 22 | Complete |
 | KW-08 | Phase 22 | Complete |
-| CLSAI-10 | Phase 23 | Pending |
+| CLSAI-10 | Phase 23 | Complete |
 | PDF-06 | Phase 24 | Pending |
 | PDF-07 | Phase 24 | Pending |
 | IMP-07 | Phase 24 | Pending |
