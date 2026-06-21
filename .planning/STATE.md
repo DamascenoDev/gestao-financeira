@@ -3,17 +3,17 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 26
-current_phase_name: Substrato do abastecimento ponta-a-ponta
-status: ready
+current_phase_name: substrato-do-abastecimento-ponta-a-ponta
+status: executing
 stopped_at: Phase 26 planned (4 plans, 3 waves) — ready to execute
-last_updated: "2026-06-21T19:13:41.138Z"
+last_updated: "2026-06-21T19:59:14.411Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 26 planned — 4 plans across 3 waves (research + nyquist + patterns), verification passed
+last_activity_desc: Phase 26 execution started
 progress:
   total_phases: 4
   completed_phases: 1
-  total_plans: 2
-  completed_plans: 2
+  total_plans: 6
+  completed_plans: 3
   percent: 25
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 26 — Substrato do abastecimento ponta-a-ponta (próxima)
+- **Current focus:** Phase 26 — substrato-do-abastecimento-ponta-a-ponta
 
 ## Current Position
 
-Phase: 26 — Substrato do abastecimento ponta-a-ponta
-Plan: Planned — 4 plans (26-01..26-04) across 3 waves; verification passed (iter 2); ready to execute
-Status: READY TO EXECUTE Phase 26 (pure data-layer substrate). 4 plans: W0 26-01 (4 RED vitest gates: CHECK truth table, junction uniques/double-link/RLS, Combustível seed, parcelado no-double-count) → W1 26-02 (migration 0039 schema: relaxed `abastecimentos_cost_xor` + `parcelas_total`/`valor_total_cents` + `abastecimento_parcelas` junction + `v_abastecimento_consumo` rewrite from 0029 body + gen:types) ∥ 26-03 (migration 0040 seed: handle_new_user + idempotent backfill, no types diff) → W2 26-04 [BLOCKING] `npm run db:reset` clean replay + scoped types diff + full suite. Artefatos: research (HIGH) + nyquist VALIDATION + patterns + threat models (ASVS L1). Needs local Supabase Docker stack (`supabase start`) for W2. NOTE: prod `supabase db push` é deploy-time autonomous:false. — Phase 25 COMPLETE + verified (7/7) shipped 2026-06-21 (commits 25-01 `17c11f1` / 25-02 `2353a74`).
-Last activity: 2026-06-21 — Phase 26 planned (4 plans, 3 waves), verification passed
+Phase: 26 (substrato-do-abastecimento-ponta-a-ponta) — EXECUTING
+Plan: 2 of 4
+Status: Ready to execute
+Last activity: 2026-06-21 — Phase 26 execution started
 
 ## Deferred Items
 
@@ -111,6 +111,7 @@ Last activity: 2026-06-21 — Phase 26 planned (4 plans, 3 waves), verification 
 | Phase 24 P01 | 257s | 3 tasks | 2 files |
 | Phase 25 P01 | 2min | 2 tasks | 2 files |
 | Phase 25 P02 | 10min | 3 tasks | 2 files |
+| Phase 26 P01 | 6min | 3 tasks | 4 files |
 
 ### Plan Execution Log
 
@@ -194,7 +195,7 @@ Last activity: 2026-06-21 — Phase 26 planned (4 plans, 3 waves), verification 
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T19:13:41.129Z
+**Last session:** 2026-06-21T19:58:43.944Z
 **Stopped at:** Phase 26 context gathered
 **Resume file:** .planning/phases/26-substrato-do-abastecimento-ponta-a-ponta/26-CONTEXT.md
 
@@ -294,3 +295,4 @@ Last activity: 2026-06-21 — Phase 26 planned (4 plans, 3 waves), verification 
 - [Phase 25]: 25-02: reclassifyRowsWithKeyword is a pure exported fn (compileRule/matchKeyword); inline caller swapped to addKeywordInline (no revalidate) — UX-01 scroll fix at the root
 - [Phase 25]: 25-02: live re-classify fires on BOTH ok and duplicate (A2/Open Question 1) so the grid always realigns; never on error; origin==='manual' never overridden (SC5)
 - [Phase ?]: 25-02: re-classify da grid roda também no caminho duplicate para re-alinhar a grid (A2) — confirmado no UAT
+- [Phase ?]: Phase 26 Wave 0: 4 TDD-red Nyquist gates written (cost-check truth table, junction, Combustível seed, parcelado no-double-count) — RED until 0039/0040

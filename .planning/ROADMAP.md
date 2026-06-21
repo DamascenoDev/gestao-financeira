@@ -230,12 +230,12 @@ Plans:
   4. Uma transação pode ser **re-vinculada** a um abastecimento pré-existente (re-link habilitado no banco/contrato), destravando o attach-later que o v1.2 só permitia no create.
   5. Migrations aplicam limpas em ordem no stack local (replay) e `database.types.ts` é regenerado refletindo as colunas de parcelamento.
 
-**Plans**: 4 plans
+**Plans**: 1/4 plans executed
 
 Plans:
 **Wave 0**
 
-- [ ] 26-01-PLAN.md — Wave 0 tests (RED): 9-row CHECK truth table + junction unique/double-link/RLS + Combustível seed/backfill + parcelado no-double-count fixture (FUEL-01)
+- [x] 26-01-PLAN.md — Wave 0 tests (RED): 9-row CHECK truth table + junction unique/double-link/RLS + Combustível seed/backfill + parcelado no-double-count fixture (FUEL-01)
 
 **Wave 1** *(blocked on Wave 0)*
 
@@ -309,7 +309,7 @@ Plans:
 | 23. Aplicar sugestões em lote por confiança | v1.6 | 1/1 | Complete    | 2026-06-21 |
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
-| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 0/4 | Planned | - |
+| 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 1/4 | In Progress|  |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 0/? | Not started | - |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 

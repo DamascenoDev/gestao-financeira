@@ -25,7 +25,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap. Estende o m
 
 ### Categoria Combustível
 
-- [ ] **FUEL-01**: Existe uma categoria default "Combustível" (kind `consumo`) para todos os usuários; ao confirmar o vínculo lançamento↔abastecimento, a categoria "Combustível" é sugerida/aplicada ao lançamento.
+- [x] **FUEL-01**: Existe uma categoria default "Combustível" (kind `consumo`) para todos os usuários; ao confirmar o vínculo lançamento↔abastecimento, a categoria "Combustível" é sugerida/aplicada ao lançamento.
 
 ### UX da Importação
 
@@ -63,7 +63,7 @@ Preenchido na criação do roadmap.
 | CAR-10 | Phase 28 | Pending |
 | CAR-11 | Phase 28 | Pending |
 | CAR-12 | Phase 28 | Pending |
-| FUEL-01 | Phase 26 | Pending |
+| FUEL-01 | Phase 26 | Complete |
 | UX-01 | Phase 25 | Complete |
 | UX-02 | Phase 25 | Complete |
 
