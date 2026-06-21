@@ -6,9 +6,11 @@
 // A's abastecimentos, and ZERO transactions carrying A's carro_id (the uniform
 // USING+WITH CHECK auth.uid()=user_id policies isolate per user).
 //
-// Negative-constraint block (T-08-03): the cost XOR CHECK rejects an abastecimento that
-// supplies BOTH transaction_id and amount_cents, and one that supplies NEITHER; the
-// partial unique index rejects a second abastecimento linking an already-linked
+// Cost-constraint block (T-08-03): after 0039 (FUEL-01) relaxed the strict XOR to the
+// attach-later truth table, an À-VISTA abastecimento supplying BOTH transaction_id and
+// amount_cents is now ACCEPTED (attach-later), while one supplying NEITHER is still
+// rejected; the preserved partial unique index (abastecimentos_transaction_uniq, 0027 —
+// untouched by 0039) rejects a second abastecimento linking an already-linked
 // transaction_id. These are DB-level constraints, not app-level.
 //
 // Runs against `supabase start` (local Docker stack only).
@@ -136,8 +138,25 @@ describe('Carro tables RLS isolation (T-08-01)', () => {
 })
 
 describe('abastecimentos cost constraints (T-08-03)', () => {
-  it('XOR CHECK rejects an abastecimento with BOTH transaction_id and amount_cents', async () => {
+  it('à-vista CHECK now ACCEPTS BOTH transaction_id and amount_cents (0039 attach-later relax)', async () => {
+    // 0039 (FUEL-01) relaxed the strict cost XOR to the attach-later truth table: for an
+    // à-vista fuel-up (parcelas_total null/<=1) supplying BOTH transaction_id AND
+    // amount_cents is now VALID (documented at 0039 sub-part A). Only "neither" is still
+    // rejected. Use a FRESH transaction so the preserved abastecimentos_transaction_uniq
+    // partial index does not collide with another test's link.
     const a = userClient(userA.jwt, config)
+    const { data: tx, error: txErr } = await a
+      .from('transactions')
+      .insert({
+        user_id: userA.id,
+        amount_cents: 20000,
+        occurred_on: '2026-05-20',
+        description: 'abastecimento à-vista (both)',
+        carro_id: carroAId,
+      })
+      .select('id')
+      .single()
+    expect(txErr).toBeNull()
     const { error } = await a.from('abastecimentos').insert({
       user_id: userA.id,
       carro_id: carroAId,
@@ -145,10 +164,10 @@ describe('abastecimentos cost constraints (T-08-03)', () => {
       odometro_km: 10500,
       litros: 38,
       tanque_cheio: true,
-      transaction_id: txAId,
-      amount_cents: 20000, // both → must violate the XOR CHECK
+      transaction_id: tx!.id,
+      amount_cents: 20000, // both → now ACCEPTED under the relaxed à-vista CHECK
     })
-    expect(error).not.toBeNull()
+    expect(error).toBeNull()
   })
 
   it('XOR CHECK rejects an abastecimento with NEITHER cost source', async () => {
@@ -167,6 +186,22 @@ describe('abastecimentos cost constraints (T-08-03)', () => {
 
   it('partial unique index rejects a second abastecimento linking the same transaction_id', async () => {
     const a = userClient(userA.jwt, config)
+    // Use a FRESH dedicated transaction so this test owns its link in isolation — the
+    // preserved abastecimentos_transaction_uniq (0027, untouched by 0039) is what we
+    // exercise here, decoupled from the shared txAId used by other cases.
+    const { data: linkTx, error: linkTxErr } = await a
+      .from('transactions')
+      .insert({
+        user_id: userA.id,
+        amount_cents: 18000,
+        occurred_on: '2026-05-22',
+        description: 'abastecimento à-vista (uniq link)',
+        carro_id: carroAId,
+      })
+      .select('id')
+      .single()
+    expect(linkTxErr).toBeNull()
+
     // First link is valid (transaction_id source, amount_cents null).
     const { error: firstErr } = await a.from('abastecimentos').insert({
       user_id: userA.id,
@@ -175,7 +210,7 @@ describe('abastecimentos cost constraints (T-08-03)', () => {
       odometro_km: 11500,
       litros: 30,
       tanque_cheio: true,
-      transaction_id: txAId,
+      transaction_id: linkTx!.id,
     })
     expect(firstErr).toBeNull()
 
@@ -187,7 +222,7 @@ describe('abastecimentos cost constraints (T-08-03)', () => {
       odometro_km: 12000,
       litros: 28,
       tanque_cheio: true,
-      transaction_id: txAId,
+      transaction_id: linkTx!.id,
     })
     expect(dupErr).not.toBeNull()
   })

@@ -9,7 +9,9 @@ import { describe, it, expect, beforeAll, afterAll } from 'vitest'
 import { readLocalConfig, serviceClient, type LocalSupabaseConfig } from './helpers/local-supabase'
 import type { SupabaseClient } from '@supabase/supabase-js'
 
-const EXPECTED_COUNT = 12
+// 0040 (FUEL-01) added a default 'Combustível' category to handle_new_user(), so a
+// fresh signup now seeds 13 categories (the original 12 + Combustível at sort 4).
+const EXPECTED_COUNT = 13
 const ALOCACAO = new Set(['Investimentos', 'Reserva'])
 
 let config: LocalSupabaseConfig
@@ -33,8 +35,8 @@ afterAll(async () => {
   if (userId) await admin.auth.admin.deleteUser(userId).catch(() => {})
 })
 
-describe('signup seeds the 12 BR categories (CAT-01 + MKT-01 Marketplace)', () => {
-  it('creates exactly 12 categories for the new user', async () => {
+describe('signup seeds the 13 BR categories (CAT-01 + MKT-01 Marketplace + FUEL-01 Combustível)', () => {
+  it('creates exactly 13 categories for the new user', async () => {
     const { data, error } = await admin
       .from('categories')
       .select('name, kind')

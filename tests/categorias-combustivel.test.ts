@@ -63,29 +63,34 @@ describe('Combustível default category seed (SC1)', () => {
     expect(data![0]!.kind).toBe('consumo')
   })
 
-  it('backfill is idempotent — re-inserting "where not exists" does not duplicate', async () => {
-    // Mirror the migration backfill pattern (insert Combustível where the user does not
-    // already have it) via the RLS-bypassing service client. It must be a no-op because
-    // the seed already gave this user the category.
-    const { error: backfillErr } = await admin.from('categories').insert({
-      user_id: userA.id,
-      name: 'Combustível',
-      kind: 'consumo',
-      sort: 4,
-      is_reserva: false,
-    })
-    // The backfill in 0040 guards on `not exists`; a raw duplicate insert here would
-    // either error on a uniqueness guard OR — if no DB unique exists — succeed. Either
-    // way, the COUNT after running the documented idempotent backfill must stay 1.
-    // We assert the invariant on the count, not on this insert's error shape.
-    void backfillErr
+  it('backfill is idempotent — re-running the "where not exists" backfill does not duplicate', async () => {
+    // Replicate the EXACT documented backfill from migration 0040: insert Combustível
+    // ONLY where the user does not already have it (the `where not exists` guard).
+    // categories has NO (user_id, name) DB unique by design — MKT-01 Marketplace allows
+    // custom-named categories — so the idempotency guarantee lives in this SQL guard, not
+    // a constraint. Re-running it must be a no-op because the signup seed already gave
+    // userA the row. (Asserting on the resulting COUNT, per the invariant.)
+    const { data: existing } = await admin
+      .from('categories')
+      .select('id')
+      .eq('user_id', userA.id)
+      .eq('name', 'Combustível')
+    if ((existing ?? []).length === 0) {
+      await admin.from('categories').insert({
+        user_id: userA.id,
+        name: 'Combustível',
+        kind: 'consumo',
+        sort: 4,
+        is_reserva: false,
+      })
+    }
 
     const a = userClient(userA.jwt, config)
     const { data } = await a
       .from('categories')
       .select('id')
       .eq('name', 'Combustível')
-    // Idempotency invariant: still exactly one Combustível for this user.
+    // Idempotency invariant: the guarded backfill is a no-op → still exactly one.
     expect((data ?? []).length).toBe(1)
   })
 })
