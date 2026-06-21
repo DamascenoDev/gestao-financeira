@@ -5,10 +5,10 @@ milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 25
 current_phase_name: fix-de-scroll-na-cria-o-de-palavra-chave
 status: executing
-stopped_at: Completed 25-01-PLAN.md
-last_updated: "2026-06-21T17:36:20.774Z"
+stopped_at: Paused at 25-02-PLAN.md Task 3 (checkpoint:human-verify UAT)
+last_updated: "2026-06-21T17:46:36.309Z"
 last_activity: 2026-06-21
-last_activity_desc: Phase 25 execution started
+last_activity_desc: 25-02 Tasks 1-2 done (RED+GREEN); paused at Task 3 UAT checkpoint
 progress:
   total_phases: 4
   completed_phases: 0
@@ -32,8 +32,8 @@ progress:
 
 Phase: 25 (fix-de-scroll-na-cria-o-de-palavra-chave) — EXECUTING
 Plan: 2 of 2
-Status: Ready to execute
-Last activity: 2026-06-21 — Phase 25 execution started
+Status: PAUSED at 25-02 Task 3 — checkpoint:human-verify (UAT). Tasks 1 (RED, `aa37e8f`) + 2 (GREEN, `e8e9d67`) committed. Awaiting human browser UAT (scroll preserved + live re-classify + manual intact + /categorias reflects keyword).
+Last activity: 2026-06-21 — 25-02 Tasks 1-2 done; paused at Task 3 UAT checkpoint
 
 ## Deferred Items
 
@@ -193,7 +193,7 @@ Last activity: 2026-06-21 — Phase 25 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T17:36:20.764Z
+**Last session:** 2026-06-21T17:45:27.079Z
 **Stopped at:** Completed 25-01-PLAN.md
 **Resume file:** .planning/phases/25-fix-de-scroll-na-cria-o-de-palavra-chave/25-CONTEXT.md
 
@@ -290,3 +290,5 @@ Last activity: 2026-06-21 — Phase 25 execution started
 - [Phase 24]: 24-01 (IMP-07): 0038 widens statements.status CHECK to 5-value superset incl 'imported' (canonical name statements_status_check, text+CHECK no enum, non-destructive, no backfill); replay-validated LOCAL via `supabase migration up --local` (UPDATE→'imported' returns UPDATE 1, was 23514); database.types.ts diff empty; RLS/grants untouched (T-24-01). PROD push of 0037+0038 deferred (human-action).
 - [Phase 24]: 24-01 (PDF-07/SC2): garbage-text degradation test strengthened with .not.toThrow() + full-shape { rows:[], dropped:any, capped:false }. PDF-06 worker include asserted source-only in next.config.ts (no rebuild); SC1 live PROD upload deferred to human-verify UAT.
 - [Phase 25]: addKeywordInline (no revalidate) added via shared private insertKeyword; addKeyword still revalidates /categorias on success (SC3)
+- [Phase 25]: 25-02: reclassifyRowsWithKeyword is a pure exported fn (compileRule/matchKeyword); inline caller swapped to addKeywordInline (no revalidate) — UX-01 scroll fix at the root
+- [Phase 25]: 25-02: live re-classify fires on BOTH ok and duplicate (A2/Open Question 1) so the grid always realigns; never on error; origin==='manual' never overridden (SC5)
