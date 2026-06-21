@@ -119,8 +119,12 @@ describe('parseSantanderText — resilience', () => {
     expect(parseSantanderText('', VENC)).toEqual({ rows: [], dropped: 0, capped: false })
   })
 
-  it('does not throw on garbage text and yields no rows', () => {
-    const { rows } = parseSantanderText('total garbage\nno tx lines here\n', VENC)
-    expect(rows).toHaveLength(0)
+  it('does not throw on garbage text and yields an empty honest-counts result (SC2 generic degradation)', () => {
+    expect(() => parseSantanderText('total garbage\nno tx lines here\n', VENC)).not.toThrow()
+    expect(parseSantanderText('total garbage\nno tx lines here\n', VENC)).toEqual({
+      rows: [],
+      dropped: expect.any(Number),
+      capped: false,
+    })
   })
 })
