@@ -347,7 +347,7 @@ Plans:
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 5/5 | Complete    | 2026-06-22 |
-| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 5/5 | Complete   | 2026-06-22 |
+| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 5/5 | Complete    | 2026-06-22 |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
