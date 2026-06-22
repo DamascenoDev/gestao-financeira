@@ -48,11 +48,31 @@ function carroPath(carroId: string): string {
 
 /**
  * Map a validated AbastecimentoInput to the abastecimentos insert/update shape.
- * The cost source is EXCLUSIVE (the schema guarantees exactly one is present):
- * from-fatura → transaction_id set, amount_cents null; manual → amount_cents set
- * (centavos), transaction_id null. preco_litro is never written.
+ * The cost source materializes one of THREE EXCLUSIVE states (the schema + the
+ * 0039 `abastecimentos_cost_xor` CHECK guarantee exactly one of these holds):
+ *   1. À-VISTA por fatura: transaction_id set, amount_cents null, valor_total_cents
+ *      null, parcelas_total null.
+ *   2. À-VISTA manual:     amount_cents set (centavos), transaction_id null,
+ *      valor_total_cents null, parcelas_total null.
+ *   3. PARCELADO:          valor_total_cents set (centavos, D-09) + parcelas_total
+ *      (>= 2), and BOTH transaction_id AND amount_cents NULL — the cost is counted
+ *      ONCE via valor_total_cents (no double-count); the parcela tx links live in
+ *      the `abastecimento_parcelas` junction (Phase 28), never on this row.
+ *
+ * Parcelado is detected by the SAME rule as the 27-01 schema:
+ * `parcelasTotal !== undefined && parcelasTotal > 1`. À-VISTA convention (27-01):
+ * `parcelas_total` is written as NULL (the 0039 CHECK treats null-or-1 as
+ * não-parcelado). preco_litro is never written.
  */
 function abastecimentoWriteFields(input: AbastecimentoInput, userId: string) {
+  const isParcelado =
+    input.parcelasTotal !== undefined && input.parcelasTotal > 1
+
+  // PARCELADO: cost-of-record is valor_total_cents; both à-vista sources are NULL
+  //   so the spend is never double-counted, and the tx 1:1 pre-check never runs.
+  // À-VISTA: keep the original cost XOR untouched; never carry a parcelado total.
+  // A single object shape (number | null on every cost column) so the Supabase
+  // insert/update overload type-checks identically for both states.
   return {
     user_id: userId,
     carro_id: input.carroId,
@@ -61,8 +81,10 @@ function abastecimentoWriteFields(input: AbastecimentoInput, userId: string) {
     litros: input.litros,
     tanque_cheio: input.tanqueCheio,
     combustivel: input.combustivel ?? null,
-    transaction_id: input.transactionId ?? null,
-    amount_cents: input.amountCents ?? null,
+    parcelas_total: isParcelado ? (input.parcelasTotal ?? null) : null,
+    valor_total_cents: isParcelado ? (input.valorTotalCents ?? null) : null,
+    transaction_id: isParcelado ? null : (input.transactionId ?? null),
+    amount_cents: isParcelado ? null : (input.amountCents ?? null),
   }
 }
 
