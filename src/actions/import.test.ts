@@ -111,6 +111,10 @@ function makeBuilder(from: string) {
     inFilters.push([col, vals])
     return builder
   })
+  builder.is = vi.fn((col: string, val: unknown) => {
+    filters.push([col, val])
+    return builder
+  })
   builder.upsert = vi.fn((payload: unknown) => {
     op = 'upsert'
     upsertPayload = payload
@@ -250,6 +254,17 @@ function makeBuilder(from: string) {
     }
     if (from === 'reserva_ledger') {
       return resolve({ data: null, error: null })
+    }
+    if (from === 'abastecimentos') {
+      // P28 reverse-link match pass: ingestStatement fetches the user's UNLINKED
+      // abastecimentos (.select(...).is('transaction_id', null)). These mock suites do
+      // not exercise value-matching (covered by the dedicated DB-integration suite +
+      // the pure unit suite) — resolve empty → zero candidates → no abastecimentoMatch.
+      return resolve({ data: [], error: null })
+    }
+    if (from === 'abastecimento_parcelas') {
+      // P28: batched junction parcela count (.in('abastecimento_id', [...])). Empty here.
+      return resolve({ data: [], error: null })
     }
     return resolve({ data: null, error: null })
   }
