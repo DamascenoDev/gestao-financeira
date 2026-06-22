@@ -21,7 +21,7 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap. Estende o m
 
 ### Consumo
 
-- [ ] **CAR-12**: O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o km/l é calculado apenas com litros + odômetro (não exige a fatura para existir).
+- [x] **CAR-12**: O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o km/l é calculado apenas com litros + odômetro (não exige a fatura para existir).
 
 ### Categoria Combustível
 
@@ -62,7 +62,7 @@ Preenchido na criação do roadmap.
 | CAR-09 | Phase 28 | Complete |
 | CAR-10 | Phase 28 | Complete |
 | CAR-11 | Phase 28 | Complete |
-| CAR-12 | Phase 28 | Pending |
+| CAR-12 | Phase 28 | Complete |
 | FUEL-01 | Phase 26 | Complete |
 | UX-01 | Phase 25 | Complete |
 | UX-02 | Phase 25 | Complete |

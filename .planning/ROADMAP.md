@@ -189,7 +189,7 @@ Plans:
 - [x] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) + re-classificação ao vivo da grid ao criar a keyword (client-side, sem refresh) — **independente, pequeno, sem dependências** (completed 2026-06-21)
 - [x] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28 (completed 2026-06-21)
 - [x] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total) (completed 2026-06-22)
-- [ ] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados
+- [x] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados (completed 2026-06-22)
 
 ## Phase Details (v1.7)
 
@@ -292,7 +292,7 @@ Plans:
   3. Um abastecimento **parcelado** casa **uma parcela por fatura** ao longo dos meses; cada parcela confirmada é registrada **sem recontar** o custo — sem double-count no consumo (`v_abastecimento_consumo`) nem no gasto total do carro (`v_carro_resumo`).
   4. O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o **km/l é calculado só com litros + odômetro** (não exige a fatura para existir).
 
-**Plans**: 4/5 plans executed
+**Plans**: 5/5 plans complete
 **Wave 1**
 
 - [x] 28-01-PLAN.md — Fundação: módulo puro de value-match (D-01/D-03/D-04) + assertOwnedAbastecimento + ParsedReviewRow.abastecimentoMatch + campos de vínculo no schema (CAR-09, CAR-11)
@@ -308,7 +308,7 @@ Plans:
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
-- [ ] 28-05-PLAN.md — Verificação CAR-12: consumo sem double-count (parcelado UMA vez, à-vista coalesce, km/l só litros+odômetro) (CAR-12)
+- [x] 28-05-PLAN.md — Verificação CAR-12: consumo sem double-count (parcelado UMA vez, à-vista coalesce, km/l só litros+odômetro) (CAR-12)
 
 **UI hint**: yes
 
@@ -347,7 +347,7 @@ Plans:
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 5/5 | Complete    | 2026-06-22 |
-| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 4/5 | In Progress|  |
+| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 5/5 | Complete   | 2026-06-22 |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
