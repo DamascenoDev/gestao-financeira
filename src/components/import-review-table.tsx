@@ -77,6 +77,7 @@ import {
 import { confirmImport } from '@/actions/import'
 import { addKeywordInline } from '@/actions/category-keywords'
 import { CARRO_NONE } from '@/lib/carro'
+import type { AbastecimentoMatch } from '@/lib/carro/abastecimento-match'
 import { compileRule, matchKeyword } from '@/lib/classifier/keywords'
 import { normalizeKeyword } from '@/lib/normalize'
 import { cn } from '@/lib/utils'
@@ -217,6 +218,17 @@ function isConfidentPending(row: ReviewRow): boolean {
 }
 
 /**
+ * CAR-10/D-07: true when a row carries an UNCONFIRMED reverse-link suggestion — the
+ * pending partition that drives the "Vincular todos" button (visibility + count) AND the
+ * per-cell affordance. A confirmed link sets `abastecimentoId` (via applyLinkToRow), so it
+ * leaves this partition; a discard clears `abastecimentoMatch`, so it also leaves. SINGLE
+ * home for the gate so the button count and the batch reducer never drift.
+ */
+function isLinkPending(row: ReviewRow): boolean {
+  return !!row.abastecimentoMatch && row.abastecimentoId === undefined
+}
+
+/**
  * CLSAI-08: order low-confidence AI rows FIRST while preserving the prior relative order
  * for every other row (stable partition — NOT a re-sort of the tail). Returns a NEW array;
  * never mutates the input. The caller applies it ONLY when AI suggestions exist, so the
@@ -277,6 +289,29 @@ export type ReviewRow = {
    * persisted rows + the v1.3 path stay byte-identical (absent ⇒ grid as v1.3).
    */
   suggestion?: { categoryId: string | null; confidence: number; source: 'ia' }
+  /**
+   * CAR-09/CAR-10: o palpite NÃO-vinculante do vínculo reverso por valor, threaded de
+   * `ParsedReviewRow.abastecimentoMatch` (Plano 02). Reusa o tipo canônico de
+   * `@/lib/carro/abastecimento-match` (um único shape: abastecimentoId/kind/parcelaNum?/
+   * carroId/carroApelido). É só uma dica de qual abastecimento esta linha provavelmente é;
+   * NUNCA é aplicado a `carro_id`/`category_id` sem confirmação (sem auto-commit, o palpite
+   * permanece palpite). A coluna Carro (`InlineReviewCarroCell`, D-05) renderiza o
+   * affordance confirmar/descartar enquanto este campo existe e o vínculo ainda não foi
+   * confirmado/descartado. `confirmLinkRow` consome este campo para setar `carro_id` +
+   * "Combustível" + os campos do vínculo abaixo; `discardLinkRow` limpa só este campo
+   * (volta ao estado anterior da célula). Opcional/back-compat (absent ⇒ grid sem vínculo).
+   */
+  abastecimentoMatch?: AbastecimentoMatch
+  /**
+   * CAR-10/D-06: a ESCOLHA do vínculo após o usuário confirmar — nunca o palpite. Setado
+   * por `confirmLinkRow` a partir do `abastecimentoMatch` confirmado e enviado no payload do
+   * `runConfirm` (`abastecimentoId`/`abastecimentoKind`/`parcelaNum`) para o `confirmImport`
+   * (Plano 03) gravar o vínculo após o insert da tx. Ausente até a confirmação; `parcelaNum`
+   * só presente para `kind === 'parcela'`. Estado cliente puro — nada é persistido na grid.
+   */
+  abastecimentoId?: string
+  abastecimentoKind?: 'avista' | 'parcela'
+  parcelaNum?: number
 }
 
 /** "dd/MM" from a yyyy-MM-dd civil date (no tz ambiguity). */
@@ -339,6 +374,45 @@ export function reclassifyRowsWithKeyword(
 }
 
 /**
+ * CAR-10/D-06/FUEL-01: aplica um vínculo de abastecimento CONFIRMADO a uma linha, em
+ * estado cliente puro (sem auto-commit). Espelha `tagCarroRow` (seta `carro_id`) + o
+ * apply-on-confirm da categoria. Dado uma linha com `abastecimentoMatch` pendente:
+ *   - seta `carro_id = abastecimentoMatch.carroId` (etiqueta o carro, igual a `tagCarroRow`);
+ *   - guarda a ESCOLHA do vínculo (`abastecimentoId`/`abastecimentoKind`/`parcelaNum`) para o
+ *     payload do `runConfirm` → `confirmImport` (Plano 03) gravar;
+ *   - aplica a categoria "Combustível" (`origin: 'manual'`, `reserva_id: null`) SOBRESCREVENDO
+ *     a sugestão da IA/memória/palavra-chave (D-06: o vínculo é ação explícita forte). Se o id
+ *     de "Combustível" não veio (conta antiga sem backfill), `combustivelCategoryId` é null →
+ *     vincula o carro mas deixa a categoria como está (degrada limpo, FUEL-01).
+ * O `abastecimentoMatch` é MANTIDO na linha após confirmar (a célula usa sua presença +
+ * `abastecimentoId` para renderizar o estado "vinculado"); `discardLinkRow` é quem o limpa.
+ * Pura: retorna a MESMA referência quando não há match pendente (React pula o re-render).
+ */
+export function applyLinkToRow(
+  row: ReviewRow,
+  combustivelCategoryId: string | null,
+): ReviewRow {
+  const match = row.abastecimentoMatch
+  if (!match) return row // nada a vincular
+  return {
+    ...row,
+    carro_id: match.carroId,
+    abastecimentoId: match.abastecimentoId,
+    abastecimentoKind: match.kind,
+    parcelaNum: match.parcelaNum,
+    // D-06/FUEL-01: pré-preenche "Combustível" sobrescrevendo IA/memória/keyword; degrada
+    // limpo (mantém a categoria atual) quando o id da categoria não está disponível.
+    ...(combustivelCategoryId !== null
+      ? {
+          category_id: combustivelCategoryId,
+          reserva_id: null,
+          origin: 'manual' as const,
+        }
+      : {}),
+  }
+}
+
+/**
  * ImportReviewTable (UI-SPEC §3) — the core pre-persist review grid. A SIBLING of
  * ExtratoTable: @tanstack/react-table, getRowId by the parsed row's stable key, the
  * SAME checkbox/select model, the SAME inline CategoryBadge Select cell, and the SAME
@@ -360,6 +434,7 @@ export function ImportReviewTable({
   categories,
   reservas = [],
   carros = [],
+  combustivelCategoryId = null,
 }: {
   statementId: string
   initialRows: ReviewRow[]
@@ -373,6 +448,13 @@ export function ImportReviewTable({
   categories: ReviewCategory[]
   reservas?: ReservaOption[]
   carros?: CarroOption[]
+  /**
+   * FUEL-01: o id da categoria "Combustível" do usuário, resolvido no RSC (page.tsx) e
+   * consumido pelo apply-on-confirm do vínculo (`confirmLinkRow`/"Vincular todos"). null
+   * quando a conta não tem a categoria (sem backfill) → a grid vincula o carro mas não
+   * pré-preenche a categoria (degrada limpo).
+   */
+  combustivelCategoryId?: string | null
 }) {
   const router = useRouter()
   const [rows, setRows] = React.useState<ReviewRow[]>(initialRows)
@@ -500,6 +582,57 @@ export function ImportReviewTable({
       prev.map((r) => (r.id === id ? { ...r, carro_id: carroId } : r)),
     )
   }, [])
+
+  /**
+   * CAR-10/D-06/FUEL-01: confirma o vínculo de abastecimento sugerido de UMA linha, em
+   * estado cliente puro (sem auto-commit — nenhum confirmImport/supabase/revalidatePath
+   * aqui, só setRows). Aplica `applyLinkToRow`: seta `carro_id` + a escolha do vínculo +
+   * "Combustível" (sobrescreve IA/memória/keyword). O `combustivelCategoryId` (prop do RSC)
+   * fecha sobre o callback; null degrada limpo (carro vinculado, categoria intacta).
+   */
+  const confirmLinkRow = React.useCallback(
+    (id: string) => {
+      setRows((prev) =>
+        prev.map((r) =>
+          r.id === id ? applyLinkToRow(r, combustivelCategoryId) : r,
+        ),
+      )
+    },
+    [combustivelCategoryId],
+  )
+
+  /**
+   * CAR-10: descarta a sugestão de vínculo de UMA linha — limpa SÓ o `abastecimentoMatch`
+   * (a célula Carro volta ao Select normal / estado anterior). Não toca carro_id/categoria,
+   * que o usuário ainda pode setar manualmente. Estado cliente puro.
+   */
+  const discardLinkRow = React.useCallback((id: string) => {
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === id ? { ...r, abastecimentoMatch: undefined } : r,
+      ),
+    )
+  }, [])
+
+  /**
+   * CAR-10/D-07: "Vincular todos" — aplica `applyLinkToRow` a TODAS as linhas com uma
+   * sugestão de vínculo pendente, de uma vez (molde de `applyAllSuggestions`: reducer PURO +
+   * toast-once). O match é 1:1 exato por valor (alta precisão, Plano 01), então o lote é
+   * seguro (D-07). Uma linha sem `abastecimentoMatch` é retornada intacta por `applyLinkToRow`.
+   * O count é derivado FORA do reducer + o toast dispara UMA vez após o update (um state
+   * updater pode ser invocado >1× em StrictMode; o toast dentro emitiria duplicado).
+   */
+  const confirmAllLinks = React.useCallback(() => {
+    setRows((prev) =>
+      prev.map((r) => applyLinkToRow(r, combustivelCategoryId)),
+    )
+    const applied = rows.filter(isLinkPending).length
+    if (applied > 0) {
+      toast(
+        `${applied} ${applied === 1 ? 'vínculo aplicado' : 'vínculos aplicados'}`,
+      )
+    }
+  }, [rows, combustivelCategoryId])
 
   /**
    * Delete a spurious review row from CLIENT state (D-02). Mirrors tagCarroRow: a
@@ -657,6 +790,8 @@ export function ImportReviewTable({
             row={row.original}
             carros={carros}
             onTag={tagCarroRow}
+            onConfirmLink={confirmLinkRow}
+            onDiscardLink={discardLinkRow}
           />
         ),
       },
@@ -702,6 +837,8 @@ export function ImportReviewTable({
       classifyRow,
       carros,
       tagCarroRow,
+      confirmLinkRow,
+      discardLinkRow,
       deleteRow,
       createdKeywordRows,
       markKeywordCreated,
@@ -747,6 +884,13 @@ export function ImportReviewTable({
       categoryId: r.category_id,
       reservaId: r.reserva_id ?? undefined,
       carroId: r.carro_id ?? undefined,
+      // CAR-10/D-08: a ESCOLHA do vínculo, só presente quando o usuário confirmou (o
+      // applyLinkToRow setou abastecimentoId). O confirmImport (Plano 03) re-deriva posse do
+      // abastecimentoId (IDOR, WR-01) e grava o vínculo após o insert da tx. parcelaNum só
+      // acompanha um parcelado.
+      abastecimentoId: r.abastecimentoId ?? undefined,
+      abastecimentoKind: r.abastecimentoKind ?? undefined,
+      parcelaNum: r.parcelaNum ?? undefined,
     }))
     confirmImport(statementId, payload)
       .then((result) => {
@@ -788,6 +932,10 @@ export function ImportReviewTable({
   // (visibility + label). Low-confidence rows are excluded: they stay pending for
   // manual review, so the button hides once no confident suggestions remain.
   const confidentSuggestionCount = rows.filter(isConfidentPending).length
+  // CAR-10/D-07: rows carrying an UNCONFIRMED reverse-link suggestion — drives the
+  // "Vincular todos" button (visibility + label). Confirming/discarding leaves this
+  // partition, so the button hides once no pending links remain.
+  const pendingLinkCount = rows.filter(isLinkPending).length
 
   return (
     <div className="flex flex-col gap-4">
@@ -808,6 +956,13 @@ export function ImportReviewTable({
               {confidentSuggestionCount === 1
                 ? 'sugestão confiável'
                 : 'sugestões confiáveis'}
+            </Button>
+          ) : null}
+          {pendingLinkCount > 0 ? (
+            <Button type="button" variant="outline" onClick={confirmAllLinks}>
+              <Sparkles className="size-4" aria-hidden />
+              Vincular {pendingLinkCount}{' '}
+              {pendingLinkCount === 1 ? 'abastecimento' : 'abastecimentos'}
             </Button>
           ) : null}
           <Button type="button" onClick={onConfirmClick} disabled={isConfirming}>
@@ -932,6 +1087,8 @@ export function ImportReviewTable({
                     row={r}
                     carros={carros}
                     onTag={tagCarroRow}
+                    onConfirmLink={confirmLinkRow}
+                    onDiscardLink={discardLinkRow}
                   />
                 </div>
               </div>
@@ -1327,11 +1484,51 @@ function InlineReviewCarroCell({
   row,
   carros,
   onTag,
+  onConfirmLink,
+  onDiscardLink,
 }: {
   row: ReviewRow
   carros: CarroOption[]
   onTag: (id: string, carroId: string | null) => void
+  /** CAR-10/D-06: confirm the reverse-link suggestion (sets carro_id + "Combustível" + the
+   *  link choice in client state). Optional/back-compat for any caller without the link wiring. */
+  onConfirmLink?: (id: string) => void
+  /** CAR-10: discard the reverse-link suggestion (clears only abastecimentoMatch). */
+  onDiscardLink?: (id: string) => void
 }) {
+  // CAR-10/D-05: when an UNCONFIRMED reverse-link suggestion exists, the Carro cell becomes
+  // the anchor for the link affordance (no 3rd column) — a SuggestionSlot-style chip
+  // "Vincular a {apelido}" (sparkles, primary-tinted, min-h to avoid reflow) + a discard
+  // action. Confirm sets carro_id + the link + "Combustível" (applyLinkToRow); discard
+  // clears the suggestion → the cell falls back to the normal Select below. After confirm,
+  // abastecimentoId is set so this branch no longer fires and the Select shows the tagged carro.
+  const pendingLink =
+    row.abastecimentoMatch && row.abastecimentoId === undefined
+      ? row.abastecimentoMatch
+      : null
+  if (pendingLink) {
+    return (
+      <span className="inline-flex min-h-5 items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onConfirmLink?.(row.id)}
+          className="inline-flex min-h-5 w-fit items-center gap-1 rounded-4xl bg-primary/10 px-2 py-0.5 text-xs font-medium text-primary hover:bg-primary/20"
+        >
+          <Sparkles className="size-3 shrink-0" aria-hidden />
+          Vincular a {pendingLink.carroApelido}
+        </button>
+        <button
+          type="button"
+          onClick={() => onDiscardLink?.(row.id)}
+          aria-label="Descartar vínculo sugerido"
+          className="text-muted-foreground hover:text-destructive"
+        >
+          <Trash2 className="size-3.5" aria-hidden />
+        </button>
+      </span>
+    )
+  }
+
   function onChange(next: string) {
     onTag(row.id, next === NENHUM_CARRO ? null : next)
   }
