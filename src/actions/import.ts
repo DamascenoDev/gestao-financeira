@@ -4,6 +4,10 @@ import { revalidatePath } from 'next/cache'
 import { z } from 'zod'
 
 import { classifyDescriptors } from '@/lib/ai/classify'
+import {
+  assignAbastecimentoMatches,
+  type AbastecimentoMatchCandidate,
+} from '@/lib/carro/abastecimento-match'
 import { getDecryptedAiSettings } from '@/lib/ai/settings.server'
 import { compileRule, matchKeyword, type KeywordRule } from '@/lib/classifier/keywords'
 import { lookupMemory } from '@/lib/classifier/memory'
@@ -475,6 +479,56 @@ export async function ingestStatement(
     }
   }
 
+  // ABASTECIMENTO MATCH — pré-fetch batched (WR-02, D-02). Espelha o pré-fetch
+  // batched acima (categoryList/keywordRules/dupSet): DUAS queries fora do loop de
+  // linhas, jamais per-row. RLS escopa ao caller — sem app-layer user_id.
+  //
+  // (1) Os abastecimentos NÃO-vinculados do usuário: à-vista não-vinculado tem
+  //     `transaction_id is null`; parcelado (parcelas_total > 1) é SEMPRE
+  //     `transaction_id null` por CHECK (0039) — os vínculos vivem na junção. SEM
+  //     filtro de data (D-02): a data nunca trava elegibilidade, só desempata no módulo.
+  const { data: abastRows } = await supabase
+    .from('abastecimentos')
+    .select(
+      'id, carro_id, occurred_on, created_at, parcelas_total, valor_total_cents, amount_cents, transaction_id, carros(apelido)',
+    )
+    .is('transaction_id', null)
+
+  // (2) Count batched das parcelas já gravadas na junção (WR-02): UMA `.in(...)` sobre
+  //     os ids dos candidatos → Map<abastecimentoId, nº de parcelas já gravadas> (O(1)
+  //     no montar dos candidatos). Nunca per-row.
+  const abastIds = (abastRows ?? []).map((a) => a.id)
+  const jaParceladasPorId = new Map<string, number>()
+  if (abastIds.length > 0) {
+    const { data: parcelaRows } = await supabase
+      .from('abastecimento_parcelas')
+      .select('abastecimento_id')
+      .in('abastecimento_id', abastIds)
+    for (const p of parcelaRows ?? []) {
+      jaParceladasPorId.set(
+        p.abastecimento_id,
+        (jaParceladasPorId.get(p.abastecimento_id) ?? 0) + 1,
+      )
+    }
+  }
+
+  // (3) Monta os AbastecimentoMatchCandidate (shape do Plano 01). A regra de capacidade
+  //     (à-vista consumido / parcelado completo) é UMA fonte: o módulo puro D-04. Aqui só
+  //     filtramos o apelido ausente (carro órfão improvável sob RLS) — o resto é o pool.
+  const abastCandidates: AbastecimentoMatchCandidate[] = (abastRows ?? [])
+    .filter((a) => a.carros !== null)
+    .map((a) => ({
+      id: a.id,
+      carroId: a.carro_id,
+      carroApelido: a.carros?.apelido ?? '',
+      occurredOn: a.occurred_on,
+      createdAt: a.created_at,
+      parcelasTotal: a.parcelas_total,
+      valorTotalCents: a.valor_total_cents,
+      amountCents: a.amount_cents,
+      jaParceladas: jaParceladasPorId.get(a.id) ?? 0,
+    }))
+
   // PASS 1 — memory-first (CLS-01 / CLSAI-02): the unchanged per-row `lookupMemory`
   // front door. A HIT auto-classifies with ZERO external calls; a MISS leaves the row
   // unclassified AND its descriptor_norm is collected into the unique miss set for the
@@ -554,6 +608,28 @@ export async function ingestStatement(
       if (s && s.categoryId !== null) {
         row.suggestion = { categoryId: s.categoryId, confidence: s.confidence, source: 'ia' }
       }
+    }
+  }
+
+  // ABASTECIMENTO MATCH — attach (sem auto-commit), espelhando o PASS 2 da IA acima.
+  // Roda o assign greedy 1:1 do módulo puro (D-04 + D-03 + D-01) sobre as linhas
+  // parseadas e anexa `row.abastecimentoMatch` NÃO-vinculante. NUNCA escreve
+  // category_id/carro_id — o match é só um palpite que viaja em parsed_rows (servidor é
+  // a fonte da verdade, igual à suggestion). Sem candidatos → pula limpo (Map vazio).
+  if (abastCandidates.length > 0) {
+    const abastMatches = assignAbastecimentoMatches(
+      // A linha é identificada pelo dedupe_key (não há id estável até o confirm); o
+      // valor à-vista compara com amountCents e a parcela usa o conjunto {floor,ceil}.
+      rows.map((r) => ({
+        id: r.dedupe_key,
+        amountCents: r.amount_cents,
+        occurredOn: r.occurred_on,
+      })),
+      abastCandidates,
+    )
+    for (const row of rows) {
+      const m = abastMatches.get(row.dedupe_key)
+      if (m) row.abastecimentoMatch = m
     }
   }
 
