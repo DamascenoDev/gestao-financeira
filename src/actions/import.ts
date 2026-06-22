@@ -17,6 +17,7 @@ import { contentHash, dedupeKey } from '@/lib/dedupe'
 import { parseBRLToCents } from '@/lib/money'
 import { CATEGORY_KINDS, type CategoryKind } from '@/lib/schemas/category'
 import {
+  assertOwnedAbastecimento,
   assertOwnedCarro,
   assertOwnedCategories,
   assertOwnedReserva,
@@ -125,6 +126,7 @@ const IMPORTAR_PATH = '/importar'
 const EXTRATO_PATH = '/extrato'
 const RESERVAS_PATH = '/reservas'
 const DASHBOARD_PATH = '/dashboard'
+const CARROS_PATH = '/carros'
 
 /** OFX, CSV and PDF are accepted (the bucket path ext + the parser dispatch key). */
 const extSchema = z.enum(['ofx', 'csv', 'pdf'])
@@ -821,6 +823,32 @@ export async function confirmImport(
     }
   }
 
+  // IDOR re-derive #5 (T-28-IDOR, D-08 — HIGH/ASVS L1) — every chosen abastecimentoId
+  // must be owned BEFORE any reverse-link write. The abastecimentoId/kind/parcelaNum are
+  // a client CHOICE (WR-01): the client passes only WHICH abastecimento the user
+  // confirmed — never the row content. Postgres FKs (abastecimentos.transaction_id /
+  // abastecimento_parcelas.abastecimento_id) are NOT RLS-aware, so a forged/foreign
+  // abastecimentoId satisfies the FK globally and would let the caller link THEIR
+  // lançamento (+ the resulting carro_id) onto a foreign abastecimento. The tri-state
+  // assertOwnedAbastecimento distinguishes a transient backend hiccup ('error' → generic
+  // retry) from a genuine not-owned/forged id ('not-owned' → 'Abastecimento inválido.').
+  // Either rejects the WHOLE payload before any link write (verbatim mirror of the
+  // carro_id #4 block above).
+  const abastecimentoIds = [
+    ...new Set(
+      parsedRows
+        .map((r) => r.abastecimentoId)
+        .filter((id): id is string => typeof id === 'string'),
+    ),
+  ]
+  for (const abastecimentoId of abastecimentoIds) {
+    const owned = await assertOwnedAbastecimento(supabase, abastecimentoId)
+    if (owned === 'not-owned') return { error: 'Abastecimento inválido.' }
+    if (owned === 'error') {
+      return { error: 'Não foi possível confirmar a importação. Tente novamente.' }
+    }
+  }
+
   // WR-01 (learning poisoning / dedupe forgery): NEVER trust client-supplied row
   // CONTENT. Re-read the authoritative parsed rows that ingestStatement persisted on
   // the statement and key them by dedupe_key. The client payload contributes ONLY
@@ -847,6 +875,11 @@ export async function confirmImport(
     reservaId: string | undefined
     // carroId is a client CHOICE (like categoryId/reservaId), NOT from base/parse.
     carroId: string | null
+    // The reverse-link CHOICE (CAR-09/CAR-11), also a client CHOICE — ownership of
+    // abastecimentoId was re-derived above (#5); kind/parcelaNum are the user's pick
+    // (parcelaNum is recomputed server-side in the link-write, never trusted).
+    abastecimentoId: string | undefined
+    abastecimentoKind: 'avista' | 'parcela' | undefined
   }
   const authoritativeRows: AuthoritativeRow[] = []
   for (const r of parsedRows) {
@@ -857,6 +890,8 @@ export async function confirmImport(
       categoryId: r.categoryId ?? null,
       reservaId: r.reservaId,
       carroId: r.carroId ?? null,
+      abastecimentoId: r.abastecimentoId,
+      abastecimentoKind: r.abastecimentoKind,
     })
   }
 
@@ -1028,6 +1063,130 @@ export async function confirmImport(
     }
   }
 
+  // ── Reverse abastecimento link (CAR-10 / CAR-11) ──────────────────────────────────
+  // Grava o vínculo no confirm (nunca antes — sem auto-commit). Para cada linha com
+  // vínculo confirmado no payload (abastecimentoId já IDOR-checado em #5):
+  //   * à-vista  → update abastecimentos.transaction_id + sync carro_id na tx (espelha
+  //     abastecimentos.ts L158-166 — SÓ carro_id, nunca category/amount);
+  //   * parcelado → insert abastecimento_parcelas {user_id, abastecimento_id,
+  //     transaction_id, parcela_num} com parcela_num RECOMPUTADO server-side (já-na-junção
+  //     + atribuídas-nesta-confirmação + 1 — nunca confiando no parcelaNum do cliente).
+  // Os unique indexes da P26 (abastecimentos_transaction_uniq / _transaction_uniq /
+  // _num_uniq) são o backstop de duplo-link: um 23505 → already-linked (swallow), nunca
+  // um 500. Uma falha NÃO-23505 APÓS o insert da tx é surface-but-keep (espelha LEARN
+  // L985-989): a tx já landou, não desfaz o import.
+  const linkRows = authoritativeRows.filter(
+    (r): r is AuthoritativeRow & { abastecimentoId: string } =>
+      typeof r.abastecimentoId === 'string',
+  )
+  if (linkRows.length > 0) {
+    // D-09 / WR-02: a tx de uma linha dedupe-skipped (fora do insertedByKey) AINDA recebe
+    // o vínculo — o txId existente é resolvido por UM lookup batched .in('dedupe_key', …)
+    // (nunca per-row). Junta as duas fontes num Map dedupe_key → txId.
+    const txByKey = new Map<string, string>(insertedByKey)
+    const missingKeys = [
+      ...new Set(
+        linkRows
+          .map((r) => r.base.dedupe_key)
+          .filter((k) => !txByKey.has(k)),
+      ),
+    ]
+    if (missingKeys.length > 0) {
+      const { data: existingTxs, error: lookupErr } = await supabase
+        .from('transactions')
+        .select('id, dedupe_key')
+        .in('dedupe_key', missingKeys)
+      if (lookupErr) {
+        return {
+          error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+        }
+      }
+      for (const t of existingTxs ?? []) {
+        if (t.dedupe_key) txByKey.set(t.dedupe_key, t.id)
+      }
+    }
+
+    // CAR-11: parcela_num = já-na-junção + já-atribuídas-NESTA-confirmação + 1, recomputado
+    // server-side (não confia no cliente). Pre-fetch batched do count na junção por
+    // abastecimento (WR-02 — uma .in(...), nunca per-row), + um contador local por
+    // abastecimentoId que cresce a cada parcela atribuída neste confirm.
+    const parceladoIds = [
+      ...new Set(linkRows.filter((r) => r.abastecimentoKind === 'parcela').map((r) => r.abastecimentoId)),
+    ]
+    const jaNaJuncao = new Map<string, number>()
+    if (parceladoIds.length > 0) {
+      const { data: existingParcelas, error: countErr } = await supabase
+        .from('abastecimento_parcelas')
+        .select('abastecimento_id')
+        .in('abastecimento_id', parceladoIds)
+      if (countErr) {
+        return {
+          error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+        }
+      }
+      for (const p of existingParcelas ?? []) {
+        if (p.abastecimento_id) {
+          jaNaJuncao.set(p.abastecimento_id, (jaNaJuncao.get(p.abastecimento_id) ?? 0) + 1)
+        }
+      }
+    }
+    const atribuidasNesteConfirm = new Map<string, number>()
+
+    for (const r of linkRows) {
+      const txnId = txByKey.get(r.base.dedupe_key)
+      if (!txnId) continue // nenhuma tx (nem nova nem existente) → nada a vincular
+
+      if (r.abastecimentoKind === 'parcela') {
+        const ja = jaNaJuncao.get(r.abastecimentoId) ?? 0
+        const nesteConfirm = atribuidasNesteConfirm.get(r.abastecimentoId) ?? 0
+        const parcelaNum = ja + nesteConfirm + 1
+        const { error: insErr } = await supabase.from('abastecimento_parcelas').insert({
+          user_id: userId,
+          abastecimento_id: r.abastecimentoId,
+          transaction_id: txnId,
+          parcela_num: parcelaNum,
+        })
+        if (insErr) {
+          // 23505 (transaction_uniq ou num_uniq) → already-linked: swallow, não 500.
+          if ((insErr as { code?: string }).code === '23505') continue
+          // Falha não-23505 APÓS o insert da tx → surface-but-keep (a tx já landou).
+          return {
+            error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+          }
+        }
+        atribuidasNesteConfirm.set(r.abastecimentoId, nesteConfirm + 1)
+      } else {
+        // À-vista (default quando kind ausente): update abastecimentos.transaction_id.
+        const { error: linkErr } = await supabase
+          .from('abastecimentos')
+          .update({ transaction_id: txnId })
+          .eq('id', r.abastecimentoId)
+        if (linkErr) {
+          // 23505 (abastecimentos_transaction_uniq) → already-linked: swallow, não 500.
+          if ((linkErr as { code?: string }).code === '23505') continue
+          return {
+            error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+          }
+        }
+        // Sync carro_id na tx vinculada (espelha abastecimentos.ts L158-166 — SÓ carro_id,
+        // nunca category/amount). O carro_id vem do match persistido (a escolha já é
+        // IDOR-segura: o abastecimento é do caller, logo seu carro também é).
+        const carroId = r.carroId ?? r.base.abastecimentoMatch?.carroId ?? null
+        if (carroId) {
+          const { error: tagErr } = await supabase
+            .from('transactions')
+            .update({ carro_id: carroId })
+            .eq('id', txnId)
+          if (tagErr) {
+            return {
+              error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+            }
+          }
+        }
+      }
+    }
+  }
+
   // LEARN (CLS-03/04, T-04-08): UPSERT merchant_patterns ONLY for CLASSIFIED rows,
   // ONLY here on human confirm (no poisoning). descriptor_norm → category_id [,
   // reserva_id]; ON CONFLICT (user_id, descriptor_norm) DO UPDATE re-points the
@@ -1082,5 +1241,7 @@ export async function confirmImport(
   revalidatePath(EXTRATO_PATH)
   revalidatePath(RESERVAS_PATH)
   revalidatePath(DASHBOARD_PATH)
+  // O consumo vinculado muda a visão de carros (espelha abastecimentos.ts CARROS_PATH).
+  revalidatePath(CARROS_PATH)
   return { imported, duplicated }
 }
