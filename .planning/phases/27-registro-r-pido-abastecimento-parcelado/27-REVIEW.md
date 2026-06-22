@@ -1,6 +1,6 @@
 ---
 phase: 27-registro-r-pido-abastecimento-parcelado
-reviewed: 2026-06-22T00:00:00Z
+reviewed: 2026-06-22T11:08:15Z
 depth: standard
 files_reviewed: 7
 files_reviewed_list:
@@ -12,224 +12,198 @@ files_reviewed_list:
   - src/components/carro-card.tsx
   - src/app/(app)/carros/page.tsx
 findings:
-  critical: 2
+  critical: 1
   warning: 4
   info: 3
-  total: 9
+  total: 8
 status: issues_found
 ---
 
 # Phase 27: Code Review Report
 
-**Reviewed:** 2026-06-22
+**Reviewed:** 2026-06-22T11:08:15Z
 **Depth:** standard
 **Files Reviewed:** 7
 **Status:** issues_found
 
 ## Summary
 
-Phase 27 relaxes the abastecimento cost model from a 2-state XOR (fatura | manual) to a
-3-state XOR (fatura | manual | parcelado), adds the parcelado write mapping in the server
-action, and exposes a "Parcelado" tab plus a manual-only registro-rápido on the `/carros`
-list card.
+Reviewed the abastecimento parcelado slice: the shared Zod schema (now 3-state),
+its tests, the server actions (create/update/delete), the action tests, the
+create/edit dialog, the `/carros` list card hosting the manual-only form, and the
+`/carros` RSC page.
 
-The **schema** (`abastecimento.ts`) is the strongest piece: the 3-state superRefine is
-correct, mirrors the 0039 CHECK truth table faithfully, and is well-tested. The **write
-mapping** in `abastecimentoWriteFields` correctly nulls all à-vista cost columns on the
-parcelado path (no double-count) and the dual-IDOR (`assertOwnedCarro` /
-`assertOwnedTransaction`) re-derives are intact. The XOR-create and parcelado-create paths
-are sound.
+The security substrate is solid: dual-IDOR re-derive (`assertOwnedCarro` tri-state +
+`assertOwnedTransaction` + the 1:1 link pre-check) runs before every FK write, Zod
+`safeParse` is at the boundary, DB errors are mapped to friendly strings without
+leaking details, and the 3-state cost-source invariant is enforced both in the schema
+and in `abastecimentoWriteFields`. No injection, secret, or auth-bypass vectors found.
 
-The serious problems are in the **edit / display contract for parcelado rows**, which the
-phase shipped half-built. `AbastecimentoForm`'s edit shape (`AbastecimentoEdit`) has NO
-parcelado fields, and the changed `updateAbastecimento` happily nulls `valor_total_cents` /
-`parcelas_total` — so editing an existing parcelado fuel-up silently destroys the
-parcelamento and rewrites it as à-vista (data loss). Separately, the parcelado cost never
-reaches the card's "Gasto total" KPI, and the consuming detail-page query (out of the
-changed set but driven by the new columns) shows a parcelado cost as a misleading `R$ 0,00`.
+The dominant defect is a **parcelado edit round-trip gap**: the `AbastecimentoForm`
+edit shape (`AbastecimentoEdit`) and its `initialSource` logic have no `'parcelado'`
+state, so editing an existing parcelado fuel-up silently re-types it as an à-vista
+manual cost and destroys the parcelamento on save. The cross-file caller
+(`abastecimento-history.tsx#toEdit`) is the trigger, but the root cause — the form
+cannot represent a parcelado edit — lives in the reviewed `abastecimento-form.tsx`.
+Several secondary correctness/consistency warnings follow.
+
+No structural-findings block was provided, so this report is narrative-only.
 
 ## Critical Issues
 
-### CR-01: Editing a parcelado abastecimento silently destroys it (data loss)
+### CR-01: Editing a parcelado abastecimento silently converts it to à-vista manual (data loss)
 
-**File:** `src/actions/abastecimentos.ts:171-217`, `src/components/abastecimento-form.tsx:83-94,158-159,214-241`
+**File:** `src/components/abastecimento-form.tsx:83-94, 158-159, 214-241`
+**Issue:**
+The edit model cannot represent a parcelado fuel-up. `AbastecimentoEdit` (L83-94)
+has only `transactionId` and `amount` cost fields — no `valorTotal`/`parcelas`.
+`initialSource` (L158-159) can only resolve to `'fatura'` or `'manual'`, never
+`'parcelado'`, and `handleOpenChange` (L188-189) hard-resets `valorTotal`/`parcelas`
+to `''` on every open. The caller in `src/components/abastecimento-history.tsx#toEdit`
+(L91-94) seeds a parcelado row's cost into the **manual** `amount` field, because for
+a parcelado row `transaction_id` is null and `custo_cents` equals `valor_total_cents`
+(per the `v_abastecimento_consumo` CASE in migration 0039).
 
-**Issue:** `updateAbastecimento` accepts the full `AbastecimentoInput` and calls
-`abastecimentoWriteFields`, which on the à-vista path **unconditionally writes
-`valor_total_cents: null` and `parcelas_total: null`** (lines 84-87). But the form's edit
-contract has no way to re-submit a parcelado state:
+Result: opening Editar on a parcelado abastecimento shows the **Manual** tab with the
+full `valor_total_cents` as a one-shot manual value. Saving runs
+`abastecimentoWriteFields` with `source === 'manual'`, which writes
+`amount_cents = valor_total_cents`, `parcelas_total = null`, `valor_total_cents = null`
+(`src/actions/abastecimentos.ts:84-87`). The parcelamento (installment count + the
+"counted once" cost-of-record semantics) is destroyed with no warning, and the carro's
+spend/consumo silently reinterprets the row. This is data loss on a routine edit.
 
-- `AbastecimentoEdit` (form lines 83-94) exposes only `transactionId` and `amount` — there
-  are **no** `valorTotal` / `parcelas` seed fields.
-- `initialSource` (line 158-159) can only ever resolve to `'fatura'` or `'manual'` — never
-  `'parcelado'`. The parcelado create-mode fields (`valorTotal`, `parcelas`) always reset to
-  `''` on open (lines 188-189), even in edit mode.
-
-So when a user opens an existing **parcelado** row to edit, the dialog opens on the
-`'manual'` tab with empty cost. Saving anything writes the à-vista columns and nulls
-`valor_total_cents` + `parcelas_total` — the parcelamento is irreversibly converted to an
-à-vista (or rejected, leaving the user unable to edit the row at all). This is silent
-financial-data loss on a documented user path (the per-row "Editar" in
-`abastecimento-history.tsx:158-165` wires exactly this form/action).
-
-**Fix:** Either (a) extend `AbastecimentoEdit` + the form to seed and submit the parcelado
-state (add `valorTotal`/`parcelas` to the edit shape, derive `initialSource = 'parcelado'`
-when the row has `parcelas_total > 1`, and seed the fields on open), or (b) if parcelado
-edit is genuinely out of scope for this phase, guard the action and the UI:
+**Fix:** Extend the edit contract to carry the parcelado state and make the form
+re-enter it. Minimum changes in `abastecimento-form.tsx`:
 
 ```ts
-// updateAbastecimento — refuse to clobber an existing parcelado row from an à-vista edit
-const { data: prior } = await supabase
-  .from('abastecimentos')
-  .select('parcelas_total')
-  .eq('id', id)
-  .maybeSingle()
-const wasParcelado = (prior?.parcelas_total ?? 0) > 1
-const willBeParcelado = parsed.data.parcelasTotal !== undefined && parsed.data.parcelasTotal > 1
-if (wasParcelado && !willBeParcelado) {
-  return { error: 'Edição de abastecimento parcelado ainda não é suportada.' }
+export type AbastecimentoEdit = {
+  // ...existing fields...
+  /** pt-BR string for a parcelado total (empty unless the row is parcelado). */
+  valorTotal?: string
+  /** Installment count as a string (empty unless the row is parcelado). */
+  parcelas?: string
 }
+
+const initialSource: CostSource =
+  edit?.parcelas && parseParcelas(edit.parcelas)
+    ? 'parcelado'
+    : !manualOnly && edit?.transactionId
+      ? 'fatura'
+      : 'manual'
 ```
-and disable/hide "Editar" for parcelado rows until the form supports them. Do NOT ship an
-edit path that can null `valor_total_cents` without the user ever seeing the value.
 
-### CR-02: Parcelado row cost displays as R$ 0,00 instead of valor_total_cents
-
-**File:** `src/app/(app)/carros/[id]/page.tsx:84-92,217-257` (driven by the new columns added this phase)
-
-**Issue:** The new parcelado cost-of-record lives in `valor_total_cents`, but the detail
-page's abastecimento query (line 87) selects only `... transaction_id, amount_cents, ...` —
-it does **not** select `valor_total_cents` or `parcelas_total`. The row-cost derivation
-(line 227-231) then computes, for a parcelado row (`transaction_id` null):
-`custoCents = centsToBigInt(a.amount_cents)` = `centsToBigInt(null)` = `0n`.
-
-Result: every parcelado fuel-up renders its cost as a misleading **`R$ 0,00`** in the
-history table — the exact "placeholder zero" the codebase's null-discipline (D4) forbids,
-and it under-reports a real cost the consumo view (`v_abastecimento_consumo`) DOES count via
-`valor_total_cents`. (This file is outside the literal changed-files set, but it is the sole
-consumer of the columns this phase introduced; the phase is incomplete without it.)
-
-**Fix:** Select the parcelado columns and resolve the cost from them:
-
-```ts
-.select(
-  'id, occurred_on, odometro_km, litros, tanque_cheio, combustivel, transaction_id, amount_cents, valor_total_cents, parcelas_total, transactions(id, description, occurred_on, amount_cents)',
-)
-// ...
-const isParcelado = (a.parcelas_total ?? 0) > 1
-const custoCents: bigint | null = isParcelado
-  ? centsToBigInt(a.valor_total_cents)
-  : a.transaction_id
-    ? (linked?.amount_cents != null ? centsToBigInt(linked.amount_cents) : null)
-    : centsToBigInt(a.amount_cents)
-```
+Seed `valorTotal`/`parcelas` from `edit` in both `useState` initializers and
+`handleOpenChange` (instead of unconditionally `''`). Then update
+`abastecimento-history.tsx#toEdit` to populate the new fields from
+`row.parcelas_total`/`row.valor_total_cents` (which must be added to
+`AbastecimentoRow` and selected by the page query). Until the form can represent a
+parcelado edit, the Editar action on a parcelado row should be disabled rather than
+silently downgrading the row.
 
 ## Warnings
 
-### WR-01: Parcelado spend is absent from the "Gasto total" KPI on the card hosting the form
+### WR-01: Schema docstring claims to mirror the 0039 CHECK but is strictly stricter on the à-vista path
 
-**File:** `src/components/carro-card.tsx:153-168`, `src/app/(app)/carros/page.tsx:63-80` (via `v_carro_resumo`)
+**File:** `src/lib/schemas/abastecimento.ts:13-25, 107-115`
+**Issue:**
+The header comment asserts the schema mirrors `abastecimentos_cost_xor` from migration
+0039 "defense in depth". It does not, for the à-vista case. Migration 0039 relaxes the
+à-vista branch to `not (transaction_id is null and amount_cents is null)` — i.e. **at
+least one** source, explicitly allowing BOTH present ("attach-later with BOTH present
+now passes", per the migration comment). The schema's `if (hasTx === hasAmount)`
+(L109) rejects BOTH-present with `COST_SOURCE_MESSAGE`. So a both-present à-vista row
+the DB would accept is rejected at the schema layer.
 
-**Issue:** `v_carro_resumo.gasto_total_cents` is `Σ transactions.amount_cents WHERE carro_id
-IS NOT NULL` (migration 0027 L213-226). A parcelado abastecimento writes **no** transaction
-and **no** `carro_id` tag (the parcela tx links are deferred to Phase 28). So a R$600
-parcelado fuel-up entered via the card's own "Novo abastecimento" button never appears in
-that same card's "Gasto total" KPI — yet it DOES move the km/l and reais/km averages (which
-read `valor_total_cents` through `v_abastecimento_consumo`). The two KPIs on the card
-disagree about whether the spend exists, which will read as a bug to the user who just
-entered it. This is a documented Phase-28 deferral, but the inconsistency lands on the
-surface this phase ships.
+This is arguably intended for this phase (vincular-fatura/attach-later is Phase 28),
+but the divergence is undocumented and the docstring is now misleading — a future
+attach-later feature will be silently blocked by this schema with no breadcrumb.
+**Fix:** Update the docstring to state the schema is *intentionally stricter* than the
+0039 CHECK on the à-vista branch (single-source-only until Phase 28), so the next
+maintainer does not "fix" the DB or the schema to match the wrong side.
 
-**Fix:** If Phase 28 is the intended home for parcela→carro tagging, add a short inline note
-or empty-state hint so the user isn't surprised that a parcelado entry doesn't move "Gasto
-total". Longer term, `v_carro_resumo.gasto_total_cents` should include parcelado
-`valor_total_cents` (or the per-parcela tags) so the card's two KPIs stay consistent.
+### WR-02: Manual-only edit of a previously fatura-linked row submits with no cost source
 
-### WR-02: valorTotal-without-parcelas produces a misleading cost-source error
+**File:** `src/components/abastecimento-form.tsx:158-159, 228-233`
+**Issue:**
+When `manualOnly` is true and an `edit` row is fatura-linked, `initialSource` forces
+`'manual'` (L159) while `transactionId` is still seeded (L168). In `buildInput`,
+`transactionId` is emitted only when `source === 'fatura'` (L228-229) and `amount` is
+empty for a linked row, so the submitted input carries neither cost source → the schema
+XOR error fires and the user cannot save without re-entering a manual value. Today this
+is latent (carro-card uses `manualOnly` only for CREATE), but the prop combination is
+public API and will misbehave the moment a manual-only edit is wired.
+**Fix:** Either reject `manualOnly` + a fatura-linked `edit` at the type/usage level, or
+on open of a manual-only edit drop the seeded `transactionId` and surface a notice that
+the linked cost must be re-entered manually.
 
-**File:** `src/components/abastecimento-form.tsx:234-239`, `src/lib/schemas/abastecimento.ts:107-122`
+### WR-03: `errors.amountCents` key collides across all three cost sources
 
-**Issue:** On the parcelado tab, if the user fills "Valor total" but leaves "Número de
-parcelas" blank/invalid, `buildInput` emits `valorTotalCents: <n>, parcelasTotal: undefined`.
-The schema then treats the row as **à-vista** (`isParcelado` false), takes the else-branch,
-and raises the cost-source XOR message ("Informe exatamente uma fonte de custo…") on the
-`amountCents` path — plus the "à vista não pode ter valor total" error. The user is on the
-Parcelado tab seeing a "fonte de custo" error that names manual/fatura sources. The error is
-correct that the input is invalid, but it points at the wrong field and uses à-vista
-vocabulary.
+**File:** `src/components/abastecimento-form.tsx:109-115, 310, 383, 403`
+**Issue:**
+The schema's à-vista "exactly one source" issue is published at `path: ['amountCents']`
+(`abastecimento.ts:113`). In the form, `errors.amountCents` drives the wrapping
+`Field data-invalid` on the whole Custo block (L383), is passed as the TransacaoPicker
+`error` (L403), and is also the manual MoneyInput error. So an XOR violation raised
+while on the **Da fatura** tab renders the cost-source message under the fatura picker,
+and switching tabs leaves a stale `amountCents` error attached to a now-hidden control.
+Not a security issue, but a confusing/incorrect error surface.
+**Fix:** Map the cost-source XOR issue to a source-neutral error key (e.g. `cost`) and
+render it once below the Tabs, or clear `errors` in `onSourceChange` so a stale
+cross-tab error never lingers.
 
-**Fix:** Add a parcelado-tab pre-submit guard mirroring the manual/valorTotal guards
-(lines 246-255): when `source === 'parcelado'` and `parseParcelas(parcelas) === null`, set
-`errors.parcelasTotal = 'Informe o número de parcelas (2 a 24).'` and return before
-`safeParse`, so the message lands on the parcelas field in the parcelado vocabulary.
+### WR-04: 1:1 link pre-check uses `.select('id')` without `.limit(1)` — reads all matching rows
 
-### WR-03: onSubmit error-mapping defaults unknown issue paths to `odometroKm`
-
-**File:** `src/components/abastecimento-form.tsx:258-263`
-
-**Issue:** `const key = String(issue.path[0] ?? 'odometroKm')`. Any schema issue whose
-`path[0]` is undefined (e.g. a top-level/`superRefine` issue not given an explicit `path`)
-is funneled onto the `odometroKm` field, surfacing an unrelated error under "Odômetro". The
-current superRefine always sets `path`, so this is latent, but it is a fragile default that
-will mis-route the next pathless issue added to the schema.
-
-**Fix:** Route pathless issues to a dedicated form-level error slot instead of an arbitrary
-field, e.g. `const key = String(issue.path[0] ?? '_form')` and render a `_form` error near
-the submit button (or toast it). Never default to a specific input the issue isn't about.
-
-### WR-04: Stale carro_id tag left on the previously-linked transaction after an edit
-
-**File:** `src/actions/abastecimentos.ts:164-227`
-
-**Issue:** Documented in the action's doc comment, but worth flagging as a correctness risk:
-when an abastecimento is edited from one fatura transaction to another (or from fatura to
-manual/parcelado), the action sets `carro_id` on the new tx but never clears it from the
-**old** linked tx. That stale tag keeps the old transaction counting toward
-`v_carro_resumo.gasto_total_cents` for the carro indefinitely, double-counting the carro's
-spend after a relink. The comment calls the leftover "harmless," but for a financial KPI it
-is an over-count, not harmless.
-
-**Fix:** Before/after the update, if the prior `transaction_id` differs from the new one,
-clear `carro_id` on the prior tx (`update({ carro_id: null }).eq('id', priorTxId)`). Re-read
-the prior link from the row being edited (RLS-scoped) to know what to clear.
+**File:** `src/actions/abastecimentos.ts:123-130, 199-207`
+**Issue:**
+The "already linked?" probe selects every row matching `transaction_id` and then checks
+`existing.length > 0`. The partial unique index makes 0-or-1 the practical cardinality,
+so this is correctness-safe today, but it is a brittle pattern: it returns full rows and
+relies on the index for the bound. Consistency with the codebase's other ownership
+probes (which use `.eq(...).maybeSingle()` or bounded selects) would be clearer and
+avoids reading an unbounded set if the index were ever dropped.
+**Fix:** Add `.limit(1)` (or `.maybeSingle()`), e.g.
+`.select('id').eq('transaction_id', transactionId).limit(1)` and branch on a single
+row. On the update path keep the `.neq('id', id)` filter.
 
 ## Info
 
-### IN-01: Schema/file-header doc references the wrong migration number
+### IN-01: `?? null` / `?? undefined` after a proven-defined value is dead defensiveness
 
-**File:** `src/lib/schemas/abastecimento.test.ts:6-9`
+**File:** `src/actions/abastecimentos.ts:84-87`; `src/components/abastecimento-form.tsx:239`
+**Issue:**
+In `abastecimentoWriteFields`, `isParcelado` is already
+`parcelasTotal !== undefined && parcelasTotal > 1`, so inside the `isParcelado` branch
+`input.parcelasTotal ?? null` (L84) can never hit the null side. Similarly in the form,
+`parseParcelas(parcelas) ?? undefined` (L239) is reached only when
+`source === 'parcelado'`. Harmless, but the redundant fallbacks suggest an invariant the
+reader has to re-derive.
+**Fix:** Drop the unreachable fallbacks or add a one-line comment that they are purely
+type-narrowing for the Supabase insert overload.
 
-**Issue:** The test header says the cost XOR "mirrors the DB cost XOR CHECK in migration
-0027", while the schema and action correctly reference the relaxed CHECK in **0039**. The
-0027 CHECK was the strict 2-state XOR; the 3-state behavior these tests assert is 0039.
-Misleading provenance comment.
+### IN-02: `open!` non-null assertion is avoidable
 
-**Fix:** Update the comment to reference migration 0039 (or "0027 as relaxed by 0039").
+**File:** `src/components/abastecimento-form.tsx:146`
+**Issue:**
+`const open = isControlled ? controlledOpen! : uncontrolledOpen`. The `!` is only safe
+because `isControlled` is `controlledOpen !== undefined`. TypeScript cannot narrow
+across the separate `isControlled` const, hence the assertion. Stylistic, but assertions
+mask future refactors.
+**Fix:** `const open = controlledOpen ?? uncontrolledOpen` (a controlled boolean is never
+`undefined` when controlled), or inline the `!== undefined` check.
 
-### IN-02: DialogDescription text omits the parcelado option
+### IN-03: Duplicated parcelado-detection predicate across schema, action, and SQL
 
-**File:** `src/components/abastecimento-form.tsx:303-306`
-
-**Issue:** The dialog description still says "escolha a fonte do custo: um lançamento da
-fatura ou um valor manual" — it predates the new Parcelado tab and never mentions
-parcelamento, so the copy under-describes the now-3-state cost picker.
-
-**Fix:** Mention the parcelado option, e.g. "…um lançamento da fatura, um valor manual ou um
-parcelamento."
-
-### IN-03: `parseParcelas` regex/Number.isInteger check is redundant
-
-**File:** `src/components/abastecimento-form.tsx:75-81`
-
-**Issue:** After `/^\d+$/.test(trimmed)` passes, `Number(trimmed)` is always a finite
-non-negative integer, so the subsequent `!Number.isInteger(n)` can never be true (the only
-residual purpose is the range check). Harmless, but dead within the conditional.
-
-**Fix:** Drop `!Number.isInteger(n) ||`, keeping only the `< PARCELAS_MIN || > PARCELAS_MAX`
-range check, since the regex already guarantees integer-ness.
+**File:** `src/lib/schemas/abastecimento.ts:82`; `src/actions/abastecimentos.ts:68-69`; `supabase/migrations/0039_abastecimento_parcelado.sql`
+**Issue:**
+`parcelasTotal !== undefined && parcelasTotal > 1` is hand-rolled in three places (TS
+schema, TS action, SQL CASE). They agree today, but the rule is load-bearing for the
+no-double-count invariant and has no single source of truth in TS.
+**Fix:** Extract a tiny `isParcelado(parcelasTotal?: number | null): boolean` helper
+shared by the schema and the action. The SQL is necessarily separate but should keep a
+comment pointing at the TS helper as the canonical statement.
 
 ---
 
-_Reviewed: 2026-06-22_
+_Reviewed: 2026-06-22T11:08:15Z_
 _Reviewer: Claude (gsd-code-reviewer)_
 _Depth: standard_
