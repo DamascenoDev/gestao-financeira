@@ -4,15 +4,15 @@ milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 28
 status: verifying
-stopped_at: Phase 28 context gathered
-last_updated: "2026-06-22T21:07:25.681Z"
+stopped_at: Completed 28-06-PLAN.md (gap-closure WR-01..04 + IN-01)
+last_updated: "2026-06-22T22:08:25.710Z"
 last_activity: 2026-06-22
-last_activity_desc: Phase 28 complete
+last_activity_desc: Phase 28 P06 gap-closure complete (4 WARNINGs do code review fechados)
 progress:
   total_phases: 4
   completed_phases: 4
-  total_plans: 16
-  completed_plans: 16
+  total_plans: 17
+  completed_plans: 17
   percent: 100
 current_phase_name: Vínculo reverso por valor + consumo sem double-count
 ---
@@ -31,9 +31,9 @@ current_phase_name: Vínculo reverso por valor + consumo sem double-count
 ## Current Position
 
 Phase: 28
-Plan: Not started
+Plan: 06 (gap-closure) complete — 6/6 plans done
 Status: Phase complete — ready for verification
-Last activity: 2026-06-22 — Phase 28 complete
+Last activity: 2026-06-22 — Phase 28 P06 gap-closure (WR-01..04 + IN-01) complete
 
 ## Deferred Items
 
@@ -122,6 +122,7 @@ Last activity: 2026-06-22 — Phase 28 complete
 | Phase 28 P04 | 4min | 2 tasks | 2 files |
 | Phase 28 P03 | 4min | 2 tasks | 2 files |
 | Phase 28 P05 | 2min | 1 tasks | 1 files |
+| Phase 28 P06 | 25min | 2 tasks | 4 files |
 
 ### Plan Execution Log
 
@@ -205,7 +206,7 @@ Last activity: 2026-06-22 — Phase 28 complete
 
 ## Session Continuity
 
-**Last session:** 2026-06-22T19:30:04.431Z
+**Last session:** 2026-06-22T22:07:45.083Z
 **Stopped at:** Phase 28 context gathered
 **Resume file:** .planning/phases/28-v-nculo-reverso-por-valor-consumo-sem-double-count/28-CONTEXT.md
 
@@ -322,3 +323,6 @@ Last activity: 2026-06-22 — Phase 28 complete
 - [Phase ?]: 28-03: parcela_num do link-write recomputado server-side (count batched + contador neste-confirm + 1), nunca confiado do cliente
 - [Phase ?]: 28-05: CAR-12 provado por held-out incremental (parcelas 0->1->2->3 vinculadas) com custo invariante = valor_total_cents nas views da P26, sem SQL novo de view
 - [Phase ?]: 28-05: 'sem fatura vinculada' = transaction_id null + amount_cents manual (CHECK cost_xor exige >=1 de {transaction_id, amount_cents}); km/l so litros+odometro
+- [Phase ?]: 28-06: confirmImport re-deriva o KIND do write de parcelas_total server-side (fetch batched .in(id)), rejeitando kind divergente do cliente
+- [Phase ?]: 28-06: linkedTxns Set fecha o residuo cross-row da 0039 (1 tx -> 1 vinculo por confirm), sem double-count CAR-11/CAR-12
+- [Phase ?]: 28-06: WR-04 acumula linkFailed em vez de early-return; LEARN+status='imported' rodam; ConfirmImportResult ganhou variante {error;imported;duplicated}
