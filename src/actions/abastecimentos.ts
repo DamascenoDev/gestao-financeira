@@ -18,7 +18,8 @@ import { createClient } from '@/lib/supabase/server'
  * strings (raw details never returned).
  *
  * Two security-critical invariants live here (T-10-04/05/06/07):
- *  - Cost-source XOR: enforced in abastecimentoSchema AND the DB CHECK (0027).
+ *  - Cost-source XOR: enforced in abastecimentoSchema AND the DB CHECK
+ *      (0039 `abastecimentos_cost_xor`; replaced the strict 0027 XOR).
  *  - DUAL ownership re-derive BEFORE any FK write:
  *      1. assertOwnedCarro(carroId) tri-state — a forged carro_id never writes.
  *      2. From-fatura: assertOwnedTransaction(transactionId) + an "already linked?"
