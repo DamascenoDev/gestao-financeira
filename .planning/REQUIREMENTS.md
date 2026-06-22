@@ -15,9 +15,9 @@ Requisitos deste milestone. Cada um mapeia para uma fase do roadmap. Estende o m
 
 ### Vínculo Fatura ↔ Abastecimento
 
-- [ ] **CAR-09**: Ao subir uma fatura, o sistema sugere vincular um lançamento a um abastecimento pré-registrado quando o valor do lançamento casa (à vista = valor total; parcelado = ~valor total ÷ nº de parcelas).
+- [x] **CAR-09**: Ao subir uma fatura, o sistema sugere vincular um lançamento a um abastecimento pré-registrado quando o valor do lançamento casa (à vista = valor total; parcelado = ~valor total ÷ nº de parcelas).
 - [ ] **CAR-10**: O usuário confirma ou descarta a sugestão de vínculo na grid de revisão de importação (sem auto-commit); ao confirmar, o lançamento fica vinculado ao abastecimento e o `carro_id` é etiquetado no lançamento.
-- [ ] **CAR-11**: Um abastecimento parcelado casa uma parcela por fatura ao longo dos meses; cada parcela confirmada é registrada sem recontar o custo (sem double-count no consumo nem no gasto total do carro).
+- [x] **CAR-11**: Um abastecimento parcelado casa uma parcela por fatura ao longo dos meses; cada parcela confirmada é registrada sem recontar o custo (sem double-count no consumo nem no gasto total do carro).
 
 ### Consumo
 
@@ -59,9 +59,9 @@ Preenchido na criação do roadmap.
 |-------------|-------|--------|
 | CAR-07 | Phase 27 | Complete |
 | CAR-08 | Phase 27 | Complete |
-| CAR-09 | Phase 28 | Pending |
+| CAR-09 | Phase 28 | Complete |
 | CAR-10 | Phase 28 | Pending |
-| CAR-11 | Phase 28 | Pending |
+| CAR-11 | Phase 28 | Complete |
 | CAR-12 | Phase 28 | Pending |
 | FUEL-01 | Phase 26 | Complete |
 | UX-01 | Phase 25 | Complete |

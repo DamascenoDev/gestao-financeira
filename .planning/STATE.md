@@ -4,16 +4,16 @@ milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 28
 current_phase_name: Vínculo reverso por valor + consumo sem double-count
-status: All plans executed
+status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-06-22T18:08:34.544Z"
+last_updated: "2026-06-22T18:56:23.682Z"
 last_activity: 2026-06-22
-last_activity_desc: Phase 27 complete, transitioned to Phase 28
+last_activity_desc: Phase 28 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 11
-  completed_plans: 11
+  total_plans: 16
+  completed_plans: 12
   percent: 75
 ---
 
@@ -26,14 +26,14 @@ progress:
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 27 — registro-r-pido-abastecimento-parcelado
+- **Current focus:** Phase 28 — Vínculo reverso por valor + consumo sem double-count
 
 ## Current Position
 
-Phase: 28 — Vínculo reverso por valor + consumo sem double-count
-Plan: Not started
-Status: All plans executed
-Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
+Phase: 28 (Vínculo reverso por valor + consumo sem double-count) — EXECUTING
+Plan: 2 of 5
+Status: Ready to execute
+Last activity: 2026-06-22 — Phase 28 execution started
 
 ## Deferred Items
 
@@ -117,6 +117,7 @@ Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 | Phase 26 P04 | 6min | 1 tasks | 3 files |
 | Phase 27 P01 | 1min | 2 tasks | 2 files |
 | Phase 27 P02 | ~3 min | 2 tasks | 2 files |
+| Phase 28 P01 | 4min | 2 tasks | 5 files |
 
 ### Plan Execution Log
 
@@ -200,7 +201,7 @@ Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 
 ## Session Continuity
 
-**Last session:** 2026-06-22T18:08:34.532Z
+**Last session:** 2026-06-22T18:56:05.488Z
 **Stopped at:** Phase 28 context gathered
 **Resume file:** .planning/phases/28-v-nculo-reverso-por-valor-consumo-sem-double-count/28-CONTEXT.md
 
@@ -308,3 +309,5 @@ Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 - [Phase 27]: abastecimentoSchema relaxado para 3 estados de custo espelhando o CHECK abastecimentos_cost_xor do 0039; convenção à-vista parcelasTotal ausente-ou-1 documentada para a action 27-02.
 - [Phase ?]: 27-02: abastecimentoWriteFields parcelado-aware (write por estado de custo; parcelado grava valor_total_cents, transaction_id/amount_cents null)
 - [Phase 27]: 27-05: affordance 'Ver detalhes' no menu ⋯ do CarroCard (Link /carros/[id]) fecha gap de descoberta do UAT — histórico + Editar (CR-01) alcançáveis pela lista
+- [Phase ?]: P28-01: shape canônico único do match — ParsedReviewRow.abastecimentoMatch reusa o tipo AbastecimentoMatch de abastecimento-match.ts (sem drift)
+- [Phase ?]: P28-01: ≤1 parcela/fatura estrutural — candidato parcelado elegível só com 0 já atribuídas nesta fatura (guard D-04 no match)
