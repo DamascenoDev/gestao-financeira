@@ -258,7 +258,7 @@ Plans:
   3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
   4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
 
-**Plans**: 4/4 plans complete
+**Plans**: 5 plans (4 complete + 1 gap closure)
 
 Plans:
 **Wave 1**
@@ -273,6 +273,10 @@ Plans:
 **Wave 3** *(blocked on 27-03)*
 
 - [x] 27-04-PLAN.md — Lista: botão "Novo abastecimento" na face do CarroCard hospedando o form manual-only; page /carros sem fetch de transacoes (CAR-07)
+
+**Gap closure** *(UAT discoverability gap, major)*
+
+- [ ] 27-05-PLAN.md — Affordance "Ver detalhes" no menu ⋯ do CarroCard (espelha "Ver extrato" do ReservaCard) → torna histórico + Editar/CR-01 alcançáveis pela lista /carros (CAR-07, CAR-08)
 
 **UI hint**: yes
 
