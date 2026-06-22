@@ -166,6 +166,32 @@ export async function assertOwnedCarro(
 }
 
 /**
+ * IDOR (Pitfall 6/7, T-28-01): verify the abastecimento id belongs to the caller
+ * before writing the reverse link in confirmImport (WR-01) — à-vista
+ * `update abastecimentos.transaction_id` or parcelado `insert abastecimento_parcelas`.
+ * Postgres FKs are NOT RLS-aware — a forged abastecimentoId pointing at another user's
+ * abastecimento satisfies the FK globally and would let the caller link THEIR
+ * lançamento (+ the resulting carro_id/Combustível) onto a foreign abastecimento. The
+ * RLS-active client only returns the caller's own abastecimentos, so a `select id
+ * where id = $1` returning exactly 1 row means owned; 0 ⇒ not owned ⇒ reject.
+ * Sibling of assertOwnedCarro applied to abastecimentos. (CAR-09/CAR-11)
+ *
+ * WR-01: tri-state like assertOwnedCarro — distinguishes a transient DB/query error
+ * (`'error'`) from a genuine zero-rows not-owned result (`'not-owned'`). A
+ * legitimately-owned abastecimento must NOT be reported "inválido" on a backend
+ * hiccup; the caller maps `'error'` to a generic "tente novamente". Both non-owned
+ * outcomes are fail-safe: no write is ever issued.
+ */
+export async function assertOwnedAbastecimento(
+  supabase: Client,
+  id: string,
+): Promise<OwnershipResult> {
+  const { data, error } = await supabase.from('abastecimentos').select('id').eq('id', id)
+  if (error) return 'error'
+  return data?.length === 1 ? 'owned' : 'not-owned'
+}
+
+/**
  * RSV-02 / Open Question 2: a category triggers the aporte sub-flow ONLY when its
  * `is_reserva` FLAG is set — never a name match (the user may rename it; CAT-02).
  * The flag is read under the RLS-active client so a foreign/garbage id yields no row

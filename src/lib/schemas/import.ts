@@ -32,6 +32,11 @@ export type CsvMapping = z.infer<typeof csvMappingSchema>
  * only meaningful when the chosen category is the Reserva one (RSV-06 aporte).
  * carroId is the per-row carro CHOICE (CAR-02) — nullable/optional like categoryId
  * (null/absent ⇒ untagged), free of category, re-derived for ownership server-side.
+ * abastecimentoId + abastecimentoKind + parcelaNum are the reverse-link CHOICE
+ * (CAR-09/CAR-11): the client passes only WHICH abastecimento the user confirmed (+
+ * kind/parcela); the server re-derives ownership of `abastecimentoId` via
+ * assertOwnedAbastecimento (WR-01 — FKs are not RLS-aware) before writing the link.
+ * All three optional (absent ⇒ no link confirmed on this row).
  */
 export const confirmImportRowSchema = z.object({
   id: z.string().min(1), // temp client row id
@@ -43,6 +48,9 @@ export const confirmImportRowSchema = z.object({
   categoryId: z.string().uuid().nullable().optional(),
   reservaId: z.string().uuid().optional(),
   carroId: z.string().uuid().nullable().optional(),
+  abastecimentoId: z.string().uuid().optional(),
+  abastecimentoKind: z.enum(['avista', 'parcela']).optional(),
+  parcelaNum: z.number().int().positive().optional(),
 })
 
 export type ConfirmImportRow = z.infer<typeof confirmImportRowSchema>

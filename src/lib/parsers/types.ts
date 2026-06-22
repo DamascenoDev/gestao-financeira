@@ -3,6 +3,8 @@
 // (Plan 02) hands the review table after dedup + memory classification. Interface
 // -first so the parsers, the ingest action, and the review table all agree.
 
+import type { AbastecimentoMatch } from '@/lib/carro/abastecimento-match'
+
 /**
  * WR-02: hard cap on the number of transactions a single statement may contribute.
  * A hostile file with hundreds of thousands of tiny `<STMTTRN>` blocks is cheap to
@@ -87,4 +89,16 @@ export interface ParsedReviewRow extends RawTransaction {
    * puros nunca o definem. `source: 'ia'` marca a origem do palpite.
    */
   suggestion?: { categoryId: string | null; confidence: number; source: 'ia' }
+  /**
+   * O palpite NÃO-vinculante do vínculo reverso por valor (CAR-09). Anexado pela ação
+   * de ingestão (Plan 02) a partir de `assignAbastecimentoMatches` quando o valor da
+   * linha casa um abastecimento não-vinculado (D-01) — é só uma dica de qual
+   * abastecimento esta linha provavelmente é; NUNCA é aplicado a `category_id`/`carro_id`
+   * sem confirmação (sem auto-commit, o palpite permanece palpite). A grid renderiza a
+   * dica na coluna Carro enquanto o usuário confirma/descarta; confirmar é que seta
+   * `carro_id` + "Combustível" + grava o vínculo no confirmImport. Opcional porque
+   * linhas persistidas antigas não o têm e os parsers puros nunca o definem.
+   * Reusa o tipo canônico de `@/lib/carro/abastecimento-match` (um único shape).
+   */
+  abastecimentoMatch?: AbastecimentoMatch
 }
