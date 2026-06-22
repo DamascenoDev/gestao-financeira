@@ -293,11 +293,23 @@ Plans:
   4. O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o **km/l é calculado só com litros + odômetro** (não exige a fatura para existir).
 
 **Plans**: 5 plans
+**Wave 1**
+
 - [ ] 28-01-PLAN.md — Fundação: módulo puro de value-match (D-01/D-03/D-04) + assertOwnedAbastecimento + ParsedReviewRow.abastecimentoMatch + campos de vínculo no schema (CAR-09, CAR-11)
+
+**Wave 2** *(blocked on Wave 1 completion)*
+
 - [ ] 28-02-PLAN.md — Pass de match batched em ingestStatement (fetch não-vinculados sem filtro de data + greedy 1:1 + attach não-vinculante) (CAR-09, CAR-11)
-- [ ] 28-03-PLAN.md — Link-write em confirmImport (IDOR re-derive do abastecimentoId + à-vista update transaction_id + parcelado insert + D-09 dedupe-skip + duplo-link backstop) + teste DB-integration (CAR-10, CAR-11)
 - [ ] 28-04-PLAN.md — Grid: affordance de vínculo na coluna Carro + "Vincular todos" + apply-on-confirm de Combustível + RSC threading (CAR-10, FUEL-01)
+
+**Wave 3** *(blocked on Wave 2 completion)*
+
+- [ ] 28-03-PLAN.md — Link-write em confirmImport (IDOR re-derive do abastecimentoId + à-vista update transaction_id + parcelado insert + D-09 dedupe-skip + duplo-link backstop) + teste DB-integration (CAR-10, CAR-11)
+
+**Wave 4** *(blocked on Wave 3 completion)*
+
 - [ ] 28-05-PLAN.md — Verificação CAR-12: consumo sem double-count (parcelado UMA vez, à-vista coalesce, km/l só litros+odômetro) (CAR-12)
+
 **UI hint**: yes
 
 ## Progress
