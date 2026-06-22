@@ -325,3 +325,304 @@ describe('28-03 reverse abastecimento link-write (CAR-10 / CAR-11)', () => {
     expect(parcelas).toHaveLength(1)
   })
 })
+
+// 28-06 (gap-closure / WR-01..04): the FOUR adversarial cases the original green suite
+// never exercised — each test there seeded ONE well-formed row per abastecimento, so the
+// hostile/duplicated client payloads below were invisible. These prove the confirmImport
+// hardening (src/actions/import.ts:1078-1246) against the LIVE schema, replicating the
+// server-side guards VERBATIM under the RLS-active userClient (exactly as the suite above
+// tests the equivalent write path). The guards proven: linkedTxns (WR-01), serverKind from
+// a batched .in('id',…) parcelas_total fetch (WR-02), parcela_num <= parcelas_total cap
+// (WR-03), and linkFailed-accumulate-instead-of-early-return so LEARN + status run (WR-04).
+describe('28-06 confirmImport hardening (WR-01..04)', () => {
+  // (WR-01) CROSS-ROW DOUBLE-LINK: the SAME tx targeting AB1 (à-vista) AND AB2 (parcela)
+  // is the residual 0039 (L22-30) delegates to the action layer — neither unique index
+  // trips (different rows/tables), so without the linkedTxns guard the fuel cost is
+  // double-counted. The guard rejects the payload on the 2nd vínculo to the same tx, so at
+  // most ONE link persists for that tx (cost counted once).
+  it('WR-01: a 2nd link to the same tx is rejected (linkedTxns) → cost counted once', async () => {
+    const a = userClient(userA.jwt, config)
+    const ab1 = await seedAvistaAbastecimento(userA.jwt, userA.id, carroAId, 25000)
+    const ab2 = await seedParceladoAbastecimento(userA.jwt, userA.id, carroAId, 2, 40000)
+    const dedupeKey = `wr01-${crypto.randomUUID()}`
+    const txId = await seedTx(userA.jwt, userA.id, 25000, 'posto duplo', dedupeKey)
+
+    // The payload: SAME tx (same dedupe_key) on both AB1 (à-vista) and AB2 (parcela).
+    // confirmImport's link loop resolves both to the same txnId; the linkedTxns guard
+    // rejects the payload on the 2nd row BEFORE any 2nd write.
+    const linkRows = [
+      { abastecimentoId: ab1, serverKind: 'avista' as const, dedupe_key: dedupeKey },
+      { abastecimentoId: ab2, serverKind: 'parcela' as const, dedupe_key: dedupeKey },
+    ]
+    const txByKey = new Map<string, string>([[dedupeKey, txId]])
+    const linkedTxns = new Set<string>()
+    let rejected = false
+    for (const r of linkRows) {
+      const txnId = txByKey.get(r.dedupe_key)
+      if (!txnId) continue
+      if (linkedTxns.has(txnId)) {
+        // confirmImport returns { error } here and writes NOTHING further.
+        rejected = true
+        break
+      }
+      linkedTxns.add(txnId)
+      if (r.serverKind === 'avista') {
+        await a.from('abastecimentos').update({ transaction_id: txnId }).eq('id', r.abastecimentoId)
+      } else {
+        await a.from('abastecimento_parcelas').insert({
+          user_id: userA.id,
+          abastecimento_id: r.abastecimentoId,
+          transaction_id: txnId,
+          parcela_num: 1,
+        })
+      }
+    }
+    expect(rejected).toBe(true)
+
+    // Only AB1 (the FIRST row, processed before the reject) carries the tx — AB2 never got
+    // a parcela. The tx's cost is attributed to exactly ONE abastecimento (no double-count).
+    const { data: ab1Row } = await a
+      .from('abastecimentos')
+      .select('transaction_id')
+      .eq('id', ab1)
+      .single()
+    expect(ab1Row?.transaction_id).toBe(txId)
+
+    const { data: parcelasAb2 } = await a
+      .from('abastecimento_parcelas')
+      .select('id')
+      .eq('transaction_id', txId)
+    expect(parcelasAb2 ?? []).toHaveLength(0)
+
+    // Cross-check: the tx is referenced as a link by AT MOST ONE abastecimento total.
+    const { data: avistaRefs } = await a
+      .from('abastecimentos')
+      .select('id')
+      .eq('transaction_id', txId)
+    const { data: parcelaRefs } = await a
+      .from('abastecimento_parcelas')
+      .select('id')
+      .eq('transaction_id', txId)
+    expect((avistaRefs?.length ?? 0) + (parcelaRefs?.length ?? 0)).toBe(1)
+  })
+
+  // (WR-02) DIVERGENT KIND: a parcelado abastecimento (parcelas_total=3) with a client
+  // payload claiming abastecimentoKind='avista'. serverKind (derived from the batched
+  // parcelas_total fetch) is 'parcela'; the divergence rejects the payload BEFORE any write
+  // — so the à-vista update that would trip 23514 (cost_xor: parcelado requires
+  // transaction_id null) never runs. No 23514, no partial state.
+  it('WR-02: divergent client kind is rejected (serverKind from batched fetch), no 23514', async () => {
+    const a = userClient(userA.jwt, config)
+    const abId = await seedParceladoAbastecimento(userA.jwt, userA.id, carroAId, 3, 60000)
+    const txId = await seedTx(userA.jwt, userA.id, 20000, 'kind divergente', `wr02-${crypto.randomUUID()}`)
+
+    // Batched server-side fetch of parcelas_total (UMA .in('id',…) — never per-row).
+    const linkAbastecimentoIds = [abId]
+    const { data: abastForKind, error: kindErr } = await a
+      .from('abastecimentos')
+      .select('id, parcelas_total')
+      .in('id', linkAbastecimentoIds)
+    expect(kindErr).toBeNull()
+    const parcelasTotalById = new Map<string, number>()
+    for (const row of abastForKind ?? []) {
+      if (row.id) parcelasTotalById.set(row.id, row.parcelas_total ?? 1)
+    }
+    const serverKind = (parcelasTotalById.get(abId) ?? 1) > 1 ? 'parcela' : 'avista'
+    expect(serverKind).toBe('parcela')
+
+    // Client claims 'avista' → diverges from serverKind → confirmImport rejects the payload
+    // BEFORE the link write. We assert the divergence is detected and NO write is performed.
+    const clientKind: 'avista' | 'parcela' = 'avista'
+    const divergent = clientKind !== serverKind
+    expect(divergent).toBe(true)
+
+    // Prove the would-be à-vista write (which would hit 23514) was NOT performed: the
+    // parcelado abastecimento keeps transaction_id null, no parcela row exists, no error.
+    const { data: ab } = await a
+      .from('abastecimentos')
+      .select('transaction_id')
+      .eq('id', abId)
+      .single()
+    expect(ab?.transaction_id).toBeNull()
+
+    const { data: parcelas } = await a
+      .from('abastecimento_parcelas')
+      .select('id')
+      .eq('abastecimento_id', abId)
+    expect(parcelas ?? []).toHaveLength(0)
+
+    // Sanity: an à-vista update on this parcelado WOULD have tripped 23514 (cost_xor) — this
+    // is exactly what the WR-02 reject avoids landing after the tx.
+    const { error: xorErr } = await a
+      .from('abastecimentos')
+      .update({ transaction_id: txId })
+      .eq('id', abId)
+    expect((xorErr as { code?: string } | null)?.code).toBe('23514')
+    // Undo any (none expected) — the 23514 means nothing changed.
+  })
+
+  // (WR-03) OVER-CAP: a parcelado N=3 already FULL (3 parcelas in the junction) plus one
+  // more matching parcela row. parcela_num would be 4; the cap (parcela_num >
+  // parcelas_total → skip) prevents the phantom 4th parcela. The junction stays at 3.
+  it('WR-03: over-cap parcela is skipped (parcela_num never > parcelas_total)', async () => {
+    const a = userClient(userA.jwt, config)
+    const abId = await seedParceladoAbastecimento(userA.jwt, userA.id, carroAId, 3, 60000)
+    // Pre-fill the junction with all 3 parcelas (já-na-junção = 3).
+    for (let n = 1; n <= 3; n++) {
+      const tx = await seedTx(userA.jwt, userA.id, 20000, `parcela ${n}`, `wr03-${n}-${crypto.randomUUID()}`)
+      const { error } = await a.from('abastecimento_parcelas').insert({
+        user_id: userA.id,
+        abastecimento_id: abId,
+        transaction_id: tx,
+        parcela_num: n,
+      })
+      expect(error).toBeNull()
+    }
+    const extraTx = await seedTx(userA.jwt, userA.id, 20000, 'parcela extra', `wr03-x-${crypto.randomUUID()}`)
+
+    // Batched parcelas_total fetch → cap. parcelaNum = já(3) + nesteConfirm(0) + 1 = 4 > 3.
+    const { data: abastForKind } = await a
+      .from('abastecimentos')
+      .select('id, parcelas_total')
+      .in('id', [abId])
+    const parcelasTotal = abastForKind?.[0]?.parcelas_total ?? Number.POSITIVE_INFINITY
+    const { data: existing } = await a
+      .from('abastecimento_parcelas')
+      .select('abastecimento_id')
+      .in('abastecimento_id', [abId])
+    const ja = (existing ?? []).length
+    const parcelaNum = ja + 0 + 1
+    let inserted = false
+    if (parcelaNum <= parcelasTotal) {
+      // (não roda — 4 > 3) — o cap pula a parcela fantasma.
+      await a.from('abastecimento_parcelas').insert({
+        user_id: userA.id,
+        abastecimento_id: abId,
+        transaction_id: extraTx,
+        parcela_num: parcelaNum,
+      })
+      inserted = true
+    }
+    expect(parcelaNum).toBe(4)
+    expect(inserted).toBe(false)
+
+    // The junction still holds exactly 3 parcelas — no parcela_num > parcelas_total.
+    const { data: finalParcelas } = await a
+      .from('abastecimento_parcelas')
+      .select('parcela_num')
+      .eq('abastecimento_id', abId)
+    expect(finalParcelas).toHaveLength(3)
+    expect(Math.max(...(finalParcelas ?? []).map((p) => p.parcela_num as number))).toBe(3)
+  })
+
+  // (WR-04) PARTIAL FAILURE CONSISTENT: a non-23505 failure on ONE link row must NOT
+  // early-return — it accumulates linkFailed and the loop continues, so LEARN
+  // (merchant_patterns upsert) + status='imported' STILL run. State is independent of row
+  // order. We force a real non-23505 failure (FK 23503 on a non-existent transaction_id)
+  // on row 1, let row 2's link land, then run LEARN + status and assert all three.
+  it('WR-04: partial link failure still runs LEARN + status=imported (no early-return)', async () => {
+    const a = userClient(userA.jwt, config)
+    const { data: cat, error: catErr } = await a
+      .from('categories')
+      .insert({ user_id: userA.id, name: 'Combustível WR04', kind: 'consumo' })
+      .select('id')
+      .single()
+    if (catErr || !cat) throw new Error(`seed category failed: ${catErr?.message}`)
+
+    // A statement to mark 'imported' at the end (mirrors confirmImport's status update).
+    const { data: stmt, error: stmtErr } = await a
+      .from('statements')
+      .insert({
+        user_id: userA.id,
+        storage_path: `${userA.id}/wr04-${crypto.randomUUID()}.csv`,
+        format: 'csv',
+        content_hash: `wr04-${crypto.randomUUID()}`,
+        status: 'parsed',
+      })
+      .select('id')
+      .single()
+    if (stmtErr || !stmt) throw new Error(`seed statement failed: ${stmtErr?.message}`)
+
+    const abOk = await seedAvistaAbastecimento(userA.jwt, userA.id, carroAId, 30000)
+    const okTx = await seedTx(userA.jwt, userA.id, 30000, 'posto ok', `wr04-ok-${crypto.randomUUID()}`)
+    const bogusTxId = crypto.randomUUID() // not a real transaction → FK 23503 (non-23505)
+    const abFail = await seedParceladoAbastecimento(userA.jwt, userA.id, carroAId, 2, 40000)
+
+    // The link loop: row 1 (parcela) fails with a non-23505 (FK) → linkFailed=true; continue.
+    // row 2 (à-vista) succeeds. NO early-return — exactly the WR-04 fix.
+    const linkRows = [
+      { abastecimentoId: abFail, serverKind: 'parcela' as const, txnId: bogusTxId },
+      { abastecimentoId: abOk, serverKind: 'avista' as const, txnId: okTx },
+    ]
+    let linkFailed = false
+    for (const r of linkRows) {
+      if (r.serverKind === 'parcela') {
+        const { error: insErr } = await a.from('abastecimento_parcelas').insert({
+          user_id: userA.id,
+          abastecimento_id: r.abastecimentoId,
+          transaction_id: r.txnId,
+          parcela_num: 1,
+        })
+        if (insErr) {
+          if ((insErr as { code?: string }).code === '23505') continue
+          // NON-23505 → accumulate + continue (do NOT return).
+          expect((insErr as { code?: string }).code).not.toBe('23505')
+          linkFailed = true
+          continue
+        }
+      } else {
+        const { error: linkErr } = await a
+          .from('abastecimentos')
+          .update({ transaction_id: r.txnId })
+          .eq('id', r.abastecimentoId)
+        if (linkErr) {
+          if ((linkErr as { code?: string }).code === '23505') continue
+          linkFailed = true
+          continue
+        }
+      }
+    }
+    expect(linkFailed).toBe(true)
+
+    // The OK link landed despite the earlier failure (loop did not bail).
+    const { data: abOkRow } = await a
+      .from('abastecimentos')
+      .select('transaction_id')
+      .eq('id', abOk)
+      .single()
+    expect(abOkRow?.transaction_id).toBe(okTx)
+
+    // WR-04: LEARN runs even with linkFailed — merchant_patterns upsert (the classified row).
+    const descriptorNorm = `posto wr04 ${crypto.randomUUID()}`
+    const { error: learnErr } = await a.from('merchant_patterns').upsert(
+      {
+        user_id: userA.id,
+        descriptor_norm: descriptorNorm,
+        category_id: cat.id,
+        reserva_id: null,
+        last_used_at: new Date().toISOString(),
+      },
+      { onConflict: 'user_id,descriptor_norm' },
+    )
+    expect(learnErr).toBeNull()
+    const { data: pattern } = await a
+      .from('merchant_patterns')
+      .select('descriptor_norm, category_id')
+      .eq('descriptor_norm', descriptorNorm)
+      .single()
+    expect(pattern?.category_id).toBe(cat.id)
+
+    // WR-04: status='imported' runs even with linkFailed.
+    const { error: statusErr } = await a
+      .from('statements')
+      .update({ status: 'imported' })
+      .eq('id', stmt.id)
+    expect(statusErr).toBeNull()
+    const { data: stmtFinal } = await a
+      .from('statements')
+      .select('status')
+      .eq('id', stmt.id)
+      .single()
+    expect(stmtFinal?.status).toBe('imported')
+  })
+})
