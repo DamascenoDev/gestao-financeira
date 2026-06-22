@@ -288,7 +288,10 @@ export function AbastecimentoForm({
     if (!parsed.success) {
       const next: Record<string, string> = {}
       for (const issue of parsed.error.issues) {
-        const key = String(issue.path[0] ?? 'odometroKm')
+        // IN-02: a path-less issue (e.g. a future top-level superRefine) is filed
+        // under the neutral '_form' sentinel — never mislabeled onto a real field
+        // (the WR-03 neutral-path pattern). Rendered once at form level below.
+        const key = issue.path.length > 0 ? String(issue.path[0]) : '_form'
         next[key] = issue.message
       }
       setErrors(next)
@@ -337,6 +340,11 @@ export function AbastecimentoForm({
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={onSubmit}>
+          {/* IN-02: form-level catch-all for any path-less schema issue, surfaced
+              once here rather than mislabeled under an unrelated field. */}
+          <FieldError
+            errors={errors._form ? [{ message: errors._form }] : undefined}
+          />
           <FieldGroup>
             <Field data-invalid={!!errors.occurredOn}>
               <FieldLabel htmlFor="ab-data">Data</FieldLabel>
