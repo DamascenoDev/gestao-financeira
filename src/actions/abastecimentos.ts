@@ -120,10 +120,15 @@ export async function createAbastecimento(
     }
     // Defense-in-depth over the partial unique index (T-10-07): reject a tx already
     // linked to another abastecimento before we insert.
+    // WR-04: bound the probe to a single row (.limit(1)) rather than reading every
+    // matching row. The partial unique index makes 0-or-1 the real cardinality, but
+    // the explicit bound keeps the read O(1) even if the index were ever dropped and
+    // matches the codebase's other ownership probes.
     const { data: existing, error: linkErr } = await supabase
       .from('abastecimentos')
       .select('id')
       .eq('transaction_id', transactionId)
+      .limit(1)
     if (linkErr) {
       return { error: 'Não foi possível salvar o abastecimento. Tente novamente.' }
     }
@@ -196,11 +201,13 @@ export async function updateAbastecimento(
       return { error: 'Lançamento inválido.' }
     }
     // The 1:1 pre-check must ignore THIS abastecimento's own existing link.
+    // WR-04: bound to a single row (the .neq('id', id) filter still excludes self).
     const { data: existing, error: linkErr } = await supabase
       .from('abastecimentos')
       .select('id')
       .eq('transaction_id', transactionId)
       .neq('id', id)
+      .limit(1)
     if (linkErr) {
       return { error: 'Não foi possível atualizar o abastecimento. Tente novamente.' }
     }

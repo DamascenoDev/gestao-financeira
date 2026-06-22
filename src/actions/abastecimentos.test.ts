@@ -77,6 +77,9 @@ function makeBuilder(from: string) {
   })
   builder.single = vi.fn(() => builder)
   builder.maybeSingle = vi.fn(() => builder)
+  // WR-04: the 1:1 link pre-check now bounds the probe with .limit(1); the mock
+  // returns the (thenable) builder so the select result still resolves unchanged.
+  builder.limit = vi.fn(() => builder)
 
   function selectResultFor(table: string): QueryResult {
     if (table === 'carros') return carrosSelect
