@@ -3,10 +3,11 @@
 import * as React from 'react'
 import { useTransition } from 'react'
 import Link from 'next/link'
-import { MoreHorizontalIcon } from 'lucide-react'
+import { FuelIcon, MoreHorizontalIcon } from 'lucide-react'
 import { toast } from 'sonner'
 
 import { archiveCarro, unarchiveCarro } from '@/actions/carros'
+import { AbastecimentoForm } from '@/components/abastecimento-form'
 import { CarroForm, type CarroEdit } from '@/components/carro-form'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -165,6 +166,33 @@ export function CarroCard({ carro }: { carro: CarroCardData }) {
             </dd>
           </div>
         </dl>
+
+        {/*
+          Registro rápido (CAR-07, D-03) — a visible "Novo abastecimento" button on
+          the card face (NOT in the ⋯ menu, which stays Editar/Arquivar only). Hosts
+          the shared AbastecimentoForm in manual-only mode (D-01/D-02): só Manual |
+          Parcelado, sem "Da fatura". The list never fetches unlinked lançamentos, so
+          `transacoes` is empty — the manual-only branch never renders the picker.
+          Reuses the carro's id + combustível padrão already in CarroCardData; the
+          write goes through createAbastecimento (IDOR-safe, revalidates /carros).
+        */}
+        <AbastecimentoForm
+          carroId={carro.id}
+          combustivelPadrao={carro.combustivelPadrao}
+          transacoes={[]}
+          manualOnly
+          trigger={
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              className="w-full"
+            >
+              <FuelIcon />
+              Novo abastecimento
+            </Button>
+          }
+        />
       </CardContent>
 
       <CarroForm
