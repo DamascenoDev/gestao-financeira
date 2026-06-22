@@ -6,14 +6,14 @@ current_phase: 28
 current_phase_name: Vínculo reverso por valor + consumo sem double-count
 status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-06-22T19:03:05.405Z"
+last_updated: "2026-06-22T19:11:33.087Z"
 last_activity: 2026-06-22
 last_activity_desc: Phase 28 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 13
+  completed_plans: 14
   percent: 75
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 28 (Vínculo reverso por valor + consumo sem double-count) — EXECUTING
-Plan: 3 of 5
+Plan: 4 of 5
 Status: Ready to execute
 Last activity: 2026-06-22 — Phase 28 execution started
 
@@ -119,6 +119,7 @@ Last activity: 2026-06-22 — Phase 28 execution started
 | Phase 27 P02 | ~3 min | 2 tasks | 2 files |
 | Phase 28 P01 | 4min | 2 tasks | 5 files |
 | Phase 28 P02 | 6min | 1 tasks | 1 files |
+| Phase 28 P04 | 4min | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -202,7 +203,7 @@ Last activity: 2026-06-22 — Phase 28 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-22T19:02:04.916Z
+**Last session:** 2026-06-22T19:10:58.153Z
 **Stopped at:** Phase 28 context gathered
 **Resume file:** .planning/phases/28-v-nculo-reverso-por-valor-consumo-sem-double-count/28-CONTEXT.md
 
@@ -313,3 +314,5 @@ Last activity: 2026-06-22 — Phase 28 execution started
 - [Phase ?]: P28-01: shape canônico único do match — ParsedReviewRow.abastecimentoMatch reusa o tipo AbastecimentoMatch de abastecimento-match.ts (sem drift)
 - [Phase ?]: P28-01: ≤1 parcela/fatura estrutural — candidato parcelado elegível só com 0 já atribuídas nesta fatura (guard D-04 no match)
 - [Phase ?]: Linha-id no assign de abastecimento = dedupe_key (não há id estável até o confirm); pool não-vinculado via .is(transaction_id null) sem filtro de data D-02
+- [Phase ?]: 28-04: vínculo reverso ancorado na coluna Carro (D-05, sem 3ª coluna); confirmar aplica Combustível sobrescrevendo IA/memória/keyword (D-06/FUEL-01) em estado cliente; combustivelCategoryId null degrada limpo
+- [Phase ?]: 28-04: escolha do vínculo (abastecimentoId/kind/parcelaNum) guardada no ReviewRow via applyLinkToRow; abastecimentoId setado = flag confirmado (isLinkPending), match mantido pós-confirm; RSC threada match de parsed_rows sem fetch (WR-01)
