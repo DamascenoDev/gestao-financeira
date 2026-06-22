@@ -188,7 +188,7 @@ Plans:
 
 - [x] **Phase 25: Fix de scroll na criação de palavra-chave** - Criar palavra-chave inline na grid de importação para de resetar o scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`) + re-classificação ao vivo da grid ao criar a keyword (client-side, sem refresh) — **independente, pequeno, sem dependências** (completed 2026-06-21)
 - [x] **Phase 26: Substrato do abastecimento ponta-a-ponta** - Migration que relaxa o `abastecimentos_cost_xor` para "esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) e habilita re-link em abastecimento pré-existente; + categoria default "Combustível" (kind `consumo`) seedada estilo `0035` — substrato das fases 27 e 28 (completed 2026-06-21)
-- [ ] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total)
+- [x] **Phase 27: Registro rápido + abastecimento parcelado** - Botão "Novo abastecimento" por carro na lista `/carros` (reusa o `AbastecimentoForm` do detalhe) + marcar o abastecimento manual como parcelado (nº parcelas + valor total) (completed 2026-06-22)
 - [ ] **Phase 28: Vínculo reverso por valor + consumo sem double-count** - Ao subir a fatura, sugere casar lançamento↔abastecimento pré-registrado por valor (à vista = total; parcelado = ~total/N), confirma na grid de revisão (sem auto-commit) etiquetando `carro_id` + aplicando "Combustível"; uma parcela por fatura ao longo dos meses sem recontar o custo; o consumo (km/l + R$/km) reflete os registros manuais e os vinculados
 
 ## Phase Details (v1.7)
@@ -258,7 +258,7 @@ Plans:
   3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
   4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
 
-**Plans**: 3/4 plans executed
+**Plans**: 4/4 plans complete
 
 Plans:
 **Wave 1**
@@ -272,7 +272,7 @@ Plans:
 
 **Wave 3** *(blocked on 27-03)*
 
-- [ ] 27-04-PLAN.md — Lista: botão "Novo abastecimento" na face do CarroCard hospedando o form manual-only; page /carros sem fetch de transacoes (CAR-07)
+- [x] 27-04-PLAN.md — Lista: botão "Novo abastecimento" na face do CarroCard hospedando o form manual-only; page /carros sem fetch de transacoes (CAR-07)
 
 **UI hint**: yes
 
@@ -325,7 +325,7 @@ Plans:
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
-| 27. Registro rápido + abastecimento parcelado | v1.7 | 3/4 | In Progress|  |
+| 27. Registro rápido + abastecimento parcelado | v1.7 | 4/4 | Complete   | 2026-06-22 |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
 ---
