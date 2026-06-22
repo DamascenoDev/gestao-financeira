@@ -6,14 +6,14 @@ current_phase: 28
 current_phase_name: Vínculo reverso por valor + consumo sem double-count
 status: executing
 stopped_at: Phase 28 context gathered
-last_updated: "2026-06-22T19:11:33.087Z"
+last_updated: "2026-06-22T19:23:22.985Z"
 last_activity: 2026-06-22
 last_activity_desc: Phase 28 execution started
 progress:
   total_phases: 4
   completed_phases: 3
   total_plans: 16
-  completed_plans: 14
+  completed_plans: 15
   percent: 75
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 28 (Vínculo reverso por valor + consumo sem double-count) — EXECUTING
-Plan: 4 of 5
+Plan: 5 of 5
 Status: Ready to execute
 Last activity: 2026-06-22 — Phase 28 execution started
 
@@ -120,6 +120,7 @@ Last activity: 2026-06-22 — Phase 28 execution started
 | Phase 28 P01 | 4min | 2 tasks | 5 files |
 | Phase 28 P02 | 6min | 1 tasks | 1 files |
 | Phase 28 P04 | 4min | 2 tasks | 2 files |
+| Phase 28 P03 | 4min | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -203,7 +204,7 @@ Last activity: 2026-06-22 — Phase 28 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-22T19:10:58.153Z
+**Last session:** 2026-06-22T19:22:26.277Z
 **Stopped at:** Phase 28 context gathered
 **Resume file:** .planning/phases/28-v-nculo-reverso-por-valor-consumo-sem-double-count/28-CONTEXT.md
 
@@ -316,3 +317,5 @@ Last activity: 2026-06-22 — Phase 28 execution started
 - [Phase ?]: Linha-id no assign de abastecimento = dedupe_key (não há id estável até o confirm); pool não-vinculado via .is(transaction_id null) sem filtro de data D-02
 - [Phase ?]: 28-04: vínculo reverso ancorado na coluna Carro (D-05, sem 3ª coluna); confirmar aplica Combustível sobrescrevendo IA/memória/keyword (D-06/FUEL-01) em estado cliente; combustivelCategoryId null degrada limpo
 - [Phase ?]: 28-04: escolha do vínculo (abastecimentoId/kind/parcelaNum) guardada no ReviewRow via applyLinkToRow; abastecimentoId setado = flag confirmado (isLinkPending), match mantido pós-confirm; RSC threada match de parsed_rows sem fetch (WR-01)
+- [Phase ?]: 28-03: IDOR re-derive #5 do abastecimentoId em confirmImport (assertOwnedAbastecimento tri-state) antes de qualquer link-write
+- [Phase ?]: 28-03: parcela_num do link-write recomputado server-side (count batched + contador neste-confirm + 1), nunca confiado do cliente

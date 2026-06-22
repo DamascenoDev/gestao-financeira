@@ -292,7 +292,7 @@ Plans:
   3. Um abastecimento **parcelado** casa **uma parcela por fatura** ao longo dos meses; cada parcela confirmada é registrada **sem recontar** o custo — sem double-count no consumo (`v_abastecimento_consumo`) nem no gasto total do carro (`v_carro_resumo`).
   4. O relatório de consumo (km/l e R$/km) reflete tanto os abastecimentos registrados manualmente quanto os vinculados à fatura; o **km/l é calculado só com litros + odômetro** (não exige a fatura para existir).
 
-**Plans**: 3/5 plans executed
+**Plans**: 4/5 plans executed
 **Wave 1**
 
 - [x] 28-01-PLAN.md — Fundação: módulo puro de value-match (D-01/D-03/D-04) + assertOwnedAbastecimento + ParsedReviewRow.abastecimentoMatch + campos de vínculo no schema (CAR-09, CAR-11)
@@ -304,7 +304,7 @@ Plans:
 
 **Wave 3** *(blocked on Wave 2 completion)*
 
-- [ ] 28-03-PLAN.md — Link-write em confirmImport (IDOR re-derive do abastecimentoId + à-vista update transaction_id + parcelado insert + D-09 dedupe-skip + duplo-link backstop) + teste DB-integration (CAR-10, CAR-11)
+- [x] 28-03-PLAN.md — Link-write em confirmImport (IDOR re-derive do abastecimentoId + à-vista update transaction_id + parcelado insert + D-09 dedupe-skip + duplo-link backstop) + teste DB-integration (CAR-10, CAR-11)
 
 **Wave 4** *(blocked on Wave 3 completion)*
 
@@ -347,7 +347,7 @@ Plans:
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
 | 27. Registro rápido + abastecimento parcelado | v1.7 | 5/5 | Complete    | 2026-06-22 |
-| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 3/5 | In Progress|  |
+| 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 4/5 | In Progress|  |
 
 ---
 *Roadmap created: 2026-06-16 — v1.0 Coverage: 47/47 v1 requirements mapped.*
