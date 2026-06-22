@@ -139,6 +139,20 @@ const fromFaturaInput = {
   transactionId: TX_ID,
 }
 
+// Parcelado (27-02): no transactionId/amountCents — the cost-of-record is
+// valorTotalCents + parcelasTotal (>= 2). transaction_id/amount_cents must be NULL
+// in the write so the cost is counted ONCE (no double-count, no tx 1:1 pre-check).
+const parceladoInput = {
+  carroId: CARRO_ID,
+  occurredOn: '2026-06-17',
+  odometroKm: 10000,
+  litros: 40,
+  tanqueCheio: true,
+  combustivel: 'Gasolina' as const,
+  valorTotalCents: 60000,
+  parcelasTotal: 3,
+}
+
 beforeEach(() => {
   calls.length = 0
   revalidatePath.mockClear()
@@ -170,6 +184,8 @@ describe('createAbastecimento — manual', () => {
       odometro_km: 10000,
       tanque_cheio: true,
       transaction_id: null,
+      // Non-regression (27-02): an à-vista row never carries a parcelado total.
+      valor_total_cents: null,
     })
     expect((ins!.payload as { amount_cents: unknown }).amount_cents).toBeDefined()
     // No transactions.carro_id sync on the manual path.
@@ -222,6 +238,8 @@ describe('createAbastecimento — from-fatura', () => {
       carro_id: CARRO_ID,
       transaction_id: TX_ID,
       amount_cents: null,
+      // Non-regression (27-02): the from-fatura row carries no parcelado total.
+      valor_total_cents: null,
     })
     // carro_id sync: transactions.carro_id set on the linked tx, ONLY carro_id.
     const upd = updateOn('transactions')
@@ -255,6 +273,43 @@ describe('createAbastecimento — from-fatura', () => {
       error: 'Este lançamento já está vinculado a um abastecimento.',
     })
     expect(updateOn('transactions')).toBeUndefined()
+  })
+})
+
+// --- createAbastecimento — parcelado (27-02: write + IDOR + no double-count) -
+
+describe('createAbastecimento — parcelado', () => {
+  it('writes parcelas_total + valor_total_cents with transaction_id AND amount_cents null', async () => {
+    const r = await createAbastecimento(parceladoInput)
+    expect(r).toEqual({ ok: true })
+    const ins = insertOn('abastecimentos')
+    expect(ins).toBeDefined()
+    expect(ins!.payload).toMatchObject({
+      user_id: 'user-1',
+      carro_id: CARRO_ID,
+      parcelas_total: 3,
+      valor_total_cents: 60000,
+      // Cost is counted ONCE (valor_total_cents) — both à-vista sources are NULL.
+      transaction_id: null,
+      amount_cents: null,
+    })
+  })
+
+  it('does NOT sync carro_id on any transaction (no transactionId → no 1:1 pre-check)', async () => {
+    const r = await createAbastecimento(parceladoInput)
+    expect(r).toEqual({ ok: true })
+    // No transactions update, and no abastecimentos "already linked?" select probe.
+    expect(updateOn('transactions')).toBeUndefined()
+    expect(
+      calls.find((c) => c.from === 'transactions' && c.op === 'select'),
+    ).toBeUndefined()
+  })
+
+  it('rejects a forged (not-owned) carroId with NO write (assertOwnedCarro covers parcelado)', async () => {
+    carrosSelect = { data: [], error: null }
+    const r = await createAbastecimento(parceladoInput)
+    expect(r).toEqual({ error: 'Carro inválido.' })
+    expect(insertOn('abastecimentos')).toBeUndefined()
   })
 })
 
