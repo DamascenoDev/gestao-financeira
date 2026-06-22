@@ -174,6 +174,40 @@ Wildcard glob + persisted `palavra-chave` provenance (P21); inline + batch keywo
 
 ---
 
+## Milestone: v1.7 — Abastecimento de ponta-a-ponta + UX da grid
+
+**Shipped:** 2026-06-22 (code-side) | **Phases:** 4 (25–28) | **Plans:** 17 | **Tasks:** 17
+
+### What Was Built
+A scroll-fix + live re-classify on the import grid (P25); a pure data substrate relaxing the abastecimento cost XOR for attach-later + parcelamento columns + RLS junction + Combustível seed (P26); quick-register from the `/carros` list + parcelado tab (P27); and reverse value-matching of statement rows to pre-registered abastecimentos — suggested in the grid, no auto-commit, no double-count (P28). Suite 1000/1000, tsc/build clean, per-phase code review.
+
+### What Worked
+- **BLOCKING substrate phase (P26) as the contract spine:** the relaxed `abastecimentos_cost_xor` truth-table (9 rows), parcelamento columns, junction, and Combustível seed were all proven against the live local schema BEFORE P27/P28 consumed them. The integration checker later confirmed every downstream write/read aligned — the front-loaded-invariant pattern (lessons #1) held again.
+- **Pure-module-first for the hard logic:** P28's value-match (`abastecimento-match.ts`) is a pure integer-cents module with 16 unit tests, separable from the DB-bound `ingestStatement`/`confirmImport` wiring. Testable without a stack; the floor/ceil parcela semantics were proven in isolation.
+- **Held-out no-double-count proof:** P28 CAR-12 varied the *number* of linked parcelas (0→1→2→3) while asserting cost INVARIANT (`valor_total_cents` once), with fixtures chosen so an accidental junction-sum would be detected, not masked. Honest property-style proof rather than a single happy-path fixture.
+- **Adversarial IDOR re-derive mirrored verbatim:** `confirmImport` re-derives `assertOwnedAbastecimento` before any link-write (ASVS L1), mirroring the existing carro_id block — gap-closure 28-06 added the 1-tx-1-link cross-row guard the 0039 header had explicitly delegated to the action layer.
+- **UAT caught a real discoverability gap (P27):** registering a parcelado from the list moved no KPI (no transaction), so "nada aconteceu" — closed by a "Ver detalhes" affordance mirroring ReservaCard, then live-approved.
+
+### What Was Inefficient
+- `milestone.complete` again auto-extracted noisy SUMMARY one-liners (raw "Task 1 —", "Status: APROVADO", review-finding fragments) into MILESTONES.md — required a manual rewrite, same as v1.6. The extractor picks the first bullet regardless of quality.
+- **Nyquist VALIDATION.md bookkeeping drifted:** P25/P26 carry `nyquist_compliant: false` (draft, never flipped post-execution) and P27/P28 have none — even though tests exist and pass. The artifact lagged the reality; surfaced as audit tech_debt rather than being reconciled at phase close.
+- The local Supabase stack stayed off (memory-livelock risk on this machine), so DB-dependent vitest suites couldn't run during P27/P28 verification — leaned on orchestrator-established full-suite results + static wiring instead of re-running live.
+
+### Patterns Established
+- **Value-match as human-in-the-loop suggestion** (no auto-vincular): integer-cents floor/ceil match → non-binding grid suggestion on the existing column → confirm re-derives ownership before write. Mirrors the AI confirm flow exactly; no new UI column.
+- **Relax-the-CHECK over new-table** for "expected manual + link later": widened the v1.2 XOR + added columns + an RLS junction rather than a parallel table — reused the schema, kept one cost-of-record.
+- **Held-out invariant testing for no-double-count:** vary the structural parameter (parcelas linked), assert the value invariant (cost), pick non-colliding fixtures so a leak is detectable.
+
+### Key Lessons
+- A green suite + clean tsc/build cannot prove a runtime UX outcome: P25's scroll-preservation (Router Cache behavior) and P27's "I see it happened" both needed live UAT — jsdom couldn't reproduce either. Route those to Manual-Only explicitly rather than claiming coverage.
+- DB-layer RLS that gates only the self-set column (junction `user_id`) does NOT enforce cross-entity ownership — that must be re-derived at the action layer. Documenting the delegation in the migration header (0039) made the P28 gap-closure deliberate, not a surprise.
+- Reconcile the Nyquist artifact in the same close that proves the tests — `nyquist_compliant` left at the draft default reads as "uncovered" when coverage is actually present.
+
+### Cost Observations
+- Model mix: ~100% opus (Opus 4.8 1M). Per-phase subagent orchestration from one autonomous main thread; P28 the heaviest (6 plans incl. gap-closure 28-06 hardening + adversarial DB-integration tests), P25 the leanest (2 plans, single-component).
+
+---
+
 ## Cross-Milestone Trends
 
 ### Process Evolution
@@ -184,6 +218,8 @@ Wildcard glob + persisted `palavra-chave` provenance (P21); inline + batch keywo
 | v1.3 Produção & PDF | ~1 build + close | 2 | App went LIVE (first git tag); live-verify-via-MCP became the verification spine; new format (PDF) folded into the existing pipeline |
 | v1.4 IA de Classificação (BYOK) | ~build + close | 4 | AI wired into the seam additively (0 defects); credential-gated smokes honestly deferred then closed live; destructive PROD delete safety-gated |
 | v1.5 Classificação determinística | ~1 (single-day) | 3 | Deterministic keyword layer before the AI; user-owned rules as a first-class classification source; honest `gaps_found` close (MKT-01 human-verify deferred) |
+| v1.6 Classificação fluida & ingestão robusta | ~2 | 4 | Scout-before-discuss avoided rebuilding shipped code (P24); review→fix→re-review chain caught real bugs; deferred deploy bundled as one human-gated push |
+| v1.7 Abastecimento de ponta-a-ponta + UX da grid | ~2 | 4 | BLOCKING substrate phase as the contract spine; pure-module + held-out invariant for the hard logic; value-match as human-in-the-loop suggestion (no auto-vincular) |
 
 ### Cumulative Quality
 
@@ -193,6 +229,8 @@ Wildcard glob + persisted `palavra-chave` provenance (P21); inline + batch keywo
 | v1.3 Produção & PDF | ~761 | No — added `pdf-parse` v2 + `unpdf` (PDF only) |
 | v1.4 IA de Classificação (BYOK) | ~819 | No — AI SDK seam already present |
 | v1.5 Classificação determinística | 857 | Yes (no new npm deps — pure matcher + 1 table) |
+| v1.6 Classificação fluida & ingestão robusta | 917 | Yes (no new npm deps — glob matcher + 2 migrations) |
+| v1.7 Abastecimento de ponta-a-ponta + UX da grid | 1000 | Yes (no new npm deps — pure value-match + 2 migrations) |
 
 ### Top Lessons (Verified Across Milestones)
 
