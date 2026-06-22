@@ -1,100 +1,92 @@
 ---
 phase: 27-registro-r-pido-abastecimento-parcelado
-fixed_at: 2026-06-22T11:19:52Z
+fixed_at: 2026-06-22T08:32:00Z
 review_path: .planning/phases/27-registro-r-pido-abastecimento-parcelado/27-REVIEW.md
-iteration: 1
-findings_in_scope: 5
-fixed: 5
-skipped: 0
-status: all_fixed
+iteration: 2
+findings_in_scope: 4
+fixed: 3
+skipped: 1
+status: partial
 ---
 
-# Phase 27: Code Review Fix Report
+# Phase 27: Code Review Fix Report (re-review iteration 2)
 
-**Fixed at:** 2026-06-22T11:19:52Z
+**Fixed at:** 2026-06-22T08:32:00Z
 **Source review:** .planning/phases/27-registro-r-pido-abastecimento-parcelado/27-REVIEW.md
-**Iteration:** 1
+**Iteration:** 2
+
+> Note: this report covers the SECOND review pass (WR-01, IN-01, IN-02, IN-03). The
+> first pass (CR-01, WR-01..WR-04, committed f3338b9/0281198/07ca7ba/3460527) is
+> superseded here but its commits remain in history.
 
 **Summary:**
-- Findings in scope: 5 (CR-01, WR-01, WR-02, WR-03, WR-04)
-- Fixed: 5
-- Skipped: 0
+- Findings in scope: 4 (WR-01, IN-01, IN-02, IN-03)
+- Fixed: 3 (WR-01, IN-01, IN-02)
+- Skipped: 1 (IN-03 — deferred to Phase 28 per reviewer)
 
-Verification: full `tsc --noEmit -p tsconfig.json` passes clean; full `vitest run`
-passes (103 files / 974 tests) after the fixes.
+Verification: `tsc --noEmit` passed clean after every edit. `vitest run` shows 964
+unit tests passing; the only 2 failing files (`tests/import-idor.test.ts` and a
+sibling integration test) fail at `readLocalConfig` because the local Supabase stack
+was not running (`could not read supabase status`) — a documented env-flaky condition,
+NOT a regression from these fixes. The abastecimentos action unit suite passed 20/20.
 
 ## Fixed Issues
 
-### CR-01: Editing a parcelado abastecimento silently converted it to à-vista manual (data loss)
+### WR-01: Transient DB error on the transaction-ownership check is mislabeled "Lançamento inválido"
 
-**Files modified:** `src/components/abastecimento-form.tsx`, `src/components/abastecimento-history.tsx`, `src/app/(app)/carros/[id]/page.tsx`
-**Commit:** f3338b9
-**Status:** fixed: requires human verification (the parcelado-edit round-trip is logic that should be confirmed in the UI)
+**Files modified:** `src/lib/ownership.ts`, `src/actions/abastecimentos.ts`, `src/actions/abastecimentos.test.ts`
+**Commit:** b172c0a
+**Applied fix:** Promoted the shared helper `assertOwnedTransaction` from a boolean
+return to the tri-state `OwnershipResult` (`'owned' | 'not-owned' | 'error'`), matching
+`assertOwnedCarro`. The function now returns `'error'` on a query error and
+`'owned'`/`'not-owned'` based on the row count. Moved the `OwnershipResult` type
+definition above `assertOwnedTransaction` so it is in scope. Updated BOTH call sites in
+`abastecimentos.ts` (create path and update path): an `'error'` result now maps to the
+generic "Não foi possível salvar/atualizar o abastecimento. Tente novamente." retry
+message, and only `'not-owned'` maps to "Lançamento inválido." Verified via repo-wide
+grep that the ONLY callers of `assertOwnedTransaction` are the two in
+`abastecimentos.ts` — no other module consumes it. The test mock's forged-transaction
+case (`transactionsSelect = { data: [], error: null }`) already resolves to
+`'not-owned'` under the new logic; updated its inline comment accordingly. Typecheck
+clean; the 20-test abastecimentos action suite passes.
 
-**Applied fix (the complete round-trip, not the disable-Editar fallback):**
-- `AbastecimentoEdit` gained optional `valorTotal` and `parcelas` string fields.
-- The form's source derivation now resolves to `'parcelado'` when the edit carries
-  `parcelas` parsing to a valid count (new `deriveInitialSource()` used by both the
-  initial `useState` source and `handleOpenChange`).
-- The `valorTotal`/`parcelas` state initializers and `handleOpenChange` now seed from
-  `edit` instead of unconditionally resetting to `''`, so reopening a parcelado row
-  re-enters the parcelado tab with its values.
-- `abastecimento-history.tsx#toEdit` now detects a parcelado row
-  (`parcelas_total > 1`), seeds `valorTotal` from `valor_total_cents` and `parcelas`
-  from `parcelas_total`, and crucially does NOT seed the manual `amount` for a
-  parcelado row (its `custo_cents` equals `valor_total_cents`, which previously leaked
-  into the manual field and caused the downgrade on save).
-- `AbastecimentoRow` gained `parcelas_total` and `valor_total_cents`.
-- The `/carros/[id]` page query now selects `parcelas_total, valor_total_cents`, maps
-  them onto the row, and computes `custo_cents` parcelado-aware (mirrors the
-  `v_abastecimento_consumo` CASE — the list now shows the parcelado total instead of a
-  sentinel from the null `amount_cents`).
+### IN-01: Stale migration reference (0027) in action-level docstring after the 0039 cost-XOR replacement
 
-This fully removes the data-loss path: a parcelado fuel-up now opens, edits, and saves
-as parcelado.
+**Files modified:** `src/actions/abastecimentos.ts`
+**Commit:** dc2794b
+**Applied fix:** Updated the line-22 docstring reference from the superseded "DB CHECK
+(0027)" to "the DB CHECK (0039 `abastecimentos_cost_xor`; replaced the strict 0027
+XOR)", matching the corrected schema docstring and the `abastecimentoWriteFields`
+comment so the file is internally consistent. Comment-only change; typecheck clean.
 
-### WR-01: Schema docstring claimed to mirror the 0039 CHECK but is stricter on the à-vista path
-
-**Files modified:** `src/lib/schemas/abastecimento.ts`
-**Commit:** 0281198
-**Applied fix:** Rewrote the header docstring to state that the à-vista branch is
-*intentionally stricter* than the relaxed 0039 CHECK (single-source-only until
-attach-later lands in Phase 28), with an explicit breadcrumb to relax it then — so a
-future maintainer does not "fix" the wrong side.
-
-### WR-02: Manual-only edit of a previously fatura-linked row submitted with no cost source
+### IN-02: `onSubmit` error-key fallback to `'odometroKm'` can mislabel a path-less issue
 
 **Files modified:** `src/components/abastecimento-form.tsx`
-**Commit:** f3338b9 (co-delivered with the CR-01 form changes — same file)
-**Applied fix:** Added a `seededTransactionId()` helper that drops the linked
-`transactionId` when `manualOnly` is set (the "Da fatura" branch never renders in that
-mode). Both the `useState` initializer and `handleOpenChange` now use it, so a
-manual-only edit of a previously-linked row opens with no hidden tx and forces a
-coherent manual re-entry rather than submitting neither cost source.
+**Commit:** 38edbef
+**Applied fix:** Replaced the `String(issue.path[0] ?? 'odometroKm')` fallback with
+`issue.path.length > 0 ? String(issue.path[0]) : '_form'`, filing any path-less Zod
+issue under a neutral `_form` sentinel instead of mislabeling it onto the Odômetro
+field. Added a form-level `<FieldError>` rendering `errors._form` once at the top of
+the form (mirroring the WR-03 neutral-path `'cost'` pattern). Typecheck clean.
 
-### WR-03: `errors.amountCents` key collided across all three cost sources
+## Skipped Issues
 
-**Files modified:** `src/lib/schemas/abastecimento.ts`, `src/components/abastecimento-form.tsx`
-**Commits:** 07ca7ba (schema path), f3338b9 (form render — same file as CR-01)
-**Applied fix:** The à-vista "exactly one source" XOR issue is now published at the
-source-neutral path `['cost']` instead of `['amountCents']`. The form's wrapping
-`Field data-invalid` and the rendered `FieldError` now read `errors.cost` and render
-it once below the Tabs; the TransacaoPicker no longer receives the XOR error. Tab
-switches now clear `errors` so a stale cost error never lingers on a hidden control.
-(The schema test asserts on the message string, not the path, so no test change was
-needed.)
+### IN-03: Update path leaves a stale `carro_id` tag when the cost source changes
 
-### WR-04: 1:1 link pre-check read all matching rows (no `.limit(1)`)
-
-**Files modified:** `src/actions/abastecimentos.ts`, `src/actions/abastecimentos.test.ts`
-**Commit:** 3460527
-**Applied fix:** Added `.limit(1)` to the "already linked?" probe on both the create
-and update paths (the update path keeps its `.neq('id', id)` self-exclusion). Updated
-the action test's supabase query-builder mock to expose a thenable `.limit()` so the
-bounded probe still resolves.
+**File:** `src/actions/abastecimentos.ts:169-175, 226-234`
+**Reason:** deferred — the reviewer explicitly states "No code change required for this
+phase" and recommends deferring the stale-`carro_id` relink to the Phase 28
+attach-later work where relinking is in scope. No code was written; this is the
+intended outcome (a tracked follow-up), not a fix failure.
+**Original issue:** `updateAbastecimento` re-syncs `transactions.carro_id` for the
+currently-linked tx but does NOT clear the `carro_id` on a previously-linked
+transaction when an edit switches the cost source (e.g. fatura → manual/parcelado).
+The orphaned tag still counts toward the carro's spend in `v_carro_resumo` until
+manually cleared — a subtle double-attribution risk. Documented in the docstring as
+"harmless if left" and deferred past v1.
 
 ---
 
-_Fixed: 2026-06-22T11:19:52Z_
+_Fixed: 2026-06-22T08:32:00Z_
 _Fixer: Claude (gsd-code-fixer)_
-_Iteration: 1_
+_Iteration: 2_
