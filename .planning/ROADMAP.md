@@ -258,7 +258,7 @@ Plans:
   3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
   4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
 
-**Plans**: 5 plans (4 complete + 1 gap closure)
+**Plans**: 5/5 plans complete
 
 Plans:
 **Wave 1**
@@ -276,7 +276,7 @@ Plans:
 
 **Gap closure** *(UAT discoverability gap, major)*
 
-- [ ] 27-05-PLAN.md — Affordance "Ver detalhes" no menu ⋯ do CarroCard (espelha "Ver extrato" do ReservaCard) → torna histórico + Editar/CR-01 alcançáveis pela lista /carros (CAR-07, CAR-08)
+- [x] 27-05-PLAN.md — Affordance "Ver detalhes" no menu ⋯ do CarroCard (espelha "Ver extrato" do ReservaCard) → torna histórico + Editar/CR-01 alcançáveis pela lista /carros (CAR-07, CAR-08)
 
 **UI hint**: yes
 
@@ -329,7 +329,7 @@ Plans:
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
-| 27. Registro rápido + abastecimento parcelado | v1.7 | 4/4 | Complete    | 2026-06-22 |
+| 27. Registro rápido + abastecimento parcelado | v1.7 | 5/5 | Complete   | 2026-06-22 |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
 ---

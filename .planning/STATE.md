@@ -2,18 +2,18 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
-current_phase: 28
-current_phase_name: Vínculo reverso por valor + consumo sem double-count
+current_phase: 27
+current_phase_name: registro-r-pido-abastecimento-parcelado
 status: executing
-stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-06-22T10:58:33.001Z"
+stopped_at: Completed 27-05-PLAN.md (human-verify aprovado)
+last_updated: "2026-06-22T14:42:59.161Z"
 last_activity: 2026-06-22
-last_activity_desc: Phase 27 complete, transitioned to Phase 28
+last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 4
   completed_phases: 3
-  total_plans: 10
-  completed_plans: 10
+  total_plans: 11
+  completed_plans: 11
   percent: 75
 ---
 
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 28 — Vínculo reverso por valor + consumo sem double-count
-Plan: Not started
-Status: Ready to execute
-Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
+Phase: 27 (registro-r-pido-abastecimento-parcelado) — EXECUTING
+Plan: 5 of 5 (all plans complete; awaiting phase verification by orchestrator)
+Status: All plans executed
+Last activity: 2026-06-22 — Completed 27-05 (affordance "Ver detalhes"; human-verify aprovado)
 
 ## Deferred Items
 
@@ -200,7 +200,7 @@ Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 
 ## Session Continuity
 
-**Last session:** 2026-06-22T00:25:29.411Z
+**Last session:** 2026-06-22T14:42:51.032Z
 **Stopped at:** Completed 27-01-PLAN.md
 **Resume file:** .planning/phases/27-registro-r-pido-abastecimento-parcelado/27-CONTEXT.md
 
@@ -307,3 +307,4 @@ Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 - [Phase ?]: Phase 26 SC5 gate proven green: clean replay 0001→0040 (db:reset exit 0) + scoped gen:types (abastecimento_parcelas present, zero categories/handle_new_user drift) + full vitest 960/960; aligned 3 stale assertions to the 0039/0040 documented contracts without weakening any test; local-only (no prod push).
 - [Phase 27]: abastecimentoSchema relaxado para 3 estados de custo espelhando o CHECK abastecimentos_cost_xor do 0039; convenção à-vista parcelasTotal ausente-ou-1 documentada para a action 27-02.
 - [Phase ?]: 27-02: abastecimentoWriteFields parcelado-aware (write por estado de custo; parcelado grava valor_total_cents, transaction_id/amount_cents null)
+- [Phase 27]: 27-05: affordance 'Ver detalhes' no menu ⋯ do CarroCard (Link /carros/[id]) fecha gap de descoberta do UAT — histórico + Editar (CR-01) alcançáveis pela lista
