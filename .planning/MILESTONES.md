@@ -1,5 +1,22 @@
 # Milestones
 
+## v1.7 Abastecimento de ponta-a-ponta + UX da grid (Shipped: 2026-06-22)
+
+**Phases completed:** 4 phases (25–28), 17 plans, 17 tasks
+**Git range:** `v1.6` → HEAD · 110 commits · 2026-06-21→22
+**Requirements:** 9/9 satisfeitos (UX-01/UX-02 · FUEL-01 · CAR-07/CAR-08 · CAR-09/CAR-10/CAR-11/CAR-12) — auditoria do milestone `tech_debt` (0 blockers; 4/4 fases verify `passed`; integração WIRED 9/9; 3-source cross-check)
+**Quality:** suíte **1000/1000** verde · `tsc --noEmit` + `npm run build` limpos · code review por fase (review→fix→re-review limpo) · replay local `0001→0040` exit 0 · held-out no-double-count verde
+**Known deferred items at close:** 3 (ver STATE.md "Deferred Items") — PROD push de 0039/0040, live-UAT P28 (`/gsd-verify-work 28`), Nyquist VALIDATION.md bookkeeping (P25/26 draft, P27/28 ausente)
+
+**Key accomplishments:**
+
+- **Fix de scroll + re-classify ao vivo na grid** (Phase 25, UX-01/UX-02): criar palavra-chave inline na grid de importação para de resetar o scroll (helper privado `insertKeyword` + `addKeywordInline` sem `revalidatePath`; `/categorias` segue refletindo via `addKeyword`) e re-classifica ao vivo as linhas que casam (`reclassifyRowsWithKeyword` puro via `compileRule`/`matchKeyword`; sobrescreve não-classificada/memória/IA, nunca `manual`, sem refresh). UAT vivo aprovado.
+- **Substrato attach-later + categoria Combustível** (Phase 26, FUEL-01): `0039` relaxa o `abastecimentos_cost_xor` para "valor esperado manual + vínculo depois", adiciona colunas de parcelamento (nº parcelas + valor total) + junção `abastecimento_parcelas` (RLS, unique tx + unique abast/parcela_num), reescreve `v_abastecimento_consumo` (`security_invoker`, parcelado conta UMA vez); `0040` seeda "Combustível" (kind consumo) em `handle_new_user` + backfill idempotente, zero gen:types diff. Truth-table de 9 linhas + replay `0001→0040` exit 0.
+- **Registro rápido + parcelado** (Phase 27, CAR-07/CAR-08): botão "Novo abastecimento" na face de cada card em `/carros` reusa o `AbastecimentoForm` (registra à vista/manual durante o mês, sem abrir o detalhe) + aba "Parcelado" (nº parcelas + valor total, schema 3-estados espelhando o CHECK do 0039, IDOR-safe via `assertOwnedCarro`, sem double-count); affordance "Ver detalhes" no menu ⋯ fecha a lacuna de descoberta do histórico.
+- **Vínculo reverso por valor + consumo sem double-count** (Phase 28, CAR-09/CAR-10/CAR-11/CAR-12): módulo puro `abastecimento-match.ts` casa por valor em aritmética inteira (à vista = total exato; parcelado = `{floor,ceil}` de `total÷N`; greedy 1:1, ≤1 parcela/fatura, sem filtro de data); `ingestStatement` anexa `abastecimentoMatch` não-vinculante; grid sugere na coluna Carro (confirmar/descartar + "Vincular todos", sem auto-commit) + aplica "Combustível"; `confirmImport` grava com gate IDOR `assertOwnedAbastecimento` antes de qualquer write, `parcela_num` server-recomputado, 23505→already-linked, guarda 1-tx-1-vínculo cross-row; CAR-12 provado sem SQL novo (views da P26 contam o parcelado uma vez, km/l só litros+odômetro).
+
+---
+
 ## v1.6 Classificação fluida & ingestão robusta (Shipped: 2026-06-21)
 
 **Phases completed:** 4 phases (21–24), 9 plans, 13 tasks

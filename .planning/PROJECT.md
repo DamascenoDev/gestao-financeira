@@ -10,12 +10,14 @@ Subir uma fatura e ver os gastos classificados automaticamente — o sistema apr
 
 ## Current State
 
-**v1.6 "Classificação fluida & ingestão robusta" — SHIPPED 2026-06-21 (code-side).** O atrito da classificação caiu e a ingestão endureceu. A palavra-chave ganhou **wildcard glob** (`UBER*`, `*IFOOD*`, ReDoS-safe, maior keyword vence preservado) e a procedência `palavra-chave` agora **persiste** em `transactions.classification_source` (migration `0037`). O usuário deixa de cadastrar keyword só no braço: opção **inline** "+ palavra-chave" por linha na grid de revisão + um **painel batch** em `/categorias` que minera `merchant_patterns` confirmados e sugere candidatas para aprovar/descartar em lote (sem auto-cadastro). O "aplicar todas as sugestões" virou **aplicar por confiança** — só as de IA com `confidence >= 0.6`, deixando as fracas para revisão manual. E a ingestão de PDF parou de quebrar: worker do `pdfjs` forçado no bundle serverless da Vercel (`outputFileTracingIncludes`), parser que degrada limpo em PDF ruim (sem OCR), e migration `0038` libera o re-import de arquivo não-confirmado (`statements.status` aceita `'imported'`). Tag git: `v1.6`.
+**v1.7 "Abastecimento de ponta-a-ponta + UX da grid" — SHIPPED 2026-06-22 (code-side).** O ciclo abastecimento fechou de ponta a ponta: registrar na hora, casar pela fatura por valor, sem double-count. A grid de importação parou de resetar o scroll ao criar palavra-chave inline e passou a **re-classificar ao vivo** as linhas que casam (client-side, sem refresh; nunca toca `manual`). O modelo de dados ganhou substrato **attach-later** (migration `0039` relaxa o `abastecimentos_cost_xor` p/ "valor esperado manual + vínculo depois", adiciona colunas de **parcelamento** + junção `abastecimento_parcelas` RLS + view `security_invoker`), e a categoria default **"Combustível"** foi seedada (`0040`). O usuário registra abastecimento direto da lista `/carros` ("Novo abastecimento" reusando o `AbastecimentoForm`) e pode marcá-lo **parcelado** (nº parcelas + valor total). Ao subir a fatura, o sistema **casa por valor** (à vista = total exato; parcelado = `{floor,ceil}` de `total÷N`, aritmética inteira, sem filtro de data), sugere o vínculo na coluna Carro da grid (confirmar/descartar + "Vincular todos", **sem auto-commit**), e ao confirmar grava o vínculo (gate IDOR `assertOwnedAbastecimento` antes de qualquer write, `parcela_num` server-recomputado, 23505→already-linked) + etiqueta `carro_id` + aplica "Combustível" — **uma parcela/fatura sem recontar custo**; o consumo (km/l + R$/km) reflete manuais + vinculados, km/l só com litros + odômetro. Tag git: `v1.7`.
 
-Suíte **917/917** verde, `tsc --noEmit` + `npm run build` limpos, code review por fase (review→fix→re-review limpo). Auditoria do milestone: **`tech_debt`** — 8/8 requisitos code-side satisfeitos, integração cross-phase WIRED 8/8, 0 blockers. **Deferred (autonomous:false, credential/deploy-gated):** `supabase db push` de `0037`+`0038` ao PROD + live-verify de PDF em PROD (SC1) e dos UATs de P22/P24 — code-complete + localmente provado (`0038` replay `UPDATE 1`, antes 23514). Ver `milestones/v1.6-MILESTONE-AUDIT.md` + STATE.md "Deferred Items".
+Suíte **1000/1000** verde, `tsc --noEmit` + `npm run build` limpos, code review por fase (review→fix→re-review limpo). Auditoria do milestone: **`tech_debt`** — 9/9 requisitos satisfeitos (3-source cross-check), 4/4 fases verify `passed`, integração cross-phase WIRED 9/9, 0 blockers. **Deferred (deploy-time, credential-gated):** `supabase db push` de `0039`+`0040` ao PROD + live-UAT do fluxo de vínculo reverso da Phase 28 (`/gsd-verify-work 28`) — code-complete + localmente provado (replay `0001→0040` exit 0; held-out no-double-count verde). Ver `milestones/v1.7-MILESTONE-AUDIT.md` + STATE.md "Deferred Items".
 
 <details>
-<summary>Milestones anteriores (v1.0–v1.5)</summary>
+<summary>Milestones anteriores (v1.0–v1.6)</summary>
+
+- **v1.6 Classificação fluida & ingestão robusta** (Phases 21-24) — wildcard glob (`*`) na palavra-chave (ReDoS-safe) + procedência `palavra-chave` persistida (`0037`); sugestão de keyword inline + batch minerando `merchant_patterns`; aplicar sugestões em lote por confiança (`>= 0.6`); ingestão de PDF robusta (worker `pdfjs` forçado no bundle Vercel, parser degrada limpo, `0038` libera re-import). SHIPPED 2026-06-21; v1.6 **100% em PROD** desde 2026-06-21 (`0037`+`0038` push + UATs de P22/P24 fechados via `/gsd-verify-work 22, 24`). 8/8 requisitos (`milestones/v1.6-*`).
 
 - **v1.5 Classificação determinística** (Phases 18-20) — pipeline **memória → palavra-chave → IA** no upload (cadastro de keyword por categoria em `/categorias`, `category_keywords`/`0036`, maior keyword vence, sem auto-commit), prompt da IA **kind-aware** (CLSAI-09, corrige marketplace→Investimentos), categoria default **"Marketplace"** (`0035`) em PROD. SHIPPED 2026-06-20, 8/8 requisitos (`milestones/v1.5-*`).
 
@@ -28,20 +30,13 @@ Suíte **917/917** verde, `tsc --noEmit` + `npm run build` limpos, code review p
 
 </details>
 
-## Current Milestone: v1.7 Abastecimento de ponta-a-ponta + UX da grid
+## Next Milestone: a definir
 
-**Goal:** Registrar abastecimento na hora (sem esperar a fatura), casar o lançamento da fatura por valor quando ela chegar, e tirar o atrito da criação de palavra-chave na importação.
+v1.7 encerrado. Próximo milestone via `/gsd-new-milestone` (questioning → research → requirements → roadmap). Numeração de fases continua em 29.
 
-**Target features:**
-- **UX fix** — criar palavra-chave na grid de importação não dá mais scroll pro topo (escopar/remover o `revalidatePath('/categorias')` cross-page em `addKeyword`).
-- **Registro rápido de abastecimento** — botão "Novo abastecimento" acessível na lista `/carros` (reusa o `AbastecimentoForm` do detalhe; permite lançar à vista/manual durante o mês, antes da fatura).
-- **Abastecimento parcelado** — nº de parcelas + valor total; relaxa o `abastecimentos_cost_xor` para permitir "esperado manual + vínculo depois".
-- **Vínculo reverso por valor** — ao subir a fatura, casa lançamento↔abastecimento pré-registrado pelo valor (à vista = total; parcelado = ~total/N), sugerido na grid de revisão com confirmação humana (sem auto-commit). Habilita attach-later (hoje o vínculo é só no create).
-- **Categoria "Combustível"** — default seedada (migration estilo `0035`) + auto-aplica/sugere ao vincular.
+**Único item carregado de v1.7:** `supabase db push` de `0039`+`0040` ao PROD + live-UAT do vínculo reverso (`/gsd-verify-work 28`) — deploy-time, credential-gated. Mesmo padrão do v1.6 (tag code-side → push PROD + verify-work depois).
 
-Reusa `AbastecimentoForm` + actions (`src/actions/abastecimentos.ts`) + views de consumo (`v_abastecimento_consumo`/`v_carro_resumo`) de v1.2. Numeração de fases continua em 25.
-
-> **Nota v1.6 (resolvido 2026-06-21):** o deploy diferido foi fechado via `/gsd-verify-work 22, 24` — `supabase db push` de `0037`+`0038` aplicado em PROD + live-verify de PDF e dos UATs de P22/P24 (4/4 pass). v1.6 está 100% em PROD; sem pendências de deploy carregadas para v1.7.
+Candidatos reconhecidos fora de escopo no v1.7 (ver `milestones/v1.7-REQUIREMENTS.md` § v2): **CAR-13** (lembrete/projeção de parcelas futuras ainda não casadas), **CAR-14** (edição/relink de custo de abastecimento já criado).
 
 ## Requirements
 
@@ -74,8 +69,8 @@ Reusa `AbastecimentoForm` + actions (`src/actions/abastecimentos.ts`) + views de
 
 <!-- Hipóteses até serem entregues e validadas. Detalhamento na REQUIREMENTS.md do próximo milestone. -->
 
-- _Nenhuma._ **v1.7 code-complete** — todas as fases (25 UX-scroll · 26 substrato FUEL-01 · 27 registro rápido/parcelado · 28 vínculo reverso/no-double-count) entregues e verificadas localmente. **Único item carregado: `supabase db push` de `0039`+`0040` ao PROD** (deploy-time, credential-gated; Phase 28 não criou migração nova — reusa as views da P26). Próximo: auditar/encerrar o milestone v1.7 e fazer o deploy.
-- _v1.6 totalmente em PROD desde 2026-06-21_ (deploy/UAT diferidos fechados via `/gsd-verify-work 22, 24`). Sem pendências carregadas.
+- _Nenhuma._ **v1.7 SHIPPED (code-side) + auditado `tech_debt` + arquivado 2026-06-22** (9/9 requisitos, 4/4 fases verify `passed`, integração 9/9 WIRED, 0 blockers). Próximo milestone via `/gsd-new-milestone` — as hipóteses ativas serão detalhadas na nova REQUIREMENTS.md.
+- _Carregado de v1.7 (deploy-time, credential-gated):_ `supabase db push` de `0039`+`0040` ao PROD + live-UAT do vínculo reverso (`/gsd-verify-work 28`). Mesmo padrão do v1.6 (code-side → PROD depois). Rastreado em STATE.md "Deferred Items".
 
 ### Out of Scope
 
@@ -134,6 +129,9 @@ Reusa `AbastecimentoForm` + actions (`src/actions/abastecimentos.ts`) + views de
 | (v1.6) Aplicar-em-lote por confiança reusa o `LOW_CONFIDENCE` 0.6 existente | As linhas deixadas pendentes são exatamente o conjunto amber "baixa confiança"; limiar único, sem nova constante nem slider na UI | ✓ Good — CLSAI-10; só IA é "pendente" (memória/keyword já são bindings aplicados) |
 | (v1.6) PDF worker via `outputFileTracingIncludes` (não rebuild do bundling) | O `@vercel/nft` não vê o import dinâmico do `pdf.worker.mjs`; forçar o asset no trace é o fix mínimo e idiomático | ✓ Good — PDF-06 (code, `fb91b58`); live-verify em PROD diferido |
 | (v1.6) Re-import destravado por widening do CHECK de `status` (não refactor do fluxo) | A fast-path "já confirmado → bloqueia" já existia mas estava morta (confirmImport gravava `'imported'`, rejeitado por 23514 e engolido); a migration `0038` é a correção cirúrgica | ✓ Good — IMP-07; `0038` replay-provado local (`UPDATE 1`); PROD push diferido |
+| (v1.7) Vínculo fatura↔abastecimento casa por **valor**, não por descritor/merchant | Valor (à vista = total; parcelado = `{floor,ceil}` de `total÷N`) é sinal forte e simples; aritmética inteira em centavos, sem float nem janela; matching textual fica para v2 se necessário | ✓ Good — CAR-09/CAR-11; módulo puro `abastecimento-match.ts`, greedy 1:1 + ≤1 parcela/fatura, held-out no-double-count verde |
+| (v1.7) `abastecimentos_cost_xor` relaxado p/ attach-later em vez de nova tabela | "Registro agora, fatura depois" precisa de "valor esperado manual + vínculo posterior"; relaxar o CHECK + colunas de parcelamento + junção `abastecimento_parcelas` reusa o schema do v1.2 sem migração dolorosa | ✓ Good — FUEL-01/CAR-08; `0039` truth-table de 9 linhas provada, view `security_invoker` conta parcelado UMA vez |
+| (v1.7) Vínculo reverso é sugestão human-in-the-loop (sem auto-vincular), espelhando o confirm da IA | Filosofia do projeto é sem auto-commit; vínculo por valor entra na coluna Carro da grid (confirmar/descartar + "Vincular todos"), IDOR re-derive antes de qualquer write | ✓ Good — CAR-10; `confirmImport` gate `assertOwnedAbastecimento` + `parcela_num` server-recomputado + 23505→already-linked |
 
 ## Evolution
 
@@ -153,4 +151,11 @@ This document evolves at phase transitions and milestone boundaries.
 4. Update Context with current state
 
 ---
-*Last updated: 2026-06-22 — Milestone **v1.7 "Abastecimento de ponta-a-ponta + UX da grid"** CODE-COMPLETE (todas as fases entregues + verificadas localmente). **Phase 28 (vínculo reverso por valor + consumo sem double-count, CAR-09..12) COMPLETA 2026-06-22** — match por valor em aritmética inteira (`{floor,ceil}` de `total÷N`; sem float, sem filtro de data) no módulo puro `src/lib/carro/abastecimento-match.ts`; pass batched no `ingestStatement` anexa `abastecimentoMatch` não-vinculante; grid sugere na coluna Carro (confirmar/descartar + "Vincular todos", sem 3ª coluna, sem auto-commit) + aplica "Combustível"; `confirmImport` grava o vínculo com **gate IDOR `assertOwnedAbastecimento` antes de qualquer write** (à-vista `transaction_id`, parcelado `abastecimento_parcelas` com `parcela_num` server-recomputado, 23505→already-linked, D-09 dedupe-skip batched, surface-but-keep); CAR-12 provado sem SQL novo (views da P26 contam o parcelado UMA vez, km/l só litros+odômetro). Verify 4/4 must-haves; **suíte 1000/1000 verde**, `tsc`+`build` limpos (post-merge gate pegou e corrigiu 1 mock stale de `import.test.ts`, commit `ff61e9a`). Antes: Phase 25 (UX scroll), 26 (substrato FUEL-01, `0039`/`0040`), 27 (registro rápido/parcelado CAR-07/08), todas COMPLETAS. **Único item carregado: `supabase db push` de `0039`+`0040` ao PROD** (deploy-time, credential-gated; Phase 28 não criou migração nova). Próximo: auditar/encerrar v1.7 (`/gsd-audit-milestone`) + deploy. v1.6 100% em PROD; phase dirs 14-24 arquivados em `milestones/`.*
+*Last updated: 2026-06-22 after **v1.7 "Abastecimento de ponta-a-ponta + UX da grid"** milestone — SHIPPED (code-side), auditado `tech_debt` (9/9 requisitos, 4/4 fases `passed`, integração 9/9 WIRED, 0 blockers), arquivado em `milestones/v1.7-*`, tag git `v1.7`. Único item carregado: `supabase db push` de `0039`+`0040` ao PROD + `/gsd-verify-work 28` (deploy-time, credential-gated). Próximo: `/gsd-new-milestone` (fases continuam em 29).*
+
+<details>
+<summary>Histórico de fechamento da v1.7 (detalhe de execução)</summary>
+
+*Milestone **v1.7** CODE-COMPLETE (todas as fases entregues + verificadas localmente). **Phase 28 (vínculo reverso por valor + consumo sem double-count, CAR-09..12) COMPLETA 2026-06-22** — match por valor em aritmética inteira (`{floor,ceil}` de `total÷N`; sem float, sem filtro de data) no módulo puro `src/lib/carro/abastecimento-match.ts`; pass batched no `ingestStatement` anexa `abastecimentoMatch` não-vinculante; grid sugere na coluna Carro (confirmar/descartar + "Vincular todos", sem 3ª coluna, sem auto-commit) + aplica "Combustível"; `confirmImport` grava o vínculo com **gate IDOR `assertOwnedAbastecimento` antes de qualquer write** (à-vista `transaction_id`, parcelado `abastecimento_parcelas` com `parcela_num` server-recomputado, 23505→already-linked, D-09 dedupe-skip batched, surface-but-keep); CAR-12 provado sem SQL novo (views da P26 contam o parcelado UMA vez, km/l só litros+odômetro). Verify 4/4 must-haves; **suíte 1000/1000 verde**, `tsc`+`build` limpos (post-merge gate pegou e corrigiu 1 mock stale de `import.test.ts`, commit `ff61e9a`). Antes: Phase 25 (UX scroll), 26 (substrato FUEL-01, `0039`/`0040`), 27 (registro rápido/parcelado CAR-07/08), todas COMPLETAS. v1.6 100% em PROD; phase dirs 14-24 arquivados em `milestones/`.*
+
+</details>

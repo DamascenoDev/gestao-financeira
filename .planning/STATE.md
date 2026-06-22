@@ -2,12 +2,12 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
-current_phase: 28
-status: complete
-stopped_at: Phase 28 complete + verified (4/4) + code review resolved (WR-01..04 fechados em 28-06); v1.7 code-complete — só falta push PROD de 0039/0040
-last_updated: "2026-06-22T22:08:25.710Z"
+current_phase: 7
+status: Awaiting next milestone
+stopped_at: Phase 28 context gathered
+last_updated: "2026-06-22T22:36:25.080Z"
 last_activity: 2026-06-22
-last_activity_desc: Phase 28 P06 gap-closure complete (4 WARNINGs do code review fechados)
+last_activity_desc: Milestone v1.7 completed and archived
 progress:
   total_phases: 4
   completed_phases: 4
@@ -26,16 +26,26 @@ current_phase_name: Vínculo reverso por valor + consumo sem double-count
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** v1.7 code-complete (Phases 25-28 entregues + verificadas) — próximo: auditar/encerrar o milestone + push PROD de 0039/0040
+- **Current focus:** v1.7 SHIPPED (code-side) + arquivado 2026-06-22 — próximo: `/gsd-new-milestone` (fases continuam em 29). Carregado: push PROD de 0039/0040 + `/gsd-verify-work 28`.
 
 ## Current Position
 
-Phase: 28 — COMPLETE (verificado 4/4 + code review resolvido)
-Plan: 06 (gap-closure) complete — 6/6 plans done
-Status: Phase 28 complete; milestone v1.7 code-complete (4/4 fases, 100%) — ready for /gsd-audit-milestone + deploy
-Last activity: 2026-06-22 — Phase 28 P06 gap-closure (WR-01..04 + IN-01) complete, suíte 1004/1004 verde
+Phase: Milestone v1.7 complete
+Plan: —
+Status: Awaiting next milestone
+Last activity: 2026-06-22 — Milestone v1.7 completed and archived
 
 ## Deferred Items
+
+**v1.7-close items (2026-06-22) — OPEN, deploy-time + credential-gated (mesmo padrão do v1.6: tag code-side → PROD depois):**
+
+| Category | Item | Status |
+|----------|------|--------|
+| deploy | `supabase db push` de `0039` (parcelado substrate) + `0040` (Combustível seed) ao PROD | ⏳ OPEN — code-complete + replay local `0001→0040` exit 0; gen:types diff escopado. Aplicar em ordem ao PROD. |
+| uat | Live-UAT do vínculo reverso por valor (Phase 28: upload → match → confirm + Combustível + carro_id → no double-count) | ⏳ OPEN — provado por testes held-out + wiring estático; rodar `/gsd-verify-work 28` contra PROD após o push. |
+| nyquist | VALIDATION.md de P25/P26 (`nyquist_compliant:false`, draft) + ausente em P27/P28 | ⏳ OPEN — cobertura real existe (78/37/46/held-out + 1000/1000). `/gsd-validate-phase 27` + `28` p/ backfill se sign-off desejado. |
+
+Ver `milestones/v1.7-MILESTONE-AUDIT.md` (status `tech_debt`, 0 blockers).
 
 **v1.6-close items — ALL RESOLVED 2026-06-21 by `/gsd-verify-work 22, 24` (live human-verify):**
 
