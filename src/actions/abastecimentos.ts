@@ -115,9 +115,12 @@ export async function createAbastecimento(
   // 2. From-fatura path: re-derive transaction ownership + the 1:1 link pre-check
   //    BEFORE writing anything. A forged/foreign tx writes nothing (T-10-05).
   if (transactionId !== undefined) {
-    if (!(await assertOwnedTransaction(supabase, transactionId))) {
-      return { error: 'Lançamento inválido.' }
+    // WR-01 tri-state: 'error' → generic retry; 'not-owned' → 'Lançamento inválido.'.
+    const tx = await assertOwnedTransaction(supabase, transactionId)
+    if (tx === 'error') {
+      return { error: 'Não foi possível salvar o abastecimento. Tente novamente.' }
     }
+    if (tx === 'not-owned') return { error: 'Lançamento inválido.' }
     // Defense-in-depth over the partial unique index (T-10-07): reject a tx already
     // linked to another abastecimento before we insert.
     // WR-04: bound the probe to a single row (.limit(1)) rather than reading every
@@ -197,9 +200,12 @@ export async function updateAbastecimento(
 
   const { transactionId } = parsed.data
   if (transactionId !== undefined) {
-    if (!(await assertOwnedTransaction(supabase, transactionId))) {
-      return { error: 'Lançamento inválido.' }
+    // WR-01 tri-state: 'error' → generic retry; 'not-owned' → 'Lançamento inválido.'.
+    const tx = await assertOwnedTransaction(supabase, transactionId)
+    if (tx === 'error') {
+      return { error: 'Não foi possível atualizar o abastecimento. Tente novamente.' }
     }
+    if (tx === 'not-owned') return { error: 'Lançamento inválido.' }
     // The 1:1 pre-check must ignore THIS abastecimento's own existing link.
     // WR-04: bound to a single row (the .neq('id', id) filter still excludes self).
     const { data: existing, error: linkErr } = await supabase

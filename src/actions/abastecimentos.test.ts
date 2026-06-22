@@ -252,7 +252,7 @@ describe('createAbastecimento — from-fatura', () => {
   })
 
   it('rejects a forged (foreign) transactionId — NO write, carro_id never set', async () => {
-    transactionsSelect = { data: [], error: null } // assertOwnedTransaction → false
+    transactionsSelect = { data: [], error: null } // assertOwnedTransaction → 'not-owned'
     const r = await createAbastecimento(fromFaturaInput)
     expect(r).toHaveProperty('error')
     expect(insertOn('abastecimentos')).toBeUndefined()
