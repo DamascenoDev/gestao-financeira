@@ -6,14 +6,14 @@ current_phase: 27
 current_phase_name: registro-r-pido-abastecimento-parcelado
 status: executing
 stopped_at: Completed 27-01-PLAN.md
-last_updated: "2026-06-21T22:49:48.693Z"
+last_updated: "2026-06-22T00:15:49.506Z"
 last_activity: 2026-06-21
 last_activity_desc: Phase 27 execution started
 progress:
   total_phases: 4
   completed_phases: 2
   total_plans: 10
-  completed_plans: 7
+  completed_plans: 8
   percent: 50
 ---
 
@@ -31,7 +31,7 @@ progress:
 ## Current Position
 
 Phase: 27 (registro-r-pido-abastecimento-parcelado) — EXECUTING
-Plan: 2 of 4
+Plan: 3 of 4
 Status: Ready to execute
 Last activity: 2026-06-21 — Phase 27 execution started
 
@@ -116,6 +116,7 @@ Last activity: 2026-06-21 — Phase 27 execution started
 | Phase 26 P03 | 2min | 1 tasks | 1 files |
 | Phase 26 P04 | 6min | 1 tasks | 3 files |
 | Phase 27 P01 | 1min | 2 tasks | 2 files |
+| Phase 27 P02 | ~3 min | 2 tasks | 2 files |
 
 ### Plan Execution Log
 
@@ -199,7 +200,7 @@ Last activity: 2026-06-21 — Phase 27 execution started
 
 ## Session Continuity
 
-**Last session:** 2026-06-21T22:49:48.684Z
+**Last session:** 2026-06-22T00:15:39.015Z
 **Stopped at:** Completed 27-01-PLAN.md
 **Resume file:** .planning/phases/27-registro-r-pido-abastecimento-parcelado/27-CONTEXT.md
 
@@ -305,3 +306,4 @@ Last activity: 2026-06-21 — Phase 27 execution started
 - [Phase ?]: P26-03: Combustivel seeded at sort 4 (insert-only backfill, mirrors 0035, no gen:types diff)
 - [Phase ?]: Phase 26 SC5 gate proven green: clean replay 0001→0040 (db:reset exit 0) + scoped gen:types (abastecimento_parcelas present, zero categories/handle_new_user drift) + full vitest 960/960; aligned 3 stale assertions to the 0039/0040 documented contracts without weakening any test; local-only (no prod push).
 - [Phase 27]: abastecimentoSchema relaxado para 3 estados de custo espelhando o CHECK abastecimentos_cost_xor do 0039; convenção à-vista parcelasTotal ausente-ou-1 documentada para a action 27-02.
+- [Phase ?]: 27-02: abastecimentoWriteFields parcelado-aware (write por estado de custo; parcelado grava valor_total_cents, transaction_id/amount_cents null)

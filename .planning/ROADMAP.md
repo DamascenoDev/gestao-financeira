@@ -258,7 +258,7 @@ Plans:
   3. No form, o usuário marca o abastecimento como **parcelado** e informa nº de parcelas + valor total; o registro é salvo com esses dados (validados) — o caso à-vista continua funcionando inalterado.
   4. O registro respeita posse (IDOR-safe via `assertOwnedCarro`) e não double-conta: um parcelado registrado manualmente ainda não tem transação vinculada (o vínculo por valor vem na Phase 28).
 
-**Plans**: 1/4 plans executed
+**Plans**: 2/4 plans executed
 
 Plans:
 **Wave 1**
@@ -267,7 +267,7 @@ Plans:
 
 **Wave 2** *(blocked on Wave 1)*
 
-- [ ] 27-02-PLAN.md — Action: abastecimentoWriteFields parcelado-aware (transaction_id/amount_cents null) IDOR-safe + sem double-count (CAR-08)
+- [x] 27-02-PLAN.md — Action: abastecimentoWriteFields parcelado-aware (transaction_id/amount_cents null) IDOR-safe + sem double-count (CAR-08)
 - [ ] 27-03-PLAN.md — Form: aba Parcelado + prop manual-only + onSourceChange de 3 estados + preview valor-por-parcela display-only (CAR-07, CAR-08)
 
 **Wave 3** *(blocked on 27-03)*
@@ -325,7 +325,7 @@ Plans:
 | 24. Ingestão robusta (PDF em PROD + re-import) | v1.6 | 1/1 | Complete   | 2026-06-21 |
 | 25. Fix de scroll na criação de palavra-chave | v1.7 | 2/2 | Complete    | 2026-06-21 |
 | 26. Substrato do abastecimento ponta-a-ponta | v1.7 | 4/4 | Complete    | 2026-06-21 |
-| 27. Registro rápido + abastecimento parcelado | v1.7 | 1/4 | In Progress|  |
+| 27. Registro rápido + abastecimento parcelado | v1.7 | 2/4 | In Progress|  |
 | 28. Vínculo reverso por valor + consumo sem double-count | v1.7 | 0/? | Not started | - |
 
 ---
