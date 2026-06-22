@@ -71,8 +71,10 @@ export function toCarroEdit(carro: CarroCardData): CarroEdit {
  * badge, plus an additive two-up KPI strip (gasto total + km/l médio from
  * v_carro_resumo). KPIs are neutral foreground; missing data shows '—' (NEVER a
  * placeholder zero). Per-card actions via a DropdownMenu (mirrors ReservaCard):
- * Editar (controlled CarroForm) + Arquivar/Desarquivar (soft reversible toggle +
- * toast, no AlertDialog, no destructive styling).
+ * Ver detalhes (link to /carros/[id] — onde vivem o histórico de abastecimentos e
+ * a ação Editar parcelado / CR-01) + Editar (controlled CarroForm) +
+ * Arquivar/Desarquivar (soft reversible toggle + toast, no AlertDialog, no
+ * destructive styling).
  */
 export function CarroCard({ carro }: { carro: CarroCardData }) {
   const [editOpen, setEditOpen] = React.useState(false)
@@ -133,6 +135,9 @@ export function CarroCard({ carro }: { carro: CarroCardData }) {
               }
             />
             <DropdownMenuContent align="end">
+              <DropdownMenuItem
+                render={<Link href={`/carros/${carro.id}`}>Ver detalhes</Link>}
+              />
               <DropdownMenuItem onClick={() => setEditOpen(true)}>
                 Editar
               </DropdownMenuItem>
