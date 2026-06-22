@@ -9,8 +9,16 @@ import { COMBUSTIVEL_OPTIONS } from '@/lib/schemas/carro'
  * tank was filled (the tanque-cheio consumption method, D3), and the fuel type.
  *
  * The security-critical invariant is the cost-source rule, now spanning THREE
- * states (D-05; mirrors the relaxed `abastecimentos_cost_xor` CHECK from migration
- * 0039, defense in depth):
+ * states (D-05). The parcelado branch mirrors the relaxed `abastecimentos_cost_xor`
+ * CHECK from migration 0039 (defense in depth). The à-vista branch is INTENTIONALLY
+ * STRICTER than the 0039 CHECK (WR-01): migration 0039 relaxes the à-vista path to
+ * `not (transaction_id is null and amount_cents is null)` — i.e. at least one source,
+ * explicitly allowing BOTH transaction_id AND amount_cents present (the "attach-later
+ * with both present" case). This schema instead requires EXACTLY ONE à-vista source
+ * (single-source-only), because vincular-fatura / attach-later is Phase 28. Do NOT
+ * "fix" the DB or this schema to match the wrong side: the divergence is deliberate
+ * until Phase 28 wires attach-later, at which point the à-vista branch here should be
+ * relaxed to match the CHECK.
  *   1. À-VISTA por fatura: transactionId present, no amountCents, no valorTotalCents.
  *   2. À-VISTA manual:     amountCents present, no transactionId, no valorTotalCents.
  *   3. PARCELADO:          valorTotalCents present + parcelasTotal > 1, and BOTH
@@ -106,11 +114,16 @@ export const abastecimentoSchema = z
       }
     } else {
       // À-VISTA: exactly one of transactionId/amountCents, and NO valorTotalCents.
+      // WR-03: the "exactly one source" violation is source-neutral, so publish it at
+      // a neutral `cost` path rather than `amountCents`. Otherwise the form would
+      // render the cost-source message under whichever single control happens to read
+      // `errors.amountCents` (e.g. the fatura picker), and a stale `amountCents` error
+      // would linger on a now-hidden control after a tab switch.
       if (hasTx === hasAmount) {
         ctx.addIssue({
           code: z.ZodIssueCode.custom,
           message: COST_SOURCE_MESSAGE,
-          path: ['amountCents'],
+          path: ['cost'],
         })
       }
       if (hasValorTotal) {
