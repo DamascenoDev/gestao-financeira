@@ -120,6 +120,9 @@ export type SaveCsvProfileResult = { error: string } | { ok: true }
 export type ConfirmImportResult =
   | { error: string }
   | { imported: number; duplicated: number }
+  // WR-04: falha parcial de vínculo — as tx JÁ landaram (imported/duplicated preenchidos),
+  // LEARN + status='imported' rodaram; só o vínculo do abastecimento não foi salvo.
+  | { error: string; imported: number; duplicated: number }
 
 const BUCKET = 'statements'
 const IMPORTAR_PATH = '/importar'
@@ -1075,10 +1078,32 @@ export async function confirmImport(
   // _num_uniq) são o backstop de duplo-link: um 23505 → already-linked (swallow), nunca
   // um 500. Uma falha NÃO-23505 APÓS o insert da tx é surface-but-keep (espelha LEARN
   // L985-989): a tx já landou, não desfaz o import.
+  //
+  // 28-06 (hardening — 4 invariantes que a suíte verde original não exercia, pois cada
+  // teste semeava UMA linha bem-formada por abastecimento):
+  //   * WR-01 (no double-count, CAR-11/CAR-12): `linkedTxns` rastreia cada txnId já
+  //     consumido por um vínculo NESTE confirm e REJEITA o payload inteiro num 2º vínculo
+  //     apontando para a mesma tx — fecha o resíduo cross-row que a 0039 (L22-30) delega à
+  //     action layer (à-vista em AB1 E parcela em AB2 não viola nenhum unique index mas
+  //     dobra o custo em v_abastecimento_consumo).
+  //   * WR-02 (server re-derive do kind): `serverKind` deriva de `parcelas_total`
+  //     (parcelas_total > 1 → 'parcela', senão 'avista'), lido de UM fetch batched
+  //     .in('id', …) (nunca per-row); um abastecimentoKind do cliente que DISCORDA do
+  //     server rejeita o payload ANTES de qualquer write (não cai em 23514 cost_xor depois
+  //     da tx landar). O write ramifica SEMPRE em serverKind, NUNCA no kind do cliente.
+  //   * WR-03 (cap de parcelas, CAR-11): o link-write parcelado NUNCA insere
+  //     parcela_num > parcelas_total — abastecimento já completo → pula (já fechado).
+  //   * WR-04 (falha parcial consistente): uma falha não-23505 no link NÃO faz early-return
+  //     no meio do loop — acumula `linkFailed`, deixa o loop terminar, roda LEARN +
+  //     status='imported', e só então surface o aviso de vínculo (estado independente da
+  //     ordem das linhas).
   const linkRows = authoritativeRows.filter(
     (r): r is AuthoritativeRow & { abastecimentoId: string } =>
       typeof r.abastecimentoId === 'string',
   )
+  // WR-04: declarado fora do bloco para que o return final (após LEARN + status) possa
+  // surface o aviso de vínculo sem fazer early-return no meio do loop.
+  let linkFailedFlag = false
   if (linkRows.length > 0) {
     // D-09 / WR-02: a tx de uma linha dedupe-skipped (fora do insertedByKey) AINDA recebe
     // o vínculo — o txId existente é resolvido por UM lookup batched .in('dedupe_key', …)
@@ -1106,12 +1131,48 @@ export async function confirmImport(
       }
     }
 
+    // WR-02 / WR-03 (server re-derive do kind + cap de parcelas): UM fetch batched de
+    // id+parcelas_total para os abastecimentoId distintos das linkRows (nunca per-row).
+    // serverKind deriva de parcelas_total (> 1 → 'parcela', senão 'avista'); um kind do
+    // cliente que discorda REJEITA o payload inteiro ANTES de qualquer write (não cai em
+    // 23514 cost_xor depois da tx landar). O write ramifica SEMPRE em serverKind.
+    const linkAbastecimentoIds = [...new Set(linkRows.map((r) => r.abastecimentoId))]
+    const { data: abastForKind, error: kindErr } = await supabase
+      .from('abastecimentos')
+      .select('id, parcelas_total')
+      .in('id', linkAbastecimentoIds)
+    if (kindErr) {
+      return {
+        error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+      }
+    }
+    const parcelasTotalById = new Map<string, number>()
+    for (const a of abastForKind ?? []) {
+      if (a.id) parcelasTotalById.set(a.id, a.parcelas_total ?? 1)
+    }
+    const serverKindById = new Map<string, 'avista' | 'parcela'>()
+    for (const id of linkAbastecimentoIds) {
+      serverKindById.set(id, (parcelasTotalById.get(id) ?? 1) > 1 ? 'parcela' : 'avista')
+    }
+    // WR-02: rejeita o payload se algum kind do cliente discorda do server (antes de
+    // qualquer write — nenhuma tx parcial fica pra trás).
+    for (const r of linkRows) {
+      const serverKind = serverKindById.get(r.abastecimentoId) ?? 'avista'
+      if (r.abastecimentoKind && r.abastecimentoKind !== serverKind) {
+        return { error: 'Abastecimento inválido.' }
+      }
+    }
+
     // CAR-11: parcela_num = já-na-junção + já-atribuídas-NESTA-confirmação + 1, recomputado
     // server-side (não confia no cliente). Pre-fetch batched do count na junção por
     // abastecimento (WR-02 — uma .in(...), nunca per-row), + um contador local por
     // abastecimentoId que cresce a cada parcela atribuída neste confirm.
     const parceladoIds = [
-      ...new Set(linkRows.filter((r) => r.abastecimentoKind === 'parcela').map((r) => r.abastecimentoId)),
+      ...new Set(
+        linkRows
+          .filter((r) => (serverKindById.get(r.abastecimentoId) ?? 'avista') === 'parcela')
+          .map((r) => r.abastecimentoId),
+      ),
     ]
     const jaNaJuncao = new Map<string, number>()
     if (parceladoIds.length > 0) {
@@ -1131,15 +1192,37 @@ export async function confirmImport(
       }
     }
     const atribuidasNesteConfirm = new Map<string, number>()
+    // WR-01: cada txnId é consumido por NO MÁXIMO um vínculo neste confirm (fecha o
+    // resíduo cross-row da 0039 — uma tx à-vista em AB1 E parcela em AB2 dobra o custo).
+    const linkedTxns = new Set<string>()
+    // WR-04: uma falha não-23505 NÃO faz early-return — acumula aqui e deixa o loop +
+    // LEARN + status='imported' rodarem; o aviso é surfaced só no fim (estado consistente
+    // independente da ordem das linhas).
+    let linkFailed = false
 
     for (const r of linkRows) {
       const txnId = txByKey.get(r.base.dedupe_key)
       if (!txnId) continue // nenhuma tx (nem nova nem existente) → nada a vincular
 
-      if (r.abastecimentoKind === 'parcela') {
+      // WR-01: rejeita o payload INTEIRO num 2º vínculo apontando para a mesma tx (mesmo
+      // critério do gate IDOR, que também rejeita o payload todo). Roda ANTES de qualquer
+      // write, então nenhum vínculo parcial fica pra trás.
+      if (linkedTxns.has(txnId)) {
+        return { error: 'Um lançamento não pode ser vinculado a dois abastecimentos.' }
+      }
+      linkedTxns.add(txnId)
+
+      // WR-02: o write ramifica SEMPRE no kind server-derivado, NUNCA no r.abastecimentoKind.
+      const serverKind = serverKindById.get(r.abastecimentoId) ?? 'avista'
+
+      if (serverKind === 'parcela') {
         const ja = jaNaJuncao.get(r.abastecimentoId) ?? 0
         const nesteConfirm = atribuidasNesteConfirm.get(r.abastecimentoId) ?? 0
         const parcelaNum = ja + nesteConfirm + 1
+        // WR-03: cap em parcelas_total — abastecimento já completo (já-na-junção +
+        // atribuídas-neste-confirm >= parcelas_total) → pula a parcela fantasma (já fechado).
+        const parcelasTotal = parcelasTotalById.get(r.abastecimentoId) ?? Number.POSITIVE_INFINITY
+        if (parcelaNum > parcelasTotal) continue
         const { error: insErr } = await supabase.from('abastecimento_parcelas').insert({
           user_id: userId,
           abastecimento_id: r.abastecimentoId,
@@ -1149,14 +1232,14 @@ export async function confirmImport(
         if (insErr) {
           // 23505 (transaction_uniq ou num_uniq) → already-linked: swallow, não 500.
           if ((insErr as { code?: string }).code === '23505') continue
-          // Falha não-23505 APÓS o insert da tx → surface-but-keep (a tx já landou).
-          return {
-            error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
-          }
+          // Falha não-23505 APÓS o insert da tx → WR-04: marca linkFailed e segue (a tx já
+          // landou; LEARN + status='imported' DEVEM rodar mesmo assim).
+          linkFailed = true
+          continue
         }
         atribuidasNesteConfirm.set(r.abastecimentoId, nesteConfirm + 1)
       } else {
-        // À-vista (default quando kind ausente): update abastecimentos.transaction_id.
+        // À-vista: update abastecimentos.transaction_id.
         const { error: linkErr } = await supabase
           .from('abastecimentos')
           .update({ transaction_id: txnId })
@@ -1164,9 +1247,8 @@ export async function confirmImport(
         if (linkErr) {
           // 23505 (abastecimentos_transaction_uniq) → already-linked: swallow, não 500.
           if ((linkErr as { code?: string }).code === '23505') continue
-          return {
-            error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
-          }
+          linkFailed = true
+          continue
         }
         // Sync carro_id na tx vinculada (espelha abastecimentos.ts L158-166 — SÓ carro_id,
         // nunca category/amount). O carro_id vem do match persistido (a escolha já é
@@ -1178,13 +1260,16 @@ export async function confirmImport(
             .update({ carro_id: carroId })
             .eq('id', txnId)
           if (tagErr) {
-            return {
-              error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
-            }
+            linkFailed = true
+            continue
           }
         }
       }
     }
+
+    // WR-04: surface o aviso de vínculo SÓ depois que LEARN + status='imported' rodaram.
+    // Marcado aqui no escopo do bloco; o return final consulta `linkFailedFlag`.
+    linkFailedFlag = linkFailed
   }
 
   // LEARN (CLS-03/04, T-04-08): UPSERT merchant_patterns ONLY for CLASSIFIED rows,
@@ -1243,5 +1328,14 @@ export async function confirmImport(
   revalidatePath(DASHBOARD_PATH)
   // O consumo vinculado muda a visão de carros (espelha abastecimentos.ts CARROS_PATH).
   revalidatePath(CARROS_PATH)
+  // WR-04: se algum vínculo falhou (não-23505), surface o aviso SÓ aqui — depois de LEARN +
+  // status='imported' já terem rodado. imported/duplicated seguem preenchidos.
+  if (linkFailedFlag) {
+    return {
+      error: 'As transações foram importadas, mas o vínculo do abastecimento não foi salvo.',
+      imported,
+      duplicated,
+    }
+  }
   return { imported, duplicated }
 }

@@ -886,11 +886,11 @@ export function ImportReviewTable({
       carroId: r.carro_id ?? undefined,
       // CAR-10/D-08: a ESCOLHA do vínculo, só presente quando o usuário confirmou (o
       // applyLinkToRow setou abastecimentoId). O confirmImport (Plano 03) re-deriva posse do
-      // abastecimentoId (IDOR, WR-01) e grava o vínculo após o insert da tx. parcelaNum só
-      // acompanha um parcelado.
+      // abastecimentoId (IDOR, WR-01) E o kind de parcelas_total (28-06 WR-02), e grava o
+      // vínculo após o insert da tx. IN-01: parcelaNum NÃO cruza mais o boundary — o servidor
+      // recomputa server-side (era morto/trust-smell); fica client-only no ReviewRow.
       abastecimentoId: r.abastecimentoId ?? undefined,
       abastecimentoKind: r.abastecimentoKind ?? undefined,
-      parcelaNum: r.parcelaNum ?? undefined,
     }))
     confirmImport(statementId, payload)
       .then((result) => {
