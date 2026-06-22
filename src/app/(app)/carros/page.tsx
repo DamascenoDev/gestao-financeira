@@ -28,6 +28,13 @@ import { createClient } from '@/lib/supabase/server'
  * never "R$ 0,00". So a resumo gasto of 0 (or a missing resumo row) maps to
  * gastoTotalCents: null. km_por_litro_medio is genuinely null without a closed
  * interval and passes through as-is.
+ *
+ * Registro rápido (CAR-07, D-01): the per-card "Novo abastecimento" form is
+ * manual-only, so this page deliberately does NOT fetch the unlinked lançamentos
+ * (the picker feed) — only `carros` identity + `v_carro_resumo` KPIs. The id +
+ * combustivel_padrao already selected here are everything CarroCard's hosted form
+ * needs; vincular fatura↔abastecimento (which would need that picker) is Phase 28,
+ * scoped to the detail page.
  */
 export default async function CarrosPage({
   searchParams,
