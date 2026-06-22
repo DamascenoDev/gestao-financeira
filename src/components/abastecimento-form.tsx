@@ -91,6 +91,15 @@ export type AbastecimentoEdit = {
   transactionId: string
   /** The editable pt-BR string for a manual cost (empty when linked). */
   amount: string
+  /**
+   * CR-01: the parcelado total as a pt-BR string (empty unless the row is parcelado).
+   * When present alongside `parcelas` >= 2, the form re-enters the 'parcelado' state
+   * on open so editing a parcelado fuel-up no longer silently downgrades it to à-vista
+   * manual (data loss).
+   */
+  valorTotal?: string
+  /** CR-01: installment count as a string (empty unless the row is parcelado). */
+  parcelas?: string
 }
 
 /**
@@ -153,10 +162,26 @@ export function AbastecimentoForm({
   )
   const [isPending, startTransition] = useTransition()
 
-  // Manual-only never derives 'fatura' (that tab/branch does not render). Otherwise
-  // an edited row linked to a lançamento opens on "Da fatura".
-  const initialSource: CostSource =
-    !manualOnly && edit?.transactionId ? 'fatura' : 'manual'
+  // CR-01: a parcelado edit (valor total + >= 2 parcelas) re-enters 'parcelado' so the
+  // round-trip preserves the parcelamento. Manual-only never derives 'fatura' (that
+  // tab/branch does not render); otherwise a fatura-linked row opens on "Da fatura".
+  function deriveInitialSource(): CostSource {
+    if (edit?.parcelas && parseParcelas(edit.parcelas) !== null) return 'parcelado'
+    if (!manualOnly && edit?.transactionId) return 'fatura'
+    return 'manual'
+  }
+  const initialSource: CostSource = deriveInitialSource()
+  // WR-02: in manual-only mode the "Da fatura" tab/branch never renders, so a
+  // fatura-linked `edit` must NOT seed transactionId — otherwise the form would open
+  // on the Manual tab with an empty amount AND a hidden transactionId, and buildInput
+  // (which emits transactionId only when source === 'fatura') would submit NEITHER
+  // cost source, tripping the schema XOR with no editable field to fix it. Dropping
+  // the linked id forces the user to (re-)enter a manual value, which is the only
+  // coherent outcome for a manual-only edit of a previously-linked row.
+  function seededTransactionId(): string {
+    if (manualOnly) return ''
+    return edit?.transactionId ?? ''
+  }
   const [data, setData] = React.useState(edit?.occurredOn ?? todaySP())
   const [odometro, setOdometro] = React.useState(edit?.odometroKm ?? '')
   const [litros, setLitros] = React.useState(edit?.litros ?? '')
@@ -165,12 +190,13 @@ export function AbastecimentoForm({
     edit?.combustivel ?? combustivelPadrao ?? '',
   )
   const [source, setSource] = React.useState<CostSource>(initialSource)
-  const [transactionId, setTransactionId] = React.useState(edit?.transactionId ?? '')
+  const [transactionId, setTransactionId] = React.useState(seededTransactionId())
   const [amount, setAmount] = React.useState(edit?.amount ?? '')
   // Parcelado fields (D-06): valor total as a pt-BR string (MoneyInput) + nº de
-  // parcelas as a string (integer Input). Create mode has no parcelado `edit`.
-  const [valorTotal, setValorTotal] = React.useState('')
-  const [parcelas, setParcelas] = React.useState('')
+  // parcelas as a string (integer Input). CR-01: seed from `edit` so editing a
+  // parcelado row re-enters the parcelado state instead of losing the parcelamento.
+  const [valorTotal, setValorTotal] = React.useState(edit?.valorTotal ?? '')
+  const [parcelas, setParcelas] = React.useState(edit?.parcelas ?? '')
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   // Re-seed from server truth each time the dialog opens (no useEffect — the
@@ -182,11 +208,13 @@ export function AbastecimentoForm({
       setLitros(edit?.litros ?? '')
       setTanqueCheio(edit?.tanqueCheio ?? true)
       setCombustivel(edit?.combustivel ?? combustivelPadrao ?? '')
-      setSource(!manualOnly && edit?.transactionId ? 'fatura' : 'manual')
-      setTransactionId(edit?.transactionId ?? '')
+      // CR-01: re-derive the source (now including 'parcelado') and seed the parcelado
+      // fields from `edit` so a parcelado row opens back in the parcelado state.
+      setSource(deriveInitialSource())
+      setTransactionId(seededTransactionId())
       setAmount(edit?.amount ?? '')
-      setValorTotal('')
-      setParcelas('')
+      setValorTotal(edit?.valorTotal ?? '')
+      setParcelas(edit?.parcelas ?? '')
       setErrors({})
     }
     setOpen(next)
@@ -199,6 +227,9 @@ export function AbastecimentoForm({
   // fields (valor total + nº de parcelas).
   function onSourceChange(next: CostSource) {
     setSource(next)
+    // WR-03: clear errors on a tab switch so a cost error raised on one source never
+    // lingers (visibly or via a hidden control) after moving to another source.
+    setErrors({})
     if (next === 'parcelado') {
       setTransactionId('')
       setAmount('')
@@ -380,7 +411,7 @@ export function AbastecimentoForm({
               </Select>
             </Field>
 
-            <Field data-invalid={!!errors.amountCents}>
+            <Field data-invalid={!!errors.cost}>
               <FieldLabel>Custo</FieldLabel>
               <Tabs
                 value={source}
@@ -395,12 +426,19 @@ export function AbastecimentoForm({
                 </TabsList>
               </Tabs>
 
+              {/* WR-03: the source-neutral cost-source XOR error (path 'cost') renders
+                  ONCE here, below the Tabs, so it is never bound to a single control
+                  (e.g. the fatura picker) nor left stale on a hidden control. */}
+              <FieldError
+                errors={errors.cost ? [{ message: errors.cost }] : undefined}
+              />
+
               {!manualOnly && source === 'fatura' ? (
                 <TransacaoPicker
                   transacoes={transacoes}
                   value={transactionId}
                   onChange={setTransactionId}
-                  error={errors.amountCents}
+                  error={undefined}
                 />
               ) : source === 'manual' ? (
                 <>

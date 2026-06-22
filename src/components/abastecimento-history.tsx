@@ -55,6 +55,14 @@ export type AbastecimentoRow = {
    * deleted) and renders the sentinel instead of a misleading R$ 0,00 (WR-03).
    */
   custo_cents: number | bigint | null
+  /**
+   * CR-01: parcelado state, selected by the page query. `parcelas_total > 1` marks a
+   * parcelado row; `valor_total_cents` is its cost-of-record. Both null on an à-vista
+   * row. The edit seed uses these so editing a parcelado fuel-up re-enters the
+   * parcelado state instead of silently downgrading it to à-vista manual (data loss).
+   */
+  parcelas_total: number | null
+  valor_total_cents: number | bigint | null
   /** km/l do intervalo from v_abastecimento_consumo (null when invalid/open). */
   km_por_litro: number | null
   /**
@@ -78,6 +86,11 @@ function ddMM(occurredOn: string): string {
 
 /** Build the edit seed for the per-row AbastecimentoForm. */
 function toEdit(row: AbastecimentoRow): AbastecimentoEdit {
+  // CR-01: a parcelado row carries its cost in valor_total_cents (and custo_cents
+  // equals it per the v_abastecimento_consumo CASE). It must seed the PARCELADO fields,
+  // never the manual `amount` — otherwise opening Editar would re-type it as à-vista
+  // manual and destroy the parcelamento on save.
+  const isParcelado = row.parcelas_total !== null && row.parcelas_total > 1
   return {
     id: row.id,
     occurredOn: row.occurred_on,
@@ -86,12 +99,20 @@ function toEdit(row: AbastecimentoRow): AbastecimentoEdit {
     litros: String(row.litros).replace('.', ','),
     tanqueCheio: row.tanque_cheio,
     combustivel: row.combustivel ?? '',
-    transactionId: row.transaction_id ?? '',
-    // A linked row has no manual amount to seed; a manual row always has a non-null cost.
+    transactionId: isParcelado ? '' : row.transaction_id ?? '',
+    // À-VISTA manual: seed the manual amount. À-VISTA fatura / parcelado: no manual
+    // amount (a linked row has none; a parcelado row's cost goes to valorTotal below).
     amount:
-      row.transaction_id || row.custo_cents === null
+      isParcelado || row.transaction_id || row.custo_cents === null
         ? ''
         : centsToEditableBRL(row.custo_cents),
+    // PARCELADO: seed the valor total + nº de parcelas so the form re-enters the
+    // parcelado state. À-VISTA rows leave these empty (undefined → 'à-vista').
+    valorTotal:
+      isParcelado && row.valor_total_cents !== null
+        ? centsToEditableBRL(row.valor_total_cents)
+        : undefined,
+    parcelas: isParcelado ? String(row.parcelas_total) : undefined,
   }
 }
 

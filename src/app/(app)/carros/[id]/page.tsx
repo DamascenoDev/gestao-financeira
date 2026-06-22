@@ -84,7 +84,9 @@ export default async function CarroDetailPage({
   const { data: abastecimentos } = await supabase
     .from('abastecimentos')
     .select(
-      'id, occurred_on, odometro_km, litros, tanque_cheio, combustivel, transaction_id, amount_cents, transactions(id, description, occurred_on, amount_cents)',
+      // CR-01: select parcelas_total + valor_total_cents so the edit seed can re-enter
+      // the parcelado state (otherwise editing a parcelado row downgrades it to à-vista).
+      'id, occurred_on, odometro_km, litros, tanque_cheio, combustivel, transaction_id, amount_cents, parcelas_total, valor_total_cents, transactions(id, description, occurred_on, amount_cents)',
     )
     .eq('carro_id', id)
     .order('odometro_km', { ascending: false })
@@ -221,14 +223,22 @@ export default async function CarroDetailPage({
       occurred_on: string
       amount_cents: number
     } | null
+    // CR-01: a parcelado row (parcelas_total > 1) carries its cost-of-record in
+    // valor_total_cents — mirror the v_abastecimento_consumo CASE so the list shows the
+    // parcelado total, not a sentinel from the (null) amount_cents.
+    const isParcelado = a.parcelas_total !== null && a.parcelas_total > 1
     // WR-03: distinguish "linked but amount unavailable" (embed null — e.g. the
     // linked tx was deleted) from a real zero. A linked row with no embedded amount
     // renders the sentinel instead of a misleading R$ 0,00.
-    const custoCents: bigint | null = a.transaction_id
-      ? linked?.amount_cents != null
-        ? centsToBigInt(linked.amount_cents)
+    const custoCents: bigint | null = isParcelado
+      ? a.valor_total_cents != null
+        ? centsToBigInt(a.valor_total_cents)
         : null
-      : centsToBigInt(a.amount_cents)
+      : a.transaction_id
+        ? linked?.amount_cents != null
+          ? centsToBigInt(linked.amount_cents)
+          : null
+        : centsToBigInt(a.amount_cents)
     // WR-01: the page-level `transacoes` list excludes ALL linked tx ids, so a
     // fatura-linked row's OWN transaction is hidden from its edit picker. Surface
     // the row's own linked transaction option so the edit form can render it as the
@@ -251,6 +261,9 @@ export default async function CarroDetailPage({
       combustivel: a.combustivel,
       transaction_id: a.transaction_id,
       custo_cents: custoCents,
+      // CR-01: surface parcelado state so the edit seed re-enters it.
+      parcelas_total: a.parcelas_total,
+      valor_total_cents: a.valor_total_cents,
       km_por_litro: kmPorLitroById.get(a.id) ?? null,
       linked_transacao: linkedOption,
     }
