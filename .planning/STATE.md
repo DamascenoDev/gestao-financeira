@@ -2,13 +2,13 @@
 gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
-current_phase: 27
-current_phase_name: registro-r-pido-abastecimento-parcelado
-status: executing
-stopped_at: Completed 27-05-PLAN.md (human-verify aprovado)
-last_updated: "2026-06-22T14:42:59.161Z"
+current_phase: 28
+current_phase_name: Vínculo reverso por valor + consumo sem double-count
+status: All plans executed
+stopped_at: Completed 27-01-PLAN.md
+last_updated: "2026-06-22T14:54:39.064Z"
 last_activity: 2026-06-22
-last_activity_desc: Phase 27 execution started
+last_activity_desc: Phase 27 complete, transitioned to Phase 28
 progress:
   total_phases: 4
   completed_phases: 3
@@ -30,10 +30,10 @@ progress:
 
 ## Current Position
 
-Phase: 27 (registro-r-pido-abastecimento-parcelado) — EXECUTING
-Plan: 5 of 5 (all plans complete; awaiting phase verification by orchestrator)
+Phase: 28 — Vínculo reverso por valor + consumo sem double-count
+Plan: Not started
 Status: All plans executed
-Last activity: 2026-06-22 — Completed 27-05 (affordance "Ver detalhes"; human-verify aprovado)
+Last activity: 2026-06-22 — Phase 27 complete, transitioned to Phase 28
 
 ## Deferred Items
 
