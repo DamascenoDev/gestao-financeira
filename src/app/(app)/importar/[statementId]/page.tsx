@@ -221,7 +221,20 @@ export default async function ImportReviewPage({
     // tag. NON-binding — never applied to category_id here (no auto-commit). Absent on
     // older persisted rows ⇒ grid renders byte-identical to v1.3.
     suggestion: r.suggestion,
+    // CAR-09/WR-01: thread the reverse-link guess resolved server-side at ingest (Plano 02,
+    // greedy 1:1 over the user's unlinked abastecimentos under RLS). The RSC does NOT fetch
+    // abastecimentos — the match already lives in parsed_rows (server is the source of truth).
+    // NON-binding: the grid renders the "Vincular a {carro}" affordance on the Carro cell; the
+    // user confirms (which then applies carro_id + "Combustível"). Absent ⇒ no link affordance.
+    abastecimentoMatch: r.abastecimentoMatch,
   }))
+
+  // FUEL-01: resolve the user's "Combustível" category id (rename-unsafe lookup is fine — it
+  // is the system default name from migration 0040, kind consumo) so the grid can pre-fill it
+  // on link-confirm (D-06). null when the account predates the backfill → the grid links the
+  // carro but leaves the category untouched (degrades clean).
+  const combustivelCategoryId =
+    categories.find((c) => c.name === 'Combustível')?.id ?? null
 
   return (
     <section className="mx-auto flex w-full max-w-4xl flex-col gap-6">
@@ -241,6 +254,7 @@ export default async function ImportReviewPage({
         categories={categories}
         reservas={reservas}
         carros={carros}
+        combustivelCategoryId={combustivelCategoryId}
       />
     </section>
   )
