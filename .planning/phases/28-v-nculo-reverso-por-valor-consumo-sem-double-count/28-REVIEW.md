@@ -20,7 +20,9 @@ findings:
   warning: 4
   info: 3
   total: 7
-status: issues_found
+status: resolved
+resolved_by: 28-06-SUMMARY.md
+resolution: "WR-01..04 + IN-01 corrigidos em 28-06 (gap-closure): Set linkedTxns (1 tx→1 vínculo), serverKind derivado de parcelas_total + rejeição de kind divergente, cap parcela_num<=parcelas_total, linkFailed acumulado. 4 testes adversariais provam o fechamento; suíte 1004/1004 verde. IN-02/IN-03 (follow-up de baixo risco) permanecem abertos."
 ---
 
 # Phase 28: Code Review Report
