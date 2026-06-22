@@ -53,8 +53,14 @@ import {
 } from '@/lib/schemas/carro'
 import { todaySP } from '@/lib/month'
 
-/** The cost-source segmented toggle: a linked fatura lançamento OR a manual value. */
-type CostSource = 'fatura' | 'manual'
+/**
+ * The cost-source segmented toggle, now spanning THREE states (D-04): a linked
+ * fatura lançamento, a manual à-vista value, OR a parcelado (valor total + nº de
+ * parcelas). Switching always clears the inactive sources (onSourceChange) so the
+ * submitted input carries exactly one — mirrors the relaxed `abastecimentos_cost_xor`
+ * CHECK (0039) and the 3-state superRefine (27-01).
+ */
+type CostSource = 'fatura' | 'manual' | 'parcelado'
 
 export type AbastecimentoEdit = {
   id: string
@@ -92,6 +98,7 @@ export function AbastecimentoForm({
   transacoes,
   edit,
   trigger,
+  manualOnly = false,
   open: controlledOpen,
   onOpenChange,
 }: {
@@ -105,6 +112,13 @@ export function AbastecimentoForm({
   edit?: AbastecimentoEdit
   /** Custom opener; defaults to a "Novo abastecimento" button. Ignored when controlled. */
   trigger?: React.ReactElement
+  /**
+   * Manual-only mode (D-01/D-02): hides the "Da fatura" tab and starts the cost
+   * source at 'manual'. The `/carros` list reuses the form this way so the page
+   * never has to fetch `transacoes` for unlinked lançamentos (vincular fatura is
+   * Phase 28). The `/carros/[id]` detail omits this prop → all 3 tabs intact.
+   */
+  manualOnly?: boolean
   /** Controlled open state (omit to use the built-in trigger). */
   open?: boolean
   onOpenChange?: (open: boolean) => void
@@ -121,7 +135,10 @@ export function AbastecimentoForm({
   )
   const [isPending, startTransition] = useTransition()
 
-  const initialSource: CostSource = edit?.transactionId ? 'fatura' : 'manual'
+  // Manual-only never derives 'fatura' (that tab/branch does not render). Otherwise
+  // an edited row linked to a lançamento opens on "Da fatura".
+  const initialSource: CostSource =
+    !manualOnly && edit?.transactionId ? 'fatura' : 'manual'
   const [data, setData] = React.useState(edit?.occurredOn ?? todaySP())
   const [odometro, setOdometro] = React.useState(edit?.odometroKm ?? '')
   const [litros, setLitros] = React.useState(edit?.litros ?? '')
@@ -132,6 +149,10 @@ export function AbastecimentoForm({
   const [source, setSource] = React.useState<CostSource>(initialSource)
   const [transactionId, setTransactionId] = React.useState(edit?.transactionId ?? '')
   const [amount, setAmount] = React.useState(edit?.amount ?? '')
+  // Parcelado fields (D-06): valor total as a pt-BR string (MoneyInput) + nº de
+  // parcelas as a string (integer Input). Create mode has no parcelado `edit`.
+  const [valorTotal, setValorTotal] = React.useState('')
+  const [parcelas, setParcelas] = React.useState('')
   const [errors, setErrors] = React.useState<Record<string, string>>({})
 
   // Re-seed from server truth each time the dialog opens (no useEffect — the
@@ -143,20 +164,32 @@ export function AbastecimentoForm({
       setLitros(edit?.litros ?? '')
       setTanqueCheio(edit?.tanqueCheio ?? true)
       setCombustivel(edit?.combustivel ?? combustivelPadrao ?? '')
-      setSource(edit?.transactionId ? 'fatura' : 'manual')
+      setSource(!manualOnly && edit?.transactionId ? 'fatura' : 'manual')
       setTransactionId(edit?.transactionId ?? '')
       setAmount(edit?.amount ?? '')
+      setValorTotal('')
+      setParcelas('')
       setErrors({})
     }
     setOpen(next)
   }
 
-  // Switching the cost source clears the inactive source so submit carries exactly
-  // one (T-10-08). The schema XOR is the authoritative guard; this keeps the UI honest.
+  // Switching the cost source clears every inactive source so submit carries exactly
+  // one of the THREE states (D-05, T-10-08). The schema's 3-state superRefine is the
+  // authoritative guard; this keeps the UI honest. Entering 'parcelado' clears both
+  // à-vista sources (transactionId AND amount); leaving it clears the parcelado
+  // fields (valor total + nº de parcelas).
   function onSourceChange(next: CostSource) {
     setSource(next)
-    if (next === 'fatura') setAmount('')
-    else setTransactionId('')
+    if (next === 'parcelado') {
+      setTransactionId('')
+      setAmount('')
+    } else {
+      setValorTotal('')
+      setParcelas('')
+      if (next === 'fatura') setAmount('')
+      else setTransactionId('')
+    }
   }
 
   /** Build the AbastecimentoInput from the controlled fields (cost source XOR). */
@@ -311,19 +344,22 @@ export function AbastecimentoForm({
                 onValueChange={(v) => onSourceChange(v as CostSource)}
               >
                 <TabsList>
-                  <TabsTrigger value="fatura">Da fatura</TabsTrigger>
+                  {manualOnly ? null : (
+                    <TabsTrigger value="fatura">Da fatura</TabsTrigger>
+                  )}
                   <TabsTrigger value="manual">Manual</TabsTrigger>
+                  <TabsTrigger value="parcelado">Parcelado</TabsTrigger>
                 </TabsList>
               </Tabs>
 
-              {source === 'fatura' ? (
+              {!manualOnly && source === 'fatura' ? (
                 <TransacaoPicker
                   transacoes={transacoes}
                   value={transactionId}
                   onChange={setTransactionId}
                   error={errors.amountCents}
                 />
-              ) : (
+              ) : source === 'manual' ? (
                 <>
                   <MoneyInput
                     id="ab-amount"
@@ -338,7 +374,7 @@ export function AbastecimentoForm({
                     }
                   />
                 </>
-              )}
+              ) : null}
             </Field>
           </FieldGroup>
           <DialogFooter className="mt-6">
