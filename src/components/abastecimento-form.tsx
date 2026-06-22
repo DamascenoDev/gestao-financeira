@@ -42,7 +42,7 @@ import {
 } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { parseBRLToCents } from '@/lib/money'
+import { formatCents, parseBRLToCents } from '@/lib/money'
 import {
   abastecimentoSchema,
   type AbastecimentoInput,
@@ -61,6 +61,24 @@ import { todaySP } from '@/lib/month'
  * CHECK (0039) and the 3-state superRefine (27-01).
  */
 type CostSource = 'fatura' | 'manual' | 'parcelado'
+
+/** Parcela-count bounds (D-07) — mirror the abastecimentoSchema [2, 24] / 0039. */
+const PARCELAS_MIN = 2
+const PARCELAS_MAX = 24
+
+/**
+ * Parse the nº-de-parcelas string into a valid integer in [2, 24], or null when
+ * blank/non-integer/out-of-range. The schema (27-01) is the authoritative guard;
+ * this keeps buildInput emitting `parcelasTotal` only for a plausible value and
+ * gates the display-only preview.
+ */
+function parseParcelas(raw: string): number | null {
+  const trimmed = raw.trim()
+  if (!/^\d+$/.test(trimmed)) return null
+  const n = Number(trimmed)
+  if (!Number.isInteger(n) || n < PARCELAS_MIN || n > PARCELAS_MAX) return null
+  return n
+}
 
 export type AbastecimentoEdit = {
   id: string
@@ -204,13 +222,21 @@ export function AbastecimentoForm({
       litros: Number.isFinite(litrosNum) ? litrosNum : NaN,
       tanqueCheio,
       combustivel: (combustivel || undefined) as Combustivel | undefined,
-      // Exactly one cost source is present (the toggle clears the other).
+      // Exactly one cost source is present (the toggle clears the others). À-vista
+      // states emit valorTotalCents/parcelasTotal undefined (preserves the 27-01 XOR);
+      // the parcelado state emits transactionId/amountCents undefined.
       transactionId:
         source === 'fatura' && transactionId ? transactionId : undefined,
       amountCents:
         source === 'manual' && amount.trim() && isValidMoney(amount)
           ? parseBRLToCents(amount)
           : undefined,
+      valorTotalCents:
+        source === 'parcelado' && valorTotal.trim() && isValidMoney(valorTotal)
+          ? parseBRLToCents(valorTotal)
+          : undefined,
+      parcelasTotal:
+        source === 'parcelado' ? (parseParcelas(parcelas) ?? undefined) : undefined,
     }
   }
 
@@ -219,6 +245,12 @@ export function AbastecimentoForm({
     // Manual path: surface an invalid-money error before the schema sees `undefined`.
     if (source === 'manual' && amount.trim() && !isValidMoney(amount)) {
       setErrors({ amountCents: 'Valor monetário inválido.' })
+      return
+    }
+    // Parcelado path: surface an invalid valor-total error before the schema sees
+    // `undefined` (mirrors the manual guard above).
+    if (source === 'parcelado' && valorTotal.trim() && !isValidMoney(valorTotal)) {
+      setErrors({ valorTotalCents: 'Valor total inválido.' })
       return
     }
     const parsed = abastecimentoSchema.safeParse(buildInput())
@@ -244,6 +276,17 @@ export function AbastecimentoForm({
       setOpen(false)
     })
   }
+
+  // Display-only "valor por parcela" preview (D-08): valor_total ÷ N via formatCents.
+  // Renders ONLY when the valor total is valid money AND nº de parcelas is an integer
+  // in [2, 24] — otherwise null so it disappears with invalid/empty input. NEVER
+  // enters buildInput and is NEVER persisted. Integer-cents division keeps the
+  // money invariant; the result is truncated (não há fração de centavo no preview).
+  const parcelasNum = parseParcelas(parcelas)
+  const valorPorParcela =
+    source === 'parcelado' && valorTotal.trim() && isValidMoney(valorTotal) && parcelasNum
+      ? formatCents(Math.floor(parseBRLToCents(valorTotal) / parcelasNum))
+      : null
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
@@ -374,7 +417,52 @@ export function AbastecimentoForm({
                     }
                   />
                 </>
-              ) : null}
+              ) : (
+                <FieldGroup>
+                  <Field data-invalid={!!errors.valorTotalCents}>
+                    <FieldLabel htmlFor="ab-valor-total">Valor total</FieldLabel>
+                    <MoneyInput
+                      id="ab-valor-total"
+                      value={valorTotal}
+                      onChange={(e) => setValorTotal(e.target.value)}
+                      placeholder="0,00"
+                      invalid={!!errors.valorTotalCents}
+                    />
+                    <FieldError
+                      errors={
+                        errors.valorTotalCents
+                          ? [{ message: errors.valorTotalCents }]
+                          : undefined
+                      }
+                    />
+                  </Field>
+
+                  <Field data-invalid={!!errors.parcelasTotal}>
+                    <FieldLabel htmlFor="ab-parcelas">Número de parcelas</FieldLabel>
+                    <Input
+                      id="ab-parcelas"
+                      inputMode="numeric"
+                      value={parcelas}
+                      onChange={(e) => setParcelas(e.target.value)}
+                      placeholder="6"
+                      aria-invalid={!!errors.parcelasTotal}
+                    />
+                    <FieldError
+                      errors={
+                        errors.parcelasTotal
+                          ? [{ message: errors.parcelasTotal }]
+                          : undefined
+                      }
+                    />
+                  </Field>
+
+                  {valorPorParcela !== null ? (
+                    <FieldDescription>
+                      Valor por parcela: {valorPorParcela}
+                    </FieldDescription>
+                  ) : null}
+                </FieldGroup>
+              )}
             </Field>
           </FieldGroup>
           <DialogFooter className="mt-6">
