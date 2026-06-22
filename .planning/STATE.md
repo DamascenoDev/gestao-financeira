@@ -3,8 +3,8 @@ gsd_state_version: 1.0
 milestone: v1.7
 milestone_name: — Abastecimento de ponta-a-ponta + UX da grid
 current_phase: 28
-status: verifying
-stopped_at: Completed 28-06-PLAN.md (gap-closure WR-01..04 + IN-01)
+status: complete
+stopped_at: Phase 28 complete + verified (4/4) + code review resolved (WR-01..04 fechados em 28-06); v1.7 code-complete — só falta push PROD de 0039/0040
 last_updated: "2026-06-22T22:08:25.710Z"
 last_activity: 2026-06-22
 last_activity_desc: Phase 28 P06 gap-closure complete (4 WARNINGs do code review fechados)
@@ -26,14 +26,14 @@ current_phase_name: Vínculo reverso por valor + consumo sem double-count
 - **Core value:** Subir uma fatura e ver os gastos classificados automaticamente (memória que aprende com cada confirmação) junto com a aderência às metas. Se tudo mais falhar, classificação inteligente com memória + visão de metas tem que funcionar.
 - **Mode:** mvp (vertical slices — cada fase entrega capacidade ponta-a-ponta visível ao usuário)
 - **Stack (locked):** Next.js App Router + TypeScript estrito (sem JS) + Supabase (Auth/Postgres/Storage) + Vercel
-- **Current focus:** Phase 28 — Vínculo reverso por valor + consumo sem double-count
+- **Current focus:** v1.7 code-complete (Phases 25-28 entregues + verificadas) — próximo: auditar/encerrar o milestone + push PROD de 0039/0040
 
 ## Current Position
 
-Phase: 28
+Phase: 28 — COMPLETE (verificado 4/4 + code review resolvido)
 Plan: 06 (gap-closure) complete — 6/6 plans done
-Status: Phase complete — ready for verification
-Last activity: 2026-06-22 — Phase 28 P06 gap-closure (WR-01..04 + IN-01) complete
+Status: Phase 28 complete; milestone v1.7 code-complete (4/4 fases, 100%) — ready for /gsd-audit-milestone + deploy
+Last activity: 2026-06-22 — Phase 28 P06 gap-closure (WR-01..04 + IN-01) complete, suíte 1004/1004 verde
 
 ## Deferred Items
 
